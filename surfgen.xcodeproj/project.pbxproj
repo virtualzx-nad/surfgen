@@ -6,10 +6,43 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXFileReference section */
+		22532A21168AE2CE00238D30 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		22532A22168AE2E000238D30 /* combinatorial.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = combinatorial.f90; sourceTree = "<group>"; };
+		22532A23168AE2E000238D30 /* diis.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = diis.f90; sourceTree = "<group>"; };
+		22532A24168AE2E000238D30 /* hddata.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = hddata.f90; sourceTree = "<group>"; };
+		22532A25168AE2E000238D30 /* io.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = io.f90; sourceTree = "<group>"; };
+		22532A26168AE2E000238D30 /* libinternal.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libinternal.f90; sourceTree = "<group>"; };
+		22532A27168AE2E000238D30 /* libsym.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libsym.f90; sourceTree = "<group>"; };
+		22532A28168AE2E000238D30 /* libutil.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libutil.f90; sourceTree = "<group>"; };
+		22532A29168AE2E000238D30 /* localcoord.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = localcoord.f90; sourceTree = "<group>"; };
+		22532A2A168AE2E000238D30 /* makesurf.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = makesurf.f90; sourceTree = "<group>"; };
+		22532A2B168AE2E000238D30 /* minmex.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = minmex.f90; sourceTree = "<group>"; };
+		22532A2C168AE2E000238D30 /* potlib.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = potlib.f90; sourceTree = "<group>"; };
+		22532A2D168AE2E000238D30 /* progdata.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = progdata.f90; sourceTree = "<group>"; };
+		22532A2E168AE2E000238D30 /* rdleclse.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = rdleclse.f90; sourceTree = "<group>"; };
+		22532A2F168AE2E000238D30 /* surfgen.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = surfgen.f90; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
 /* Begin PBXGroup section */
 		22532A14168AE2A700238D30 = {
 			isa = PBXGroup;
 			children = (
+				22532A21168AE2CE00238D30 /* Makefile */,
+				22532A22168AE2E000238D30 /* combinatorial.f90 */,
+				22532A23168AE2E000238D30 /* diis.f90 */,
+				22532A24168AE2E000238D30 /* hddata.f90 */,
+				22532A25168AE2E000238D30 /* io.f90 */,
+				22532A26168AE2E000238D30 /* libinternal.f90 */,
+				22532A27168AE2E000238D30 /* libsym.f90 */,
+				22532A28168AE2E000238D30 /* libutil.f90 */,
+				22532A29168AE2E000238D30 /* localcoord.f90 */,
+				22532A2A168AE2E000238D30 /* makesurf.f90 */,
+				22532A2B168AE2E000238D30 /* minmex.f90 */,
+				22532A2C168AE2E000238D30 /* potlib.f90 */,
+				22532A2D168AE2E000238D30 /* progdata.f90 */,
+				22532A2E168AE2E000238D30 /* rdleclse.f90 */,
+				22532A2F168AE2E000238D30 /* surfgen.f90 */,
 			);
 			sourceTree = "<group>";
 		};
@@ -121,6 +154,7 @@
 		22532A20168AE2A700238D30 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEBUGGING_SYMBOLS = NO;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
