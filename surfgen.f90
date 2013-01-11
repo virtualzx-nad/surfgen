@@ -43,8 +43,9 @@ SUBROUTINE readinput(jtype)
   INTEGER,DIMENSION(10)           :: groupSym,groupPrty
   DOUBLE PRECISION,dimension(20)  :: e_guess
 
-  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,usefij,switchdiab,&
-                            printlvl,deg_cap,inputfl,eshift,atmgrp,use_eguess,e_guess
+  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,usefij,&
+                            switchdiab, printlvl,deg_cap,inputfl,eshift,atmgrp, &
+                            use_eguess,e_guess, cntfl
   NAMELIST /MINMEX/         nmin,nmex,minguess,mexguess,optiter,opttoler,updatehess,h_recal,surface,&
                              ci,maxstep,xscale,sscale,degtoler,enforcepd
   NAMELIST /LOADGEOM/       isloop,loopst,ngeoms,geomfl,calchess,outputdir,outputdiab
@@ -52,6 +53,7 @@ SUBROUTINE readinput(jtype)
   jtype      = 0
   natoms     = 2
   printlvl   = 1
+  cntfl      = ''
   inputfl    = ''
   usefij     = .true.
   deg_cap    = 1D-7

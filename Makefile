@@ -12,7 +12,7 @@ JDIR  := $(shell pwd)
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
-  DEBUGFLAG := -g -check all
+  DEBUGFLAG := -g -fbounds-check -fbacktrace
 else
   DEBUGFLAG :=
 endif

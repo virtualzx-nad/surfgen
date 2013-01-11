@@ -297,6 +297,235 @@ SUBROUTINE readCoordSets()
 1000 format(72a)
 END SUBROUTINE
 
+!-------------------------------------------------------------------------------
+! read coordinate definitions.   coordinates are defined by atom index instead
+! of atom group index.  the permutated atoms are generated using the list of 
+! feasible permutations.  this subroutine is only
+! load coordinate sets
+SUBROUTINE readCoords()
+  use hddata,  only:ncoord,order,getFLUnit
+  use progdata,only:nrij,nout,printlvl,natoms,atomCount,atomList,&
+    nCoordSets,CoordSet,coordmap,nCoordCond,CoordCond,condRHS
+  use CNPI, only: nPmt, pmtList
+  implicit none
+  character(72) :: comment
+  character(4)  :: str
+  logical       :: found
+  integer       :: ios,i,j,k,l,m,n,newcrd(2), &
+                   CSETFL,         &  !Unit ID for coordinate definition file
+                   nAddCond           !number of additional conditions
+! temporary variables used to generate definitions
+  integer       :: rawCoord(4),ordOOP(4),& ! atoms referenced, before and after ordering
+                   prty                    ! parity of OOP angle, just a dummy variable
+  integer,dimension(:),allocatable   ::  lhs   ! Left hand side of order restrictions
+  integer,dimension(:,:),allocatable ::  tmpCoord   ! temporary coord group list
+
+  CSETFL=getFLUnit()
+! total coordinates count
+  ncoord=0
+! total coordinate condition count
+  nCoordCond=0
+
+! Load coordinate definition file
+  if(printlvl>0)print *,"   Reading coordinate set definitions."
+  open(unit=CSETFL,file='coord.in',access='sequential',form='formatted',&
+            STATUS='OLD',ACTION='READ',POSITION='REWIND',IOSTAT=ios)
+  read(CSETFL,1000,IOSTAT=ios) comment
+! Get number of coordinate sets and additional conditions
+  read(CSETFL,*,IOSTAT=ios) nCoordSets,nAddCond
+  if(ios/=0.or.nCoordSets<1)stop"Error reading coord set definitions."
+
+  if(allocated(CoordSet))deallocate(CoordSet)
+  allocate(CoordSet(nCoordSets))
+
+  if(printlvl>0)Print *,"      generating",nCoordSets," sets"
+  allocate(lhs(nCoordSets))
+
+  do i=1,nCoordSets
+! read in definition for one set of coordinates
+    read(CSETFL,1000,IOSTAT=ios) comment
+    read(CSETFL,'(3I4)',IOSTAT=ios)CoordSet(i)%Type,CoordSet(i)%Scaling,&
+                                    CoordSet(i)%Order
+! here, AtomGrp stores atom index instead of atom group index
+    read(CSETFL,'(4I4)',IOSTAT=ios)CoordSet(i)%AtomGrp
+    if(ios/=0)stop "Error reading coord set definitions."
+! check order settings
+    if(CoordSet(i)%Order<0)stop "Error:  Wrong maximum order value"
+    if(CoordSet(i)%Order==0.or.CoordSet(i)%Order>=order)then
+        CoordSet(i)%Order=order
+    else
+        nCoordCond=nCoordCond+1
+    end if!(CoordSet(i)%Order==0.or.CoordSet(i)%Order>order)
+    if(printlvl>0)Print '(5x,"set ",I4," type=",I4 ," scaling=",I4," max order=",I4)',&
+            i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order
+
+    select case(CoordSet(i)%Type)
+
+!----Plain or Scaled Internuclear distance coordinate
+
+      case(0)  !rij or scaled rij.   %atomGrp = A1 , A2 ,  X , X
+
+      ! field 1 and 2 of atomGrp record the atom index of the end point atoms
+      ! field 3 and 4 are not used
+        if(CoordSet(i)%atomGrp(1).eq.CoordSet(i)%atomGrp(2))then
+        ! bond between same atom is not allowed
+            print *,"Bond between the same atom is not allowed!!!"
+            stop "Error: Bond between the same atom is not allowed!!!"
+        end if  !(CoordSet(i)%atomGrp(1).eq.CoordSet(i)%atomGrp(2))
+        ! bond between different atoms
+        ! allocate temporary coord set list
+        allocate(tmpCoord(nPmt,2))
+        CoordSet(i)%ncoord    = 0
+        do l=1,nPmt
+            newcrd(1) = minval(pmtList(l,CoordSet(i)%atomGrp(1:2)))
+            newcrd(2) = maxval(pmtList(l,CoordSet(i)%atomGrp(1:2)))
+            ! look up if this coordinate is already defined in the list
+            found = .false.
+            do j=1,CoordSet(i)%ncoord
+                if(newcrd(1)==tmpCoord(j,1).and. &
+                   newcrd(2)==tmpCoord(j,2) ) then
+                    found = .true.
+                    exit
+                end if
+            end do!j
+            if(.not.found)then
+                CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
+                tmpCoord(CoordSet(i)%ncoord,:) = newcrd
+PRINT "(A,4I6)","ADDING COORDINATE",newcrd
+            end if!.not.found
+        end do!l=1,nPmt
+
+        ! allocate coord list
+        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,2))
+        CoordSet(i)%coord = tmpCoord(1:CoordSet(i)%ncoord,:)
+        deallocate(tmpCoord)
+
+        ! read scaling coefficients
+        allocate(CoordSet(i)%Coef(2))
+        if(CoordSet(i)%Scaling.ne.0)then
+            read(CSETFL,'(2F10.6)',IOSTAT=ios) CoordSet(i)%Coef(:)
+            if(ios/=0)stop "Error reading coord set definitions."
+        end if !(CoordSet(i)%Scaling.ne.0)
+
+      !-- Out of plane angle coordinate
+
+
+      case(-1,-2) ! OOP.   %atomGrp = A1, A2, A3, A4
+
+        CoordSet(i)%ncoord=0
+        allocate(tmpCoord(nPmt,4))
+    ! Generate all possible permutations of the 4 atoms in question.
+    ! Coordinates are inserted in cannonical order
+        do l=1,nPmt
+            rawCoord = pmtList(l,CoordSet(i)%atomGrp)
+            call reorderOOP(rawCoord,ordOOP,prty)
+            ! look up the reordered coordinate in the temporary coordinate list
+            found = .false.
+            do j=1,CoordSet(i)%ncoord
+                if(count(tmpCoord(j,:).eq.ordOOP).eq.4)then
+                    found =.true.
+                    exit
+                end if
+            end do!j
+            if(.not.found)then
+                CoordSet(i)%ncoord = CoordSet(i)%ncoord + 1
+                tmpCoord(CoordSet(i)%ncoord,:) = rawCoord
+PRINT "(A,4I6)","ADDING COORDINATE",rawcoord
+
+            end if
+        end do!l
+
+        ! allocate field %coord and transfer definition from temporary array to global structure
+        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
+        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,4))
+        CoordSet(i)%coord = tmpCoord(1:CoordSet(i)%ncoord,:)
+        deallocate(tmpCoord)
+
+        ! load scaling factor
+        allocate(CoordSet(i)%Coef(2))
+        read(CSETFL,'(2F10.6)',IOSTAT=ios) CoordSet(i)%Coef
+        if(ios/=0)stop "Error reading coord set definitions."
+
+      !---Bond angle coordinates and their periodic scalings
+
+      case(1)  ! angle A1-A2-A3.   %atomGrp = A1, A2, A3, X.
+
+        CoordSet(i)%ncoord=0
+        ! BOND ANGLE NOT YET IMPLEMENTED
+! no scaling parameters for bond angles
+
+      !---Torsion angle coordinates and their periodic scalings
+
+      case (2) ! torsion A1-A2-A3-A4.   %atomGrp = A1, A2, A3, A4
+
+        CoordSet(i)%ncoord=0
+        ! TORSION NOT YET IMPLEMENTD
+
+! no coefficient to read for torsion
+
+      !-- Other types.  Should not get here
+      case default
+        print *,"TYPE=",CoordSet(i)%Type
+        stop "Error : COORDINATE TYPE NOT SUPPORTED. "
+    end select!case(CoordSet(i)%Type)
+
+! %icoord  maps coordinate index inside set to full coordinate list index
+
+    allocate(CoordSet(i)%icoord(CoordSet(i)%ncoord))
+    do j=1,CoordSet(i)%ncoord
+        CoordSet(i)%icoord(j)=j+ncoord
+    end do!j=1,CoordSet(i)%ncoord
+    ncoord=ncoord+CoordSet(i)%ncoord
+
+  end do!i=1,nCoordSets
+
+  ! generate coordinate map from full coordinate list to coordinate set list
+  if(allocated(coordmap))deallocate(coordmap)
+  allocate(coordmap(ncoord,2))
+  k=0
+  do i=1,nCoordSets
+    do j=1,CoordSet(i)%ncoord
+        k=k+1
+        coordmap(k,1)=i   !(:,1) = index of set
+        coordmap(k,2)=j   !(:,2) = index within a set
+    end do!j=1,CoordSet(i)%ncoord
+  end do!i=1,nCoordSets
+
+  !Generate coordinate inequality conditions for hddata
+  allocate(CoordCond(nCoordCond+nAddCond,ncoord))
+  allocate(condRHS(nCoordCond+nAddCond))
+  nCoordCond=0
+  CoordCond=0
+
+  ! Generate individual set order limits
+  do i=1,nCoordSets
+    if(CoordSet(i)%Order>=order)cycle
+    nCoordCond=nCoordCond+1
+    CoordCond(nCoordCond,CoordSet(i)%icoord)=1
+    condRHS(nCoordCond)=CoordSet(i)%Order
+  end do!i=1,nCoordSets
+
+  ! Additional set order restrictions
+  write(str,'(I4)') nCoordSets+1
+  if(printlvl>0)print *,"      Reading ",naddcond," additional order restrictions."
+  do i=1,nAddCond
+    nCoordCond=nCoordCond+1
+    read(CSETFL,"("//trim(str)//"I4)",IOSTAT=ios) lhs,condRHS(nCoordCond)
+    if(ios/=0)stop "Error reading addintional coordinate order restrictions."
+    if(printlvl>1)then
+        write(*,"(5x,A,20I4)",advance='no') "lhs:",lhs
+        print "(x,A,I5)","rhs:",condRHS(nCoordCond)
+    end if
+    do j=1,nCoordSets
+        CoordCond(nCoordCond,CoordSet(j)%icoord)=lhs(j)
+    end do
+  end do
+  close(unit=CSETFL)
+  deallocate(lhs)
+1000 format(72a)
+END SUBROUTINE readCoords
+
+!-------------------------------------------------------------------------------
 ! load irrep matrices from irrep.in
 SUBROUTINE readIrreps()
   use progdata, only:IRREPFL,printlvl
@@ -347,12 +576,20 @@ SUBROUTINE initialize(jobtype)
   use CNPI
   IMPLICIT NONE
   INTEGER,INTENT(IN)                          :: jobtype
-  
+  LOGICAL removed
+
   if(printlvl>0)print *,"Entering Initialize()"
-  if(printlvl>0)print *,"    generating atom permutation"
+  if(printlvl>0)print *,"    generating atom permutations"
   Call genAtomPerm()
-  if(printlvl>0)print *,"    generating Rij permutations"
-  call readCoordSets()
+  if(printlvl>0)print *,"    selecting feasible permutations"
+  Call selectAtomPerm(removed)
+  if(removed)then
+    if(printlvl>0)print *,"    reading coordinate definitions(subgroup)"
+    call readCoords()
+  else!removed
+    if(printlvl>0)print *,"    reading coordinate definitions"
+    call readCoordSets()
+  end if!removed
   if(printlvl>0)print *,"    generating permutations for scaled coordinates"
   call genCoordPerm()
   CALL initHd()
@@ -598,9 +835,9 @@ SUBROUTINE printTitle(jobtype)
   use hddata, only: ncoord
   use progdata,only:eshift,OUTFILE
   IMPLICIT NONE
-  INTEGER,INTENT(IN)                        :: jobtype
-  CHARACTER(9),dimension(4)                 :: types = (/'MAKESURF ','EXTREMA  ', &
-                                                         'LOADGEOM ','TRANSFORM' /)
+  INTEGER,INTENT(IN)          :: jobtype
+  CHARACTER(9),dimension(0:4) :: types = (/'POTLIB   ','MAKESURF ','EXTREMA  ', &
+                                                    'LOADGEOM ','TRANSFORM' /)
 
   open(unit=OUTFILE,file='surfgen.out',access='sequential',form='formatted')
   write(OUTFILE,1000)'-----------------------------------------------------------'

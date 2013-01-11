@@ -178,6 +178,9 @@ module progdata
 ! diabatic states on output.
  LOGICAL                                      ::  switchdiab
 
+! Connectivities to be preserved for filtering of non-feasible permutations
+ CHARACTER(72)                                ::  cntfl
+
 CONTAINS
  !***********************************************************************
  ! take the array of atom labels and replace then with integer indices,

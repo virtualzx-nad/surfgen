@@ -54,7 +54,13 @@ MODULE CNPI
  INTEGER,dimension(:),allocatable             ::  grpPrty
 
 ! * PERMUTATION PROPERTIES
+! nPmt      number of feasible permutations
+! nPmtAll   total number of permutations, including infeasible
+! pmtList   list of all feasible permutations
+! subPerm   all permutations of each atom group
+! nSubPerm  number of permutations for each atom group
  INTEGER                                :: nPmt
+ INTEGER                                :: nPmtAll
  INTEGER, DIMENSION(:,:), allocatable   :: pmtList !all permutation of atoms
  INTEGER, DIMENSION(:,:,:),allocatable  :: subPerm
  INTEGER, DIMENSION(:),allocatable      :: nSubPerm
@@ -127,19 +133,107 @@ CONTAINS
  ! permutation list.
  !
  ! METHOD
- !   The filter proceeds by defining connectivity relations between atoms.
- ! Permutations that preserves all connectivities are considered feasible.
+ !   The selection procedure proceeds by defining connectivity relations between
+ ! atoms. Permutations that preserves all connectivity conditions are considered
+ ! feasible.
  !
- ! ARGUMENT
- !   cntfl  [in] CHARACTER*30
+ ! USES
+ !   cntfl    [progdata] CHARACTER*30
  !          Input file that contains connectivity information
+ ! VARIABLES
+ !   removed  [out] LOGICAL
+ !            True when some permutations are removed.
  ! FUTURE CHANGES
  !   METHOD NOT IMPLEMENTED YET
  !   ADD SUPPORT FOR PRESERVATION OF CHIRALITY OF OPTICAL CENTERS
-  SUBROUTINE filterAtomPerm()
+  SUBROUTINE selectAtomPerm(removed)
+    use progdata, only: cntfl,natoms
     IMPLICIT NONE
+    LOGICAL,intent(out):: removed
+    integer,parameter  :: CNTUNIT=2077
+    ! connectivity restrictions used as permutation selection rules
+    INTEGER                                :: nBonds
+    INTEGER,dimension(:,:), allocatable    :: BondList
+    ! masks for selection
+    logical ::  feasible, found
+    integer ::  ios,i,j,k, newBond(2), nPmtNew,newList(nPmt,natoms)
 
-  END SUBROUTINE filterAtomPerm
+    nPmtAll = nPmt
+    removed =.false.
+    ! skip selection if the file is not specified
+    if(len_trim(cntfl)==0) return
+
+    open(unit=CNTUNIT,file=trim(adjustl(cntfl)),access='sequential',&
+        form='formatted',STATUS='OLD',ACTION='READ',POSITION='REWIND',IOSTAT=ios)
+    if(ios/=0)then
+        print *,"  Failed to open connectivity file."
+        print *,"  Skipping feasible permutation selections."
+        return
+    end if
+
+    ! read connectivity rules
+    read(unit=CNTUNIT,fmt=*,IOSTAT=ios) nBonds
+    if(ios/=0)then
+        print *,"  Failed to read the number of connectivity rules."
+        print *,"  Skipping feasible permutation selections."
+        return
+    end if
+    if(allocated(BondList))deallocate(BondList)
+    allocate(BondList(2,nBonds))
+    read(unit=CNTUNIT,fmt=*)BondList
+    close(CNTUNIT)
+
+    ! make sure all bonding relations are in cannonical order
+    do i=1,nBonds
+        if(BondList(1,i)>BondList(2,i))BondList(:,i)=BondList([2,1],i)
+    end do!i=1,nbonds
+
+    ! process rules to find out feasible permutations.  
+    ! mask labels the feasible permutations in permutation list.
+    nPmtNew = 0
+    do i=1,nPmt
+        ! Test if all the bonding rules form a group under the current
+        ! permutation relation.   
+        ! To-Do:  Also verify the preservation of chirality
+        feasible =  .true.
+        do j=1,nBonds
+            newBond(1) = minval(pmtList(i,BondList(:,j)))
+            newBond(2) = maxval(pmtList(i,BondList(:,j)))
+            !search the bond list for the permutated bond
+            found = .false.
+            do k=1,nBonds
+                if( newBond(1)==Bondlist(1,k) .and. &
+                    newBond(2)==Bondlist(2,k))found=.true.
+            end do
+            if(.not.found)feasible=.false.
+            exit
+        end do!j=1,nBonds
+        if(feasible)then
+            nPmtNew=nPmtNew+1
+            newList(nPmtNew,:)=pmtList(i,:)
+        end if!feasible
+    end do!i=1,nPmt
+    deallocate(BondList)
+
+    ! reform the permutation list
+    deallocate(pmtlist)
+    nPmtAll = nPmt
+    nPmt = nPmtNew
+    allocate(pmtList(nPmt,natoms))
+    pmtList = newList(:nPmt,:)
+
+    ! log the selected permutations
+    if(printlvl>1)then
+        print *,"     Number of feasible permutations:",nPmt
+        PRINT *,"     Feasible Permutations List:"
+        do i=1,nPmt
+            write(unit=*,fmt="(8x,A,I5,A)",Advance="NO") "Pmt #",i,":"
+            PRINT "(20I3)",pmtList(i,:)
+        end do!i=1,nPmt
+        print *,""
+    end if!printlvl>1
+    if(nPmtAll>nPmt)removed=.true.
+  END SUBROUTINE selectAtomPerm
 
  !***********************************************************************
  !genCoordPerm() generates permutation list for all scaled coordinates
