@@ -92,7 +92,7 @@ module progdata
    INTEGER                             ::  Order
    INTEGER                             ::  nCoord
    INTEGER,DIMENSION(:),allocatable    ::  iCoord
-   INTEGER,DIMENSION(4)                ::  atomGrp
+   INTEGER,DIMENSION(4)                ::  atom
    INTEGER,DIMENSION(:,:),allocatable  ::  Coord
    DOUBLE PRECISION,DIMENSION(:),allocatable ::  Coef
  end type

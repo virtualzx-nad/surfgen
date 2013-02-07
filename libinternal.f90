@@ -54,8 +54,8 @@ SUBROUTINE reorderOOP(oldOOP,newOOP,parity)
   integer          ::  loc, tmp, i
   parity=1
   newOOP=oldOOP
-  do i=4,2,-1
-    loc   = maxloc(newOOP(1:i),1)
+  do i=4,3,-1
+    loc   = maxloc(newOOP(2:i),1)+1
     if(loc/=i)then
       tmp   = newOOP(loc)
       newOOP(loc)  =newOOP(i)
@@ -156,14 +156,18 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 
     select case(CoordSet(m)%Type)
 
-!---Plain or scaled Rij coordinates--->>>
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     Plain or scaled Rij coordinates
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
       case(0)   
         
         call calcwij(CoordSet(m)%Scaling,CoordSet(m)%coord(n,1),CoordSet(m)%coord(n,2),&
                       CoordSet(m)%coef,cgeom,igeom(i),bmat(i,:))
 
-! ---Out-of-Plane angles--->>>
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     OOP ANGLE
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case(-1)  !oop
 
         select case(CoordSet(m)%Scaling)
@@ -176,6 +180,10 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
               bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
             end do!j=1,4
 
+        ! Scaling OOP angle using inverse of the sum of inverse of distances
+        ! igeom = oop/(1/w1+1/w2+1/w3)
+        ! w1 w2 w3 are scaled distance from first atom to the rest of the atoms
+        ! here the OOP coordinate is used in the form with a=1/2
           case(-1,-2)
             bmat(i,:) = dble(0)
             call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,5d-1)
@@ -195,6 +203,8 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
               bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
             end do!j=1,4
 
+        ! similar to -1,-2 but in the OOP definition three distances are divided
+        ! instead of all 6.   the three distances from atom 1 are used.
           case(-3,-4)
             bmat(i,:) = dble(0)
             call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,0d0)
@@ -232,16 +242,33 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
             end do!j=1,4
 
         end select !case(CoordSet(m)%Scaling)
-! <<<---End of OOP angles
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     Special OOP angles
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case(-2)  !special oop angles
         bmat(i,:) = dble(0)
-        call oop3(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,coordset(m)%coef(1),&
-                                                    CoordSet(m)%Scaling,coordset(m)%coef(2))
+        call oop3(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,&
+                coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
         do j=1,4
           offs = 3*(CoordSet(m)%coord(n,j)-1)
           bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
         end do!j=1,4
 
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     Scaled bond angle
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      case (1) ! angle
+        bmat(i,:) = dble(0)
+        call bend(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,&
+        coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
+        do j=1,3
+            offs = 3*(CoordSet(m)%coord(n,j)-1)
+            bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+        end do!j=1,3
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     other types.  shouldn't get here
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case default
         print *,"CoordSet(",m,")%Type    = ",CoordSet(m)%Type
         stop "Unsupported coordinate type"
@@ -537,7 +564,6 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
                        geom(4,3), ddvec(3,3),          &
                        coef(2), dwdR(6,12), w(6),  denom, ddenrm
-  DOUBLE PRECISION  :: cgeom4(12)  !cartesian coordinates of 4 reference atoms
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
 ! fbmat = derivatives of unscaled OOP coordinate
@@ -552,11 +578,6 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   sgns(6,:)=(/ 1,-1, 0, 0/)
 
 ! calculate the scaling factors and their derivatives
-  cgeom4 = 0D0
-  do i=1,4
-    cgeom4(i*3-2:i*3) = cgeom(atms(i)*3-2:atms(i)*3)
-  end do
-
   coef(1) = scale
   coef(2) = factor
   tp  = sctype
@@ -564,7 +585,7 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   k = 1
   do i=1,3
    do j=i+1,4
-     call calcwij(tp,i,j,coef,cgeom4,w(k),dwdR(k,:))
+     call calcwij(tp,i,j,coef,cgeom,w(k),dwdR(k,:))
      k = k+1
    end do !j
   end do
@@ -634,7 +655,7 @@ CONTAINS
 END SUBROUTINE oop2
 
 !************************************************************************************
-! SUBROUTINE oop2 
+! SUBROUTINE oop3 
 ! OOP angle values and derivatives, with the expoential scaling method
 ! f= g*Product[ Exp[-a rij] ]
 ! where a is the scaling factor, g is the triple product of unit displacement vectors
@@ -667,7 +688,6 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
                        geom(4,3), ddvec(3,3),          &
                        coef(2), dwdR(3,12), w(3), dwdR2(3,12), w2(3)
-  DOUBLE PRECISION  :: cgeom4(12)  !cartesian coordinates of 4 reference atoms
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
 ! fbmat = derivatives of unscaled OOP coordinate
@@ -681,21 +701,17 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   sgns(5,:)=(/ 0, 1,-1, 0/)
   sgns(6,:)=(/ 1,-1, 0, 0/)
 
-! calculate the scaling factors and their derivatives
-  cgeom4 = 0D0
-  do i=1,4
-    cgeom4(i*3-2:i*3) = cgeom(atms(i)*3-2:atms(i)*3)
-  end do
-
+! calculate the three scaling factors and their derivatives
+! scaled distances for the three bonds A1-A2, A1-A3 and A1-A4 are used
   do i=2,4
-     call calcwij(int(0),int(1),i,coef,cgeom4,w(i-1),dwdR(i-1,:))
+     call calcwij(int(0),int(1),i,coef,cgeom,w(i-1),dwdR(i-1,:))
   end do
 
   coef(1) =scale
   coef(2) =factor 
   if(sctype.gt.0)then
     do i=2,4
-     call calcwij(sctype,int(1),i,coef,cgeom4,w2(i-1),dwdR2(i-1,:))
+     call calcwij(sctype,int(1),i,coef,cgeom,w2(i-1),dwdR2(i-1,:))
     end do
   end if
 
@@ -736,9 +752,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
     qval = fval*eprod
     bval = fbmat*eprod+qval*(w2(2)*w2(3)*dwdR2(1,:)+w2(1)*w2(3)*dwdR2(2,:)+w2(1)*w2(2)*dwdR2(3,:))
   end if
-PRINT *,"QVAL=",QVAL
-WRITE(*,"(a)",ADVANCE="NO"),"BVAL="
-PRINT "(3F20.10)",BVAL
+
 CONTAINS
 
   ! this function calculates the value of a 3x3 determinant
@@ -760,3 +774,79 @@ CONTAINS
   END FUNCTION cross
 
 END SUBROUTINE oop3
+
+!*******************************************************************************
+! bending angle with specific scaling
+!*******************************************************************************
+SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
+  IMPLICIT NONE
+  INTEGER,INTENT(IN)                              :: natoms,sctype
+  INTEGER,DIMENSION(3),INTENT(IN)                 :: atms
+  DOUBLE PRECISION,DIMENSION(3,natoms),INTENT(IN) :: cgeom
+  DOUBLE PRECISION,INTENT(OUT)                    :: qval
+  DOUBLE PRECISION,INTENT(IN)                     :: scale
+  DOUBLE PRECISION,DIMENSION(9),INTENT(OUT)       :: bval
+  double precision,intent(IN)                     :: factor
+
+  double precision ::  v, dv(9), d1(3),d2(3), d12, d22, dd12(9), dd22(9)
+  double precision ::  p, dp(9), denom, tmp
+  integer,dimension(3,9) ::   dd1,dd2    ! derivatives of d1 and d2
+  integer  ::  i
+
+  dd1(1,:) =[1,0,0,0,0,0,-1,0,0]
+  dd1(2,:) =[0,1,0,0,0,0,0,-1,0]
+  dd1(3,:) =[0,0,1,0,0,0,0,0,-1]
+  dd2(1,:) =[0,0,0,1,0,0,-1,0,0]
+  dd2(2,:) =[0,0,0,0,1,0,0,-1,0]
+  dd2(3,:) =[0,0,0,0,0,1,0,0,-1]
+
+  ! calculate the dot product of the two borders of the angle and its derivative
+  ! v is the dot product, and dv is the derivative
+
+  d1 = cgeom(:,atms(1))-cgeom(:,atms(3))
+  d2 = cgeom(:,atms(2))-cgeom(:,atms(3))
+  v = dot_product(d1,d2)
+  do i=1,9
+    dv(i) = dot_product(d1,dd2(:,i))+dot_product(dd1(:,i),d2)
+  end do!i=1,9
+
+  ! d12 and d22 are the square norm of the two borders, and dd12 and dd22 are the
+  ! derivatives of these two quantities.
+  d12 = dot_product(d1,d1)
+  d22 = dot_product(d2,d2)
+  do i=1,9
+    dd12(i) = 2*dot_product(d1,dd1(:,i))
+    dd22(i) = 2*dot_product(d2,dd2(:,i))
+  end do!i=1,9
+
+  ! calculate the cosine of angle p = v/sqrt(d12*d22)
+  p = v/sqrt(d12*d22)
+  dp =  ( dv - v/2*(dd12/d12+dd22/d22)  ) / sqrt(d12*d22)
+
+  ! calculate final value and derivatives according to scaling method
+  select case(sctype)
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!       Cos theta, p
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    case ( 1 )
+        qval = p
+        bval = dp
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!       Raw angle.
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!  obtained as acos(p).    d acos(p)= - dp / Sqrt(1-p^2)
+    case ( 0 )
+        qval = acos(p)
+        bval = -dp/sqrt(1-p**2)
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!       Scaled cosine, p/( 1+exp[c1*(d1^2+d2^2-c2^2)] )
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!   q = p/( 1+exp[c1*(d1^2+d2^2-c2^2)] )
+    case  (2)
+        tmp  = exp(scale*(d12+d22-factor**2))
+        qval = p/(1+tmp)
+        bval = (  dp  +  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
+  end select!case(sctype)
+END SUBROUTINE BEND

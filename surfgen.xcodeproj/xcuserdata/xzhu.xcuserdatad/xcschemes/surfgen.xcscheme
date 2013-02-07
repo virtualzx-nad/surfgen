@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0450"
+   LastUpgradeVersion = "0460"
    version = "1.3">
    <BuildAction
-      parallelizeBuildables = "YES"
+      parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
@@ -17,6 +17,20 @@
                BlueprintIdentifier = "22532A1B168AE2A700238D30"
                BuildableName = "surfgen"
                BlueprintName = "surfgen"
+               ReferencedContainer = "container:surfgen.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "NO"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "226A266D169547B4003C4445"
+               BuildableName = "surfgen-app"
+               BlueprintName = "surfgen-app"
                ReferencedContainer = "container:surfgen.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
