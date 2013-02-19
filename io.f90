@@ -344,10 +344,10 @@ SUBROUTINE readCoords()
   do i=1,nCoordSets
 ! read in definition for one set of coordinates
     read(CSETFL,1000,IOSTAT=ios) comment
-    read(CSETFL,'(3I4)',IOSTAT=ios)CoordSet(i)%Type,CoordSet(i)%Scaling,&
+    read(CSETFL,*,IOSTAT=ios)CoordSet(i)%Type,CoordSet(i)%Scaling,&
                                     CoordSet(i)%Order
 ! here, atom stores atom index instead of atom group index
-    read(CSETFL,'(4I4)',IOSTAT=ios)CoordSet(i)%atom
+    read(CSETFL,*,IOSTAT=ios)CoordSet(i)%atom
     if(ios/=0)stop "Error reading coord set definitions."
 ! check order settings
     if(CoordSet(i)%Order<0)stop "Error:  Wrong maximum order value"
@@ -592,7 +592,7 @@ SUBROUTINE readIrreps()
       STATUS='OLD',ACTION='READ',POSITION='REWIND',IOSTAT=ios)
   if(ios/=0)stop "readIrreps:  cannot open file irrep.in"
   read(IRREPFL,1000) comment
-  read(IRREPFL,1001) nirrep
+  read(IRREPFL,*) nirrep
   if(printlvl>0)print *,"    Loading irreducible representations...."
   if(printlvl>1)print *,"    ",trim(comment)
   if(printlvl>1)print *,"      Number of irreps: ",nirrep
@@ -600,14 +600,14 @@ SUBROUTINE readIrreps()
   do i=1,nirrep
     read(IRREPFL,1000) comment
     if(printlvl>2)print '(7x,"Irrep #",I2," : ",a)',i,trim(adjustl(comment))
-    read(IRREPFL,1002)  d,ordr
+    read(IRREPFL,*)  d,ordr
     irrep(i)%Dim   = d
     irrep(i)%Order = ordr
     write(tpStr,'(I3)') d
     allocate(irrep(i)%RepMat(ordr,d,d))
     do j=1,ordr
       do k=1,d
-        read(IRREPFL,'('//trim(tpStr)//'F14.10)') irrep(i)%repmat(j,k,1:d)
+        read(IRREPFL,*) irrep(i)%repmat(j,k,1:d)
         if(printlvl>2)print '(11X,'//trim(tpStr)//'F14.10)',irrep(i)%repmat(j,k,1:d)
       end do!k=1,d
       if(printlvl>2)print *,''
@@ -615,8 +615,6 @@ SUBROUTINE readIrreps()
   end do!i=1,nirrep
   close(unit=IRREPFL)
 1000 format(72a)
-1001 format(7x,I6)
-1002 format(3X,I6,5X,I6)
 END SUBROUTINE
 
 ! read reference geometry/energy/internal coordiante/gradients from input file
@@ -628,20 +626,35 @@ SUBROUTINE initialize(jobtype)
   use CNPI
   IMPLICIT NONE
   INTEGER,INTENT(IN)                          :: jobtype
+  integer :: i
+
   LOGICAL removed
 
   if(printlvl>0)print *,"Entering Initialize()"
   if(printlvl>0)print *,"  Generating atom permutations"
   Call genAtomPerm()
-  if(printlvl>0)print *,"  Selecting feasible permutations"
+  if(jobtype<0)then
+    print *,"  All atom permutations:"
+    do i=1,nPmt
+        write(unit=*,fmt="(8x,A,I5,A)",Advance="NO") "Pmt #",i,":"
+        PRINT "(20I3)",pmtList(i,:)
+    end do!i=1,nPmt
+  end if
+  if(printlvl>0)print *,  "  Selecting feasible permutations"
   Call selectAtomPerm(removed)
-  if(removed)then
-    if(printlvl>0)print *,"  Using atom indexes to define coordinates"
+  if(.not.removed)print *,"  No permutations removed."
+  if(jobtype<0)then
+    print *,"Finished printing permutations."
+    stop
+  end if
+
+!  if(removed)then
+!    if(printlvl>0)print *,"  Using atom indexes to define coordinates"
     call readCoords()
-  else!removed
-    if(printlvl>0)print *,"  Using atom group index to define coordinates"
-    call readCoordSets()
-  end if!removed
+!  else!removed
+!    if(printlvl>0)print *,"  Using atom group index to define coordinates"
+!    call readCoordSets()
+!  end if!removed
   if(printlvl>0)print *,"  Generating permutations for scaled coordinates"
   call genCoordPerm()
   CALL initHd()

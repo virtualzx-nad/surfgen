@@ -177,7 +177,7 @@ CONTAINS
     end if
     if(allocated(BondList))deallocate(BondList)
     allocate(BondList(2,nBonds))
-    read(unit=CNTUNIT,fmt=*)BondList
+    if(nBonds>0)read(unit=CNTUNIT,fmt=*)BondList
     close(CNTUNIT)
 
     ! make sure all bonding relations are in cannonical order
@@ -222,15 +222,13 @@ CONTAINS
     pmtList = newList(:nPmt,:)
 
     ! log the selected permutations
-    if(printlvl>1)then
-        print *,"     Number of feasible permutations:",nPmt
-        PRINT *,"     Feasible Permutations List:"
-        do i=1,nPmt
-            write(unit=*,fmt="(8x,A,I5,A)",Advance="NO") "Pmt #",i,":"
-            PRINT "(20I3)",pmtList(i,:)
-        end do!i=1,nPmt
-        print *,""
-    end if!printlvl>1
+    print *,"     Number of feasible permutations:",nPmt
+    PRINT *,"     Feasible Permutations List:"
+    do i=1,nPmt
+        write(unit=*,fmt="(8x,A,I5,A)",Advance="NO") "Pmt #",i,":"
+        PRINT "(20I3)",pmtList(i,:)
+    end do!i=1,nPmt
+    print *,""
     if(nPmtAll>nPmt)removed=.true.
   END SUBROUTINE selectAtomPerm
 

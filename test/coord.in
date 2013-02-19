@@ -58,19 +58,19 @@ NUMBER OF SETS:
 1   6   2   3
 1.0   0.0
 19: out-of-plane CCCO
--1  0
+-1  0   0
 1   2   6   7
 1.0   0.0
 20: out-of-plane CCCH
--1  0
+-1  0   0
 2   1   3   8
 1.0   0.0
 21: out-of-plane CCCH
--1  0
+-1  0   0
 3   2   4   9
 1.0   0.0
 22: out-of-plane CCCH
--1  0
+-1  0   0
 4   3   5   10
 1.0   0.0
 23: stre  O7-H13

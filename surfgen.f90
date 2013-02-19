@@ -73,26 +73,28 @@ SUBROUTINE readinput(jtype)
   jtype  = jobtype
 
   call genAtomList(atmgrp)
-  
-  call readIrreps()
-  if(allocated(GrpSym))deallocate(GrpSym)
-  if(allocated(grpPrty))deallocate(grpPrty)
-  allocate(GrpSym(nGrp))
-  allocate(grpPrty(nGrp))
-  GrpSym=groupsym(1:nGrp)
-  grpPrty=groupprty(1:nGrp)
-  call initGrps(nGrp,irrep(GrpSym(:))%Dim)
 
-  if(allocated(eguess))deallocate(eguess)
-  allocate(eguess(nGrp))
-  if(use_eguess)then
-    eguess=e_guess(1:nGrp)/AU2CM1
-    print *,"Guess energies: ", eguess
-  else
-    do i=1,nGrp
-     eguess(i)=i*10000/AU2CM1
-    end do
-  end if
+  if(jtype>=0)then  ! jobtype<0 will only print out symmetry operations
+      call readIrreps()
+      if(allocated(GrpSym))deallocate(GrpSym)
+      if(allocated(grpPrty))deallocate(grpPrty)
+      allocate(GrpSym(nGrp))
+      allocate(grpPrty(nGrp))
+      GrpSym=groupsym(1:nGrp)
+      grpPrty=groupprty(1:nGrp)
+      call initGrps(nGrp,irrep(GrpSym(:))%Dim)
+
+      if(allocated(eguess))deallocate(eguess)
+      allocate(eguess(nGrp))
+      if(use_eguess)then
+        eguess=e_guess(1:nGrp)/AU2CM1
+        print *,"Guess energies: ", eguess
+      else
+        do i=1,nGrp
+         eguess(i)=i*10000/AU2CM1
+        end do
+      end if
+  end if!(jtype>=0)
 
   if(printlvl>0)print *,"    Reading job specific inputs."
   !------------ JOBTYPE SECTION ------------!
@@ -100,10 +102,17 @@ SUBROUTINE readinput(jtype)
   select case(jtype)
 
    !-----------------------------------------------------
+   ! Printing symmetry operations ( permutations ) only
+   !----------------------------------------------------
+   case(-1)
+    if(printlvl>0)print *,"    readinput():  jobtype<0.  Printig permutations."
+
+   !-----------------------------------------------------
    ! Potlib interface.  Do nothing.
    !----------------------------------------------------
    case(0)
     if(printlvl>0)print *,"    readinput():  jobtype=0.  Ready for evaluation."
+
 
    !-----------------------------------------------------
    ! Read in displacemnts, construct surface
