@@ -471,9 +471,12 @@ MODULE makesurfdata
       cklPrev = ckl(i,:,:)
       CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
       ckl(i,:,:)=hmatPt
+
       call DSYEV('V','U',nstates,ckl(i,:,:),nstates,fitE(i,:),scr,5*nstates*nstates,INFO)
       IF(INFO/=0)then
+        print *,"Failed to solve eigenvectors at point",i
         print *,"INFO=",info
+
         stop 'error solving eigenvalue equations'
       end if
       fitpt%energy=fitE(i,:)      
@@ -796,7 +799,7 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(A,I5,A,F10.3,A,E14.4)", &
+             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(5x,A,I5,A,F10.3,A,E12.4)", &
                        "Large coupling error at point ",j," : ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp)
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
@@ -822,14 +825,14 @@ MODULE makesurfdata
               ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
            gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
            dgrd = dgrd / gnrm 
-           if((dgrd>5D-2.or.gnrm*dgrd>1D-5.and.gnrm<1D-4).and.printlvl>2) print "(A,I5,A,F10.3,A,E14.4)", &
+           if((dgrd>5D-2.or.gnrm*dgrd>1D-5.and.gnrm<1D-4).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
                        "Large gradient error at point ",j," : ",dgrd*100,"% out of ", gnrm
            if(gnrm>1D-4) then
              nrmgrad = nrmgrad + dgrd
              avggrad = avggrad + sqrt(dgrd)
              incdata = incdata + 1
            else
-              if(printlvl>4)print "(A,I5,A,E14.4,A,E14.4)",&
+              if(printlvl>4)print "(5x,A,I5,A,E14.4,A,E14.4)",&
                        "Small gradients excluded at point ",j,".  Norm of grad =",gnrm,",Norm of error = ",dgrd*gnrm
            end if ! (gnrm>1D-4)
          end if
@@ -1114,6 +1117,7 @@ MODULE makesurfdata
     LWORK  = 2+7*nex+3*nex**2
     LIWORK = 4+6*nex
     ! Bg = B.grdv
+    if(nex<=0)return
     if(printlvl>1)then
       print *,"  Calculating optimal values of Lagrange multipliers..."
       call system_clock(COUNT=c1,COUNT_RATE=crate)
@@ -1549,11 +1553,13 @@ SUBROUTINE genBasis(gradNorm)
      end if
      if(all(.not.incgrad(i,:,:)).and.all(.not.g_exact(i,:,:)).or.abs(max(w_grad,w_fij)*wt)<1d-3)then
        pbasw(n1+1:n1+nvibs,:) = 0d0
+     else
        pbasw(n1+1:n1+dispgeoms(i)%nvibs,:) = pbas(n1+1:n1+dispgeoms(i)%nvibs,:)*wt!(max(w_grad,w_fij)*wt)
        pbasw(n1+dispgeoms(i)%nvibs+1:n1+nvibs,:) =0d0
      end if
      n1 = n1 + (nvibs+1)*ll*rr
-    end do
+    end do!i=1,npoints
+
     call system_clock(COUNT=count1)
     if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
 
@@ -1572,7 +1578,7 @@ SUBROUTINE genBasis(gradNorm)
     allocate(ISUP(2*npb(k)))
     allocate(evec(npb(k),npb(k)))
     allocate(eval(npb(k)))
-    CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0.,0.,0,0,0d0,n1,eval,&
+    CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0d0,0d0,0,0,TBas/100,n1,eval,&
           evec,npb(k),ISUP,WORK,int(-1),IWORK,int(-1),INFO)
     IF(INFO/=0)stop "genBasis:  DSYEVR workspace query failed."
     n1 = int(WORK(1))
@@ -1602,7 +1608,7 @@ SUBROUTINE genBasis(gradNorm)
     end do
     nBas(k) = nb
     if(printlvl>0)print *," Size of intermediate basis for block ",k," : ",nb
-    if(printlvl>0)print "(/,A)"," Constructing basis from ab initio data." 
+    if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
 ! form the transformation matrix.Z=U.L^-1/2
     allocate(ZBas(k)%List(npb(k),nb))
     allocate(ZBasI(k)%List(nb,npb(k)))
@@ -1842,8 +1848,12 @@ END IF
 
   ncon_total = ncons
   ncons = sum(nBas)
-
-  if(printlvl>0)print*,"   Making list of equations."
+  if(printlvl>0)then
+    print *,""
+    print *,"  Total number of basis matrices:",ncons
+    print *,""
+    print *,"Making list of fitting equations."
+  end if!printlvl>0
   maxeqs=npoints*nstates*(nstates+1)/2*(nvibs+1)
   allocate(tmpEqMap(maxeqs,4))
   allocate(tmpExactEq(maxeqs,4))
@@ -1886,7 +1896,6 @@ END IF
   asol2 = dble(0)
   call getHdvec(hvec,coefmap,ncon_total)
   ! convert primitive h expansion to block orthogonal basis expansions
-PRINT *,"ORIGINAL HD",dnrm2(ncon_total,hvec,int(1)),", dim=",ncon_total
   count1 = 0
   do k=1,nblks
     count2 = 0
@@ -1898,7 +1907,7 @@ PRINT *,"ORIGINAL HD",dnrm2(ncon_total,hvec,int(1)),", dim=",ncon_total
     end do
     count1=count1+nBas(k)
   end do!k
-PRINT *,"new HD vec",dnrm2(ncons,asol2,int(1)),", dim=",ncons
+
   !----------------------------------
   ! Begin self-consistent iterations
   !----------------------------------
@@ -2157,10 +2166,10 @@ PRINT *,"new HD vec",dnrm2(ncons,asol2,int(1)),", dim=",ncons
      end do
 
      CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1:nex+neqs,1:ncons),&
-         neqs,dble(0),NEL(nex+1:nex+ncons,nex+1:nex+ncons),ncons)
-     do i=nex+2,nex+ncons
-       CALL DCOPY(i-nex-1,NEL(nex+1:i-1,i),int(1),&
-               NEL(i,nex+1:i-1),int(1))
+         neqs,dble(0),NEL(nex+1,nex+1),ncons+nex)
+     do i=nex+1,nex+ncons-1
+       CALL DCOPY(ncons+nex-i,NEL(i,i+1:ncons+nex),int(1),&
+               NEL(i+1:ncons+nex,i),int(1))
      end do
   
      if(diff)then
@@ -2646,6 +2655,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   DOUBLE PRECISION,DIMENSION(abpt%nvibs,nstates,nstates) :: gradnew
   double precision,dimension(nstates)          :: en_new
   double precision   ::  shift
+
   do i=1,fitpt%ndeggrp
     ldeg=fitpt%deg_groups(i,1)
     ndeg=fitpt%deg_groups(i,2)
@@ -2672,7 +2682,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     end do!pmt=1,factl(ndeg)
     ckl_new=ckl
     en_new =fitpt%energy
-    gradnew=fitpt%grads
+    gradnew=fitpt%grads(:abpt%nvibs,:,:)
     do j=ldeg,udeg
       m=pmtList(best_p,j-ldeg+1)+ldeg-1
       ckl_new(:,j)=ckl(:,m)
@@ -2681,14 +2691,14 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     end do
     if(printlvl>0.and.best_p/=1)print 1000,ptid,ldeg,&
                     ldeg+ndeg-1,sqrt(err1),sqrt(min_err)
-    fitpt%grads=gradnew
+    fitpt%grads(:abpt%nvibs,:,:)=gradnew
     fitpt%energy=en_new
     do j=ldeg,udeg
       m=pmtList(best_p,j-ldeg+1)+ldeg-1
       gradnew(:,j,:)=fitpt%grads(:abpt%nvibs,m,:)
     end do
     ckl=ckl_new
-    fitpt%grads=gradnew
+    fitpt%grads(:abpt%nvibs,:,:)=gradnew
   end do !i=1,fitpt%ndeggrp
 1000 format(6X,"Point ",I4," States ",I2," to ",I2,&
           " ordered by gradients. Error:",E11.5,"->",E11.5)
@@ -2721,8 +2731,8 @@ SUBROUTINE readMakesurf(INPUTFL)
   expansion_input = ''
   expansion_output = ''
   ntest     = 0
-  linSteps  = 10
-  linNegSteps = 3
+  linSteps  = 0
+  linNegSteps = 0
   ExConv    = 1D-5
   stepMethod= 0
   dfstart   = 0

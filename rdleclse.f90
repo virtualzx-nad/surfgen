@@ -307,9 +307,20 @@ CONTAINS
               dble(0),WORK,int(1))
     ! WORK=S**-1*WORK
     rank=0
+    ! nsstart and nsend marks the range of null space eigenvectors
+    ! the default values are set first.   null space vectors have 
+    ! eigenvalues that fall within tol_ex from threshold value t.
     nsstart = nex+1
-    nsend = nx
-if(printlvl>3)print "(15E10.2)",eval
+    if(eval(1)>t+tol_ex)then
+        nsend = 0
+    else
+        nsend = nx
+    end if
+    if(printlvl>3)then
+        print *,"Eigenvalues for normal equations:"
+        print "(15E10.2)",eval
+    end if
+
     do i=1,nx
       if(abs(eval(i))<tol_ex)then
          WORK(i)=dble(0)
@@ -317,7 +328,7 @@ if(printlvl>3)print "(15E10.2)",eval
          WORK(i)=WORK(i)/eval(i)
          rank=rank+1
       end if!(abs(eval(i))<tol_ex)
-      if(i>nex)then
+      if(i>nex.and.i>1)then
         if(eval(i)>t+tol_ex.and.eval(i-1)<t+tol_ex)nsend=i-1
         if(eval(i)>t-tol_ex.and.eval(i-1)<t-tol_ex)nsstart=i
       end if
@@ -331,7 +342,7 @@ if(printlvl>3)print "(15E10.2)",eval
       print 1001
       print 1002,rhs(1:nex)
     end if!(printlvl>1.and. nex>0)
-    NEL(1:nsend-nsstart+1,1:m) = evec(nex+1:nx,nsstart:nsend)
+    NEL(1:m,1:nsend-nsstart+1) = evec(nex+1:nx,nsstart:nsend)
     deallocate(evec)
     if(printlvl>2)then
       print *,"Performing analysis of the null space"
@@ -340,20 +351,9 @@ if(printlvl>3)print "(15E10.2)",eval
       !print "('  ',10E14.5)",eval
       if(printlvl>4)then
         print *,"  Performing QR-decomposition of null space"
-        JPVT = 0
+        if(allocated(JPVT))JPVT = 0
         CALL allocArrays(4*nx,0,nx,nx)
         call DGEQP3(nsend-nsstart+1,m,NEL,nx,jpvt,tau,WORK,LWORK,INFO)
-PRINT *,"dependent part: jpvt="
-PRINT "(15I5)",JPVT(1:nsend-nsstart+1)
-PRINT *,"independent part: jpvt="
-PRINT "(15I5)",JPVT(nsend-nsstart+2:m)
-PRINT *,"UPPER LEFT CORNER OF OUT MAT:"
-PRINT "(10E14.5)",NEL(1:10,1:10)
-open(unit=2999,file='coeflist',access='sequential',form='formatted',&
-   status='replace',action='write',position='rewind',iostat=INFO)
-if(INFO/=0)print *,"PROBLEM OPENING COEFLIST OUTPUT.  IOS=",INFO
-WRITE(2999,"(I20)")JPVT(nsend-nsstart+2:m)
-close(2999)
       end if
     end if
     deallocate(eval)
@@ -366,13 +366,6 @@ close(2999)
   1004 format(6X,"Memory required for symmetric EVD:    ",F12.2,"MB")
   END SUBROUTINE NELEVD
 
-subroutine dummytest(a,lda,nnull)
-  integer :: lda,nnull
-  double precision :: a(lda,nnull)
-
-  print *,"INDUMMY:",A(7,6)
-  stop
-end subroutine dummytest
 !----------------------------------------------------------------
 ! internal subroutines used to handle memory allocations
 !----------------------------------------------------------------
@@ -430,7 +423,7 @@ end subroutine dummytest
       end if!(status/=0)
       LJPVT=l_jpvt
     end if!(L_JPVT>LJPVT.AND.L_JPVT>0)
-    JPVT=0
+    if(allocated(JPVT))JPVT=0
     !Allocating TAU
     if(l_TAU>LTAU)then
       if(allocated(TAU))deallocate(TAU,STAT=status)

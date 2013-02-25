@@ -1,171 +1,50 @@
-&COMMENTS
-
-Input Descriptions
-
-[GENERAL]
-Shared input parameters that are used by all job types
-
- printlvl    INTEGER
-             Controls the level of output to standard output device.
-             0 is lowest and 3 is highest level.
-
- jobtype     INTEGER
-             0 Coupled potential evaluation through interface subroutines.
-             other values should not be used
-
-
-* The following input parameters defines the molecule, the electronic 
-states and their CNPI symmetry.
-
- natoms      INTEGER
-             Total number of atoms of the system
- atmgrp      INTEGER,dimension(natoms)
-             Group index for each atoms.   Atoms with same group index will
-             be treated as equivalent and the potential constructed will be
-             symmetric with respect to their permutations.
- ngrp        INTEGER
-             Number of electronic state groups.  Each group contains a set of
-             electronic states that carry an irreducible representation.   
-             For example, for OH radical the lowest 3 states are contained in
-             2 groups, an E group with 2 states and A group with 1 state.
- groupsym    INTEGER,dimension(ngrp)
-             Index of permutational irreducible representations carried by each 
-             of the state groups.  For each irrep, representation matrices for 
-             every permutation must be supplied in input file irrep.in
-             Irreps are indexed as they appear in irrep.in
- groupprty   INTEGER,dimension(ngrp)
-             Inversion symmetry (parity) of each of the state group.
- cntfl       CHARACTER*72
-             If given, contains connectivity information that is used to select
-             feasible permutations.  
-
-* The following parameters defines the coupled diabatic Hamiltonian
-
- order       INTEGER
-             Maximum order of polynomial expansion.
- inputfl     CHARACTER*72
-             Pathname of potential coefficient input file. 
- eshift      DOUBLE PRECISION
-             Shift all energies by this constant.  (hartree) 
-
-* The following parameters are no longer used by most job types and are flagged to 
-move to a different tab.
- usefij, deg_cap
-             Used in fitting procedure only.
-
-
-[POTLIB]
-
-This tab defines the behavior of evaluation of Hd and the backwards
-validation of data set during evaluation. 
-
-* The following parameters control the determination of closest data point
-and estimation of fitting error on the fly.
-
-Each time Hd is evaluated, the subroutine will estimate the distance from 
-the current geometry to all existing data points, the geometries of which 
-are supplied in an input file.   The distance is taken in a selected set
-of internal coordinates.  All permutations will be applied to find the one
-with smallest distance.  
-
-The fitting energy and gradient errors at each of the data points are stored 
-in another input file and, along with the displacement vector to the cloest
-data point, are used to give a first order estimation of fitting error at 
-the evaluated geometry.  This analysis, assuming zero error in the hessian,
-is not reliable when distance is large.  Its primary purpose is to locate
-data points that are not well fitted but is being evaluated.
-
-Time of evaluation, cartesian geometry, adiabatic energy, minimum distance 
-to data point, estimated energy errors and current active surface data for 
-each of the evaluated point is stored in output file trajdata*.csv 
-
- calcmind    LOGICAL
-             This parameter determines if the minimum distance to existing
-             data points will be evaluated.  
-
- dcoordls    INTEGER,dimension(*)
-             List of coordinates that will be included in the distance 
-             evaluation.  The numbers correspond to the coordinates defined
-             in coord.in.   Intuition suggests that the use of a set of 
-             exponentially scaled coordinates which forms a complete space
-             should do the job if the scaling factor is properly set.
-             Out-of-plane angle coordinates should not be included otherwise
-             mirror images will not be properly related.
-
- gflname     CHARACTER*72
-             Path name of the input file that contains all the geometries 
-             of data points used to fit Hd.  This is the same input file 
-             that is used in the fitting procedure.  The geometries are in
-             COLUMBUS input format.
- errflname   CHARACTER*72
-             Pathname of the input file that contains fitting energy and 
-             gradient error at each of the data points.   This file is 
-             automatically generated after fitting procedure.
- nrpts       INTEGER
-             Number of reference points (data points that were fit)
- mindcutoff  DOUBLE PRECISION
-             Distances smaller than this number will be considered equivalent.
-             The evaluation subroutine engages triangular inequalities to update
-             a list of upper and lower bounds of distances, and only evaluate 
-             distance when neccesary. Setting this to higher value will result
-             in lower number of distance evaluations but also lowers the accuracy
-             of distances.
-             
-
-* The following parameters controls the evaluation procedure.
-
- cpdissmidpt DOUBLE PRECISION
-             This parameter kills the evaluated derivative couplings upon the 
-             dissociation of molecule.  A hyperbolic tangent function is used.
-             The larger this coefficient is the faster the couplings decay.
-             The program try to devide the molecule into two groups with the 
-             largest minimum internuclear distance between groups, then scale
-             couplings using this distance.
-             This is only useful for molecules with 4 atoms.
-             This functionality is turned off when this parameter is nonpositive
- switchdiab  LOGICAL
-             If .true. , the two diabatic surfaces are switched in the output.
-             This only works for 2-state systems.  FLAGGED TO BE CHANGED TO ALLOW
-             MULTIPLE STATE REORDERING.
-
-* The evaluation subroutine also generates a molden file which contains some of the
-geometries that are evaluated.  
-
- atomlabels  CHARACTER*1,dimension(ngrp)
-             Atom label for each atom groups, used to generate molden output
- molden_p    INTEGER
-             A geometry is included in the molden output every molden_p evaluations
-             When non-positive, molden file will not be generated.
- m_start     INTEGER
-             Geometries of the first m_start-1 evaluations will not be included in
-             the molden output.
-
-
 /
 &GENERAL
-printlvl   = 2,
-jobtype    = 0, 
-natoms     = 13,
-atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
-order      = 4,
-ngrp       = 3,
-groupsym   = 1,1,2
-groupprty  = 1,-1,-1
-usefij     = .true.
-deg_cap    = 1D-5
-inputfl    = ''
-eshift     =  -0.01510013D0
-cntfl      = 'connect.in'
+printlvl = 3,
+jobtype  = 1,
+natoms   = 5,
+atmgrp   = 1,2,3,3,4
+cntfl    = 'connect.in',
+ngrp     = 3,
+groupsym = 2,1,1,
+groupprty= -1,1,1,
+order    = 4,
+usefij   = .false.
+deg_cap  = 1D-5
+inputfl  = 'hd.data'
+eshift   = 114.8486354349
 /
-&POTLIB
-atomlabels = 'C','C','C','C','C','C','O'
-             'H','H','H','H','H','H'
-switchdiab = .false.
-molden_p   = -1 
-m_start    = 250
-calcmind   = .false.
-gflname    = './geom.all'
-errflname  = './error.log'
-nrpts      = 2192
-mindcutoff = 1D-5
+&MAKESURF
+gradScaleMode= 2
+dijscale       = 1d0
+dfstart  = 0
+intGradS     = 1D-1
+useIntGrad   = .true.
+intGradT     = 1D-3
+rmsexcl      = -5
+npoints      = 3
+gcutoff      = 1D-7
+maxiter      = 23
+toler        = 1D-3
+LSETol       = 1.0D-3
+exactTol     = 1D-9
+method       = 'LM-NE'
+maxd         = 1d-1
+tbas         = 1d-10
+dfstart      = -1
+gorder       = 5000.
+outputfl     = 'hd.data2'
+flheader    = 'high order tester'
+startorder   = 0
+fitfij       = .true.
+w_energy     = 6D0
+w_grad       = 1D0
+w_fij        = 5D-1
+nrmediff     = 2D3
+ediffcutoff  = 1D2
+nrmediff2    = 1D2
+ediffcutoff2 = 2D1
+ndstart      = 100
+ndiis        = 5
 /
+
