@@ -1,0 +1,288 @@
+.\"Modified from man(1) of FreeBSD, the NetBSD mdoc.template, and mdoc.samples.
+.\"See Also:
+.\"man mdoc.samples for a complete listing of options
+.\"man mdoc for the short list of editing options
+.\"/usr/share/misc/mdoc.template
+.Dd 3/8/13               \" DATE 
+.Dt coord.in 1      \" Program name and manual section number 
+.Os Darwin
+.Sh NAME                 \" Section Header - required - don't modify 
+.Nm coord.in ,
+.Nd Coordinate definition input file for 
+.Sy surfgen .
+.Sh SYNOPSIS             \" Section Header - required - don't modify
+This input file is used by coupled potential surface fitting program
+.Sy surfgen 
+and its potential evaluation library.
+For a detailed description of the program and the evaluation library, see
+.Xr surfgen 1 ,
+.Xr potlib 1
+.Pp
+Place
+.Sy coord.in
+in the same directory where
+.Sy surfgen
+is being called.
+.\"
+.Sh DESCRIPTION          \" Section Header - required - don't modify
+.Nm
+contains definition of the type, scaling mode, defining atoms and scaling parameters
+for all the internal coordinates that are used as a basis for the expansion of Hd.
+.br
+.Nm 
+also sets the maximum order for each coordinate, as well as additional order
+conditions in the form of linear inequality constraints.
+.Pp
+For coordinates that are related by symmetry operations, only one of them should be 
+defined.  All the symmetry related coordinates will be automatically added to form 
+a group of coordinates, refered to as
+.Em coordinate sets .
+.br
+For a list of active symmetry operations, call 
+.Sy surfgen
+with
+.Em jobtype=-1 .
+.Pp
+Developed by 
+.An Yarkony group , Johns Hopkins University 
+2011-2013.
+.\"
+.Sh INPUT FORMAT
+The file consists of the definitions of coordinate sets and the additional
+order conditions.  The entire file use automatic formating, positions and the 
+number of spaces or length of numbers will not affect the input.
+.Ss Coordinate and Condition Counts
+First line of 
+.Sy coord.in
+is a comment line left for the user to describe the coordinate system.
+.br
+The second line consists of two integers, providing the number of coordinate sets
+.Sy nCoordSets
+and the number of additional conditions 
+.Sy nAddCond .
+./"   -->>>>>  definition of coordinate sets  --->>>>>>
+.Ss Coordinate Set Definitions
+Coordinate set definition is composed of the definition of each of the 
+.Sy nCoordSets
+coordinate sets.   For each coordinate, the definition consists of 3 or 4 
+lines, depending on the type and scaling mode of coordinates.   
+.Pp
+.Em General Format
+.Pp
+The first line is a comment line.
+The second line consists of three integers, which defines the type, scaling mode 
+and maximum order of the coordinate.  
+When maximum order is set to 0, no maximum will be imposed on this coordinate.
+.Pp
+The third line consists of four numbers, 
+.Em A1 , A2 , A3 
+and 
+.Em A4 .  
+All or some of these
+defines the indices of atoms that are involved in the coordinates.  For coordinate
+types that involve less than 4 atoms, the last one or more integers will not be
+used by the program.  However, all 4 numbers will still need to be present, even
+though some are not used.  
+.Pp
+The fourth line is present for type-scaling mode combinations
+that require scaling parameter input.  This line contains two floating point or
+scientific numbers that will be used to define the coordinates.  When scaling
+parameters are not needed, this field should
+.Em NOT
+be present.
+.Pp
+See the following section for details about the available coordinate types and
+scaling modes and the number of scaling parameters needed for each combination.
+.Pp
+.Em Example
+.Pp
+This is an example for out-of-plane bend
+.Bl -column xxxx xxxx xxxx xxxx
+.It out-of-plane H O C H
+.It -1 Ta 0 Ta  0
+.It 1 Ta 5 Ta 2 Ta 4
+.It 1.000 0.000
+.El
+.Pp
+.Em Coordinate Types
+.Pp
+The following coordinate types are currently implemented or planned:
+.Bl -tag -width xxxxx
+.It 0
+Distance or scaled distance between two atoms.  The two atoms are permutable.
+.It 1
+Angle or scaled angle coordinate between 3 atoms, with the third atom being the vertex.
+The two side atoms are permutable.
+.It 2
+Torsion or scaled torsion coordinate.
+.It -1
+Tetrahedron out-of-plane coordinate where all four vertices are permutable.  
+The coordinate is defined from the scalar triple product of the three displacement
+vectors launching from any one vertex
+.Sy s=r1\[u00D7]r2\[u22C5]r3 .
+.It -2
+Umbrella out-of-plane coordinate where 3 vertices are permutable, 
+but a fourth atom is special.  The coordinate is defined from the scalar triple
+product of the three displacement vector launching from the special atom
+.Sy s=r1\[u00D7]r2\[u22C5]r3 .
+.El
+.Pp
+.Em Scaling Modes
+.Pp
+Scaling functions for all supported scaling modes of distance coordinates (
+.Em type=0
+) are given in the following list 
+(All modes require 2 scaling parameters except for unscaled distance):
+.Bl -tag -width xxxxxx
+.It 0 
+Unscaled
+.It 1
+Morse functions  
+.Sy w= exp(-c1*(r-c2))
+.It 2
+Gaussian functions 
+.Sy w=exp(-c1*(r-c2)**2)
+.It 3
+Leading term of screened Columb potential 
+.Sy w=exp(-c1*(r-c2))/r 
+(Yukawa potential)
+.It 4
+Long range term of screened Columb  
+.Sy w=exp(-r/c2)*(r/c2)**c1
+.It 5
+Lennard Jones potentials 
+.Sy w=(c2/r)**c1
+.It 6
+Shifted(chasmless) Yukawa 
+.Sy w=exp(-c1*(r-c2))/(r+c2)
+.El
+.Pp
+Supported scaling modes for angles (
+.Em type=1
+) are
+.Bl -tag -width xxxxx
+.It 0 
+Unscaled 
+.Sy w=t .  
+No scaling parameters.
+.It 1
+Cosine scaling 
+.Sy w=Cos(t) .  
+No scaling parameters.
+.It 2
+Distance scaled cosine scaling 
+.Sy w=Cos(t)/( 1+exp[c1*(r1^2+r2^2-c2^2)] ) ,
+where 
+.Sy r1 
+and 
+.Sy r2 
+are the sides of the angle.
+Two scaling parameters 
+.Sy c1 
+and 
+.Sy c2 
+are required.
+.El
+.Pp
+Torsion coordinates (
+.Em type=2
+) are not yet fully implemented.
+.Pp
+Supported scaling modes for tetrahedron out-of-plane coordinates (
+.Em type=-1
+) are shown in the following list.  2 scaling parameters are always required.  
+Here the scalar triple product
+.Sy s=r1\[u00D7]r2\[u22C5]r3 
+and 
+.Sy ri
+denotes the array of all 
+.Em 6
+internuclear distances.
+.Bl -tag -width xxxxxxx
+.It 0
+Divide scalar triple product 
+.Sy s 
+by powers of the product of all 
+.Em six 
+distances: 
+.Sy w=s/(\[u03A0] ri)^C1
+.It mode>0
+Use the product of scaled distances(with the same mode) between each of the 6
+atom pairs to scale the scalar triple product
+.br
+.Sy w=s*\[u03A0] Scale[ri]
+.It mode<0
+Use power of the reciprocal of
+.Em sum
+of the distances as the scaling factor
+.Sy w=C1*s/(\[u03A3] rij)^C2
+.El
+.Pp
+Umbrella OOP coordinates (
+.Em type=-2
+) are similar to tetraheron OOP coordinates.  However,
+they experience different permutational properties due to one of the atoms being
+treated special permutationally.   Like in the case of tetrahedron OOPs, two 
+scaling parameters are always required.  The scaling options for umbrella OOPs
+are listed below.  Note that some of these options differ from the tetrahedron case.
+.Bl -tag -width xxxxxx
+.It 0
+Reciprocal scaled with 3 distances from the vertex
+.Sy w=s/(\[u03A0] ri)^C1
+.It mode>0
+Use product of the
+.Em three
+scaled distance coordinates as the scaling factor: 
+.Sy w=s*\[u03A3] Scale[rij]
+.It mode<0
+Use the 
+.Em harmonic mean
+of the three scaled distances as scaling factor:
+.Sy w=s/\[u03A0](1/Scale[rij])
+.br
+.Em -mode
+is used as the scaling mode for the distances and the scaling parameters are given
+to them.
+.El
+.\"
+.Ss Additional Order Conditions
+Other than the maximum total order and total order for each coordinates, a set of
+.Em additional conditions
+can be used to further restrict the polynomial expansion in a more detailed manner.
+Every addtional order condition implies one linear inequality constraint on the
+orders of coordinate sets defined in the previous section.
+.Pp
+Each suction condition input occupies one line which contains 
+.Sy nCoordSets+1
+integers.  The first 
+.Sy nCoordSet 
+integers specify the multipliers for the order of each of the coordinate sets and
+the last integer indicates the maximum of the weighed sum of orders.   
+.Pp
+For example, with 3 coordinate sets, the condition
+.br
+.Sy 2   1   0   6
+.br
+Implies that
+.Em (total order of set 1)
+*2+
+.Em (total order of set 2)
+\[u2264]6
+.Pp
+Total order of a coordinate set means the sum of the orders of all the coordinates
+that are defined in a coordinate set, whether it is a coordinate directly specified
+in the coordinate set definitin section, or a coordinate generated by a symmetry
+operation.
+.\"
+.Sh SEE ALSO 
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr surfgen 1 ,
+.Xr potlib 1 ,
+.Xr surfgen.in 1 ,
+.Xr irrep.in 1 ,
+.Xr connect.in 1
+.Sh BUGS              \" Document known, unremedied bugs
+Please send bug reports to 
+.An Xiaolei Zhu Aq virtualzx@gmail.com
+.\" .Sh HISTORY           \" Document history if command behaves in a unique manner

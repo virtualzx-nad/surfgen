@@ -1,0 +1,319 @@
+.\"Modified from man(1) of FreeBSD, the NetBSD mdoc.template, and mdoc.samples.
+.\"See Also:
+.\"man mdoc.samples for a complete listing of options
+.\"man mdoc for the short list of editing options
+.\"/usr/share/misc/mdoc.template
+.Dd 2/20/13               \" DATE 
+.Dt surfgen 1      \" Program name and manual section number 
+.Os Darwin
+.Sh NAME                 \" Section Header - required - don't modify 
+.Nm surfgen ,
+.\" The following lines are read in generating the apropos(man -k) database. Use only key
+.\" words here as the database is built based on the words here and in the .ND line. 
+.Nm surfgen.global
+.\" Use .Nm macro to designate other names for the documented program.
+.Nd fit quasi-diabatic Hamiltonian from ab initio data.
+.Sh SYNOPSIS             \" Section Header - required - don't modify
+.Nm
+.\"
+.Sh DESCRIPTION          \" Section Header - required - don't modify
+.Nm
+applies the quasi-diabatic Hamiltonian(Hd) approach to construct coupled potential 
+energy surfaces from ab initio data.  Evaluation libraries are also provided to 
+allow spectroscopy and dynamics simulation programs to access fit potentials, either
+in diabatic or adiabatic representation.
+.Pp
+Here,
+.Em quasi-diabatic
+means the residual coupling, the coupling between diabatic states, is minimized in 
+a least squares sense in the fitting procedure.  The diabatic representation used by
+Hd is therefore the most diabatic representation in a leaset squares sense.
+.Pp
+Developed by 
+.An Yarkony group , Johns Hopkins University 
+2011-2013.
+.Pp                      \" Inserts a space
+.\"
+.Sh FEATURES
+.Bl -tag -width -indent  \" Begins a tagged list 
+.It Em Fitting Ab Initio Data               \" Each item preceded by .It macro
+The program is capable of fitting energy, energy gradient and derivative coupling 
+(AKA nonadiabatic coupling or vibronic coupling) data obtained from ab initio calculations.
+A weighed least squares procedure is used to generate the fit to simultaneously 
+optimize the reproduction of adiabatic energies and energy gradients and the diabaticity
+of the quasi-diabaticrepresentation, defined by the residual coupling between diabatic states.
+Lagrange multipliers are used to enable the exact reproduction of arbitrary selected set 
+of data, such as energy and gradients at critical points on the potential or energy 
+difference and derivative couplings at points of conical intersections.
+.\"
+.It Em Nonadiabatic couplings and Seams of Conical Intersections
+The Hd approach is capable of extremely accurate description of nonadiabatic interactions.
+It has been used to successfully describe large portions of the seam of conical 
+intersections, spanning completely different geometrically structures.  This is enabled
+by the application of intersection adapted coordinates.  
+.\"
+.It Em Flexibility
+The program allows the user to define the blocks of the matrix Hd with a large set of 
+customizable basis functions, enabling the flexibility to describe complex features on the
+surface to a high level of accuracy.
+.\"
+.It Em Global Symmetry Treatment
+Projection operator method is used to allow the program to use an arbitrary subgroup of the
+Complete Nuclear Permutation Inversion group to construct symmetry adapted basis for the 
+fitting procedure.  With the help of such feature, the program can correctly treat the 
+symmetry in problems that involve large amplitude motions, as well as vibrational problems.
+.\"
+.It Em Efficiency
+With the fully analytical form of Hd, the evaluation time for a single point is usually
+within 50ms.   Future update is planned to allow vectorized evaluation of large number of data points.
+.\"
+The fitting program achieve high efficiency through the extensive use of optimized and threaded
+LAPACK and BLAS libraries.   Other functionalities such as automatic local internal coordinate
+construction, automatic null space removal and GDIIS extrapolations provide tools to
+enhance performance.
+.El                      \" Ends the list
+.Pp
+.Sh ENVIRONMENT      \" May not be needed
+.Bl -tag -width "ENV_VAR_1  " \" ENV_VAR_1 is width of the string ENV_VAR_1
+.It Ev stacksize
+In order to allow smooth execution, please remove the limit for stacksize.  use
+.Pp
+.Sy limit stacksize unlimited
+.Pp
+in csh or tcsh, or
+.Pp
+.Sy ulimit -s unlimited
+.Pp
+in sh or bash
+.\" .It Ev ENV_VAR_2
+.\" Description of ENV_VAR_2
+.El
+.Sh FILES                \" File used or created by the topic of the man page
+.Bl -tag -width "connect.in "
+.It Pa surfgen.in
+General input for the program, which specifies job specifications such as job type, 
+fitting basis and expansion, molecule composition, state symmetry etc.  This file 
+also includes options for each type of jobs such as optimization and evaluation.
+For a detailed list of parameters, see 
+.Xr surfgen.in 1
+./"  -->>  output file -->>
+.It Pa surfgen.out
+Standard output file that contains the statistics of the data points, Hd expansion 
+and fitting equations, followed by brief summary (1 line per iteration) of the fitting
+procedure, and analysis of the final fit.
+./"  -->> output to the terminal -->>
+.It Pa stdout
+Detailed information are printed to the standard output, including details about coordinates,
+symmetry, expansion, local coordinate construction, null space removal, iterative procedure
+etc.  The amount of output can be controlled with parameter
+.Ar printlvl
+in 
+.Ar surfgen.in .
+./"  -->>  Hd oefficient file -->>
+.It Pa hd.data
+Default name for the storage file of the quasi-diabatic Hamiltonian(Hd).  
+The name of the file can be specified in 
+.Ar surfgen.in .
+Currently only expansion coefficients is stored in 
+.Ar hd.data .
+The expansion is instead defined in 
+.Ar surfgen.in .
+For a detailed description of the format of Hd storage files, see
+.Xr hd.data 1
+./"  -->>  Point specification file -->>
+.It Pa points.in
+Point specification file for surface fitting. Specifies special fitting options for 
+individual data points or a set of individual data points.  Currently the options include
+.Bl -enum
+.It 
+Exclusion of energies, gradients or derivative couplings for a specific state or block
+.It 
+Enforcing exact reproduction of energies, energy difference, gradients or derivative
+couplings of a specific state or block through the use of Lagrange multipliers.
+.It 
+Changing the weight in for a set of data points in the fitting equations.  The weights
+can be an increase or decrease from the default weight of 1.0, or be set to zero.
+.El
+For details of the format of file
+.Ar points.in ,
+see
+.Xr points.in 1
+.Pp
+This file is only required for surface fitting jobs.
+./"  -->>  Coordinate definition -->>
+.It Pa coords.in
+Coordinate definition file.  The file defines a set of internal coordinates that will 
+be used as basis for the fitting program. The coordinates are defined by specifying the 
+.Em types
+and 
+.Em scaling modes
+of coordinate, as well as the atoms involved in the
+coordinate and scaling parameters for certain modes.  The maximum order allowed for each
+coordinate and 
+.Em additional order constraints 
+are also defined in this file.
+For a detailed description of input format and list of coordinate types and scaling modes
+provided by the program, see
+.Xr coords.in 1
+.Pp
+Note that the coordinate defined here serves as global basis and this may be, and in
+general will be, redundant at a specificy geometry.  Change in this file will change the 
+expansion and therefore will require 
+.Ar hd.data
+file to be regenerated.
+./"  -->>  Irreducible representation input -->>
+.It Pa irrep.in
+Representation definition file.  This file defines the representation
+.Em matrices
+(not just characters) for each irreducible representation of the 
+.Em permutation group
+used by the fitting procedure.  Note that inversion symmetry is specified separately in
+.Ar surfgen.in .
+The user has to generate all irreducible representation matrices.  This feature may be
+added in the future.  The user is responsible for the validation of the representations,
+otherwise the result may be unreliable.  For a list of symmetry operations, call
+.Nm
+with 
+.Em jobtype=-1 .
+For details about the format of this file, see
+.Xr irrep.in 1
+./"  -->>  Connectivity input for subgroup and fragment definition -->>
+.It Pa connect.in
+Connectivity defintion file.  This file defines the bonds that will not be broken
+throughout the scope of Hd.  The name of this file can be changed in 
+.Ar surfgen.in .
+.Pp
+A set of feasible permutations will be selected based
+on the perservation of the connectivity matrix defined by this file.  As a result,
+this file simultanesouly defines the fragments that will remain intact and a 
+subgroup of the full CNPI group that will be used to construct the surface.
+.Pp
+This feature is used to enable mixed local and global type of expansions to significantly
+cut down the number of coordinates, making large problems tractable.  Note that change
+in this file will change the symmetry group and therefore will require regeneration of
+.Ar irrep.in
+and
+.Ar hd.data
+files.  For a detailed description of the format of this file, see
+.Xr connect.in 1
+./"  -->>  Ab initio data -->>
+.It Em Ab initio Data
+Ab initio data input files for surface fitting program.  In each input file, one specific 
+type of ab initio data for all data points are appended together.   For gradients and 
+derivative couplings, components must be given in Cartesian coordinates.   Use
+.Ar COLUMBUS 
+input/output format for all data files.   A list of input files include
+./" {   >>>>> beginning of ab initio data files list >>>>>
+.Bl -tag -compact -width  "energy.all "
+.It Pa geom.all 
+Cartesian geometry file for all data points.  
+.Ar COLUMBUS
+format is used, where each line contains atom name (character*3),  nuclear charge (f),
+cartesian coordinates (3f) and atomic weight (f).   Only the coordinate information is
+used in the fitting process.  Data for different geometries are appended together.
+.It Pa energy.all
+Energy information file.  All energies are given in hartree.  Each line much contain 
+the energies of all the states for one data point, given in floating point or scientific
+format.  The number of states is specified in 
+.Ar surfgen.in .
+The number and ordering of data points must be consistent with
+.Ar geom.all .
+Data for all points and states must be present.  If an energy data is absent, put in 
+any number (for example, .0) then specify it to be ignored in 
+.Ar points.in .
+.It Pa cartgrd.drt1.state?.all
+Adiabatic energy gradient data for one particular electronic state.  Each line contains
+three floating point or scientific numbers specifying the component of the energy gradient
+vector on one atom.  The data for all atoms and geometries are appended with the same order
+as in 
+.Ar geom.all .
+Data for all atoms must be present.  One input file has to be given for each state.  If 
+a gradient data is absent, put in any number (for example, .0) then specify it to be 
+excluded in 
+.Ar points.in .
+Empty lines are ignored.
+.It Pa cartgrd.nad.drt1.state?.drt2.state?.all
+.It Pa cartgrd_total.drt1.state?.drt2.state?.all
+Derivative coupling data of all data points between two specific states.  The format is 
+identical with energy gradient input files.  One file has to be given for each pair of 
+states.   The "_total" files contain the actually derivative coupling data, which 
+approach infinity at conical intersections, while the data in ".nad" files are obtained by
+multiplying the derivative couplings by energy difference, i.e. the matrix element of the
+derivative of the Hamiltonian operator, which does not experience singularity.  These
+files are consistent with 
+.Ar COLUMBUS
+output with 
+.Em nadcalc=3
+and 
+.Em nadcalc=1 .
+If 
+.Em usefij=0
+in 
+.Ar surfgen.in ,
+".nad" files are used.  Otherwise "_total" files are used.  
+.El 
+./" }     <<<<< end of ab initio data files list <<<<<
+.El                      \" Ends the list
+.\" .Sh DIAGNOSTICS       \" May not be needed
+.\" .Bl -diag
+.\" .It Diagnostic Tag
+.\" Diagnostic informtion here.
+.\" .It Diagnostic Tag
+.\" Diagnostic informtion here.
+.\" .El
+.Sh SEE ALSO 
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr surfgen.in 1 ,
+.Xr hd.data 1 ,
+.Xr irrep.in 1 ,
+.Xr points.in 1 ,
+.Xr coords.in 1 ,
+.Xr connect.in 1 ,
+.Sh REFERENCES
+.Bl -ohang
+.It Sy Quadratic local Hd
+./"  Reference for Michael paper (local Hd)
+.Rs 
+.%T "On the vibronic coupling approximation: A generally applicable approach for determining fully quadratic quasidiabatic coupled electronic state Hamiltonians"
+.%A "Michael Schuurman"
+.%A "David Yarkony" 
+.%J "J. Chem. Phys."
+.%N 127 
+.%P 094104
+.%D 2007
+.Re
+.br 
+http://dx.doi.org/10.1063/1.2756540
+./"  Reference for global Hd paper
+.It Sy Generalized algorithm for global problems
+.Rs 
+.%T "Toward eliminating the electronic structure bottleneck in nonadiabatic dynamics on the fly: An algorithm to fit nonlocal, quasidiabatic, coupled electronic state Hamiltonians based on ab initio electronic structure data"
+.%A "Xiaolei Zhu"
+.%A "David Yarkony" 
+.%J "J. Chem. Phys."
+.%N 132
+.%P 104101
+.%D 2010
+.Re
+.br 
+http://dx.doi.org/10.1063/1.3324982
+.It Sy Example: NH3 photodissociation branching ratio
+.Rs 
+.%T "First principles determination of the NH2/ND2(,) branching ratios for photodissociation of NH3/ND3 via full-dimensional quantum dynamics based on a new quasi-diabatic representation of coupled ab initio potential energy surfaces"
+.%A "Jianyi Ma"
+.%A "Hua Guo" 
+.%A "Xiaolei Zhu"
+.%A "David Yarkony" 
+.%J "J. Chem. Phys."
+.%N 137
+.%P 22A541
+.%D 2012
+.Re
+.br
+http://dx.doi.org/10.1063/1.4753425
+.El
+.Sh BUGS              \" Document known, unremedied bugs
+Please send bug reports to 
+.An Xiaolei Zhu Aq virtualzx@gmail.com
+.\" .Sh HISTORY           \" Document history if command behaves in a unique manner

@@ -172,61 +172,9 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 
         select case(CoordSet(m)%Scaling)
 
-          case(0)  ! Reciprical scaling   Det/(Product[rij])^a
+          case(0)  ! Reciprocal scaling   Det/(Product[rij])^a
             bmat(i,:) = dble(0)
             call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,coordset(m)%coef(1))
-            do j=1,4
-              offs = 3*(CoordSet(m)%coord(n,j)-1)
-              bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
-            end do!j=1,4
-
-        ! Scaling OOP angle using inverse of the sum of inverse of distances
-        ! igeom = oop/(1/w1+1/w2+1/w3)
-        ! w1 w2 w3 are scaled distance from first atom to the rest of the atoms
-        ! here the OOP coordinate is used in the form with a=1/2
-          case(-1,-2)
-            bmat(i,:) = dble(0)
-            call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,5d-1)
-        ! scaling with exponentials
-            do j=2,4
-              call calcwij(-coordset(m)%scaling,1,j,coordset(m)%coef,cgeom,w(j-1),dwdR(j-1,:))
-            end do
-            s(1) = w(2)*w(3)
-            s(2) = w(3)*w(1)
-            s(3) = w(1)*w(2)
-            ss = sum(s)
-            fs = w(1)*s(1)/ss
-            bval=bval*fs+igeom(i)*(s(1)**2*dwdR(1,:)+s(2)**2*dwdR(2,:)+s(3)**2*dwdR(3,:))/ss**2      
-            igeom(i)=igeom(i)*fs
-            do j=1,4
-              offs = 3*(CoordSet(m)%coord(n,j)-1)
-              bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
-            end do!j=1,4
-
-        ! similar to -1,-2 but in the OOP definition three distances are divided
-        ! instead of all 6.   the three distances from atom 1 are used.
-          case(-3,-4)
-            bmat(i,:) = dble(0)
-            call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,0d0)
-        ! divide distances
-            do j=2,4
-              call calcwij(0,1,j,coordset(m)%coef,cgeom,w(j-1),dwdR(j-1,:))
-            end do
-            w=w+1D-30
-            ss = product(w)
-            bval = (bval-igeom(i)*(dwdR(1,:)/w(1)+dwdR(2,:)/w(2)+dwdR(3,:)/w(3)))/ss*10 
-            igeom(i)=igeom(i)/ss*10 
-        ! scaling with exponentials
-            do j=2,4
-              call calcwij(-coordset(m)%scaling-2,1,j,coordset(m)%coef,cgeom,w(j-1),dwdR(j-1,:))
-            end do
-            s(1) = w(2)*w(3)
-            s(2) = w(3)*w(1)
-            s(3) = w(1)*w(2)
-            ss = sum(s)
-            fs = w(1)*s(1)/ss
-            bval=bval*fs+igeom(i)*(s(1)**2*dwdR(1,:)+s(2)**2*dwdR(2,:)+s(3)**2*dwdR(3,:))/ss**2      
-            igeom(i)=igeom(i)*fs
             do j=1,4
               offs = 3*(CoordSet(m)%coord(n,j)-1)
               bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
@@ -532,9 +480,9 @@ END SUBROUTINE calcwij
 
 !************************************************************************************
 ! SUBROUTINE oop2 
-! OOP angle values and derivatives, with the expoential scaling method
-! f= g*Product[ Exp[-a rij] ]
-! where a is the scaling factor, g is the triple product of unit displacement vectors
+! OOP angle values and derivatives, with the scaling method of distance coordinates
+! f= g*Product[ Scale[rij] ]
+! where g is the triple product of displacement vectors
 !************************************************************************************
 ! natom s [input] INTEGER
 !         Total number of atoms
@@ -564,6 +512,7 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
                        geom(4,3), ddvec(3,3),          &
                        coef(2), dwdR(6,12), w(6),  denom, ddenrm
+  DOUBLE PRECISION, parameter :: vsmall = 1D-50
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
 ! fbmat = derivatives of unscaled OOP coordinate
@@ -654,12 +603,15 @@ CONTAINS
 
 END SUBROUTINE oop2
 
-!************************************************************************************
+!*******************************************************************************
 ! SUBROUTINE oop3 
 ! OOP angle values and derivatives, with the expoential scaling method
-! f= g*Product[ Exp[-a rij] ]
+! f= C1*g*Product[Scale[rij]]
 ! where a is the scaling factor, g is the triple product of unit displacement vectors
-!************************************************************************************
+! here, one of the four atoms is made a special vertex and only the three distances
+! launching from this atom is used for scaling.  This the three atom atoms are
+! permutationally equivalent while this one is special.
+! ******************************************************************************
 ! natom s [input] INTEGER
 !         Total number of atoms
 ! atms    [input] INTEGER, dimension(4) 
@@ -685,8 +637,8 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   double precision,intent(IN)                     :: factor 
 
   INTEGER           :: i, j, k, sgns(6,4)
-  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
-                       geom(4,3), ddvec(3,3),          &
+  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),     &
+                       geom(4,3), ddvec(3,3), ss,       &
                        coef(2), dwdR(3,12), w(3), dwdR2(3,12), w2(3)
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
@@ -704,9 +656,11 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 ! calculate the three scaling factors and their derivatives
 ! scaled distances for the three bonds A1-A2, A1-A3 and A1-A4 are used
   do i=2,4
+! scaling mode=0   (unscaled).  unscaled distances are produced here
      call calcwij(int(0),int(1),i,coef,cgeom,w(i-1),dwdR(i-1,:))
   end do
 
+! here are the scaled distances
   coef(1) =scale
   coef(2) =factor 
   if(sctype.gt.0)then
@@ -723,7 +677,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 ! calculate displacement vectors between these atoms
   dvecs=matmul(sgns,geom)
 
-! calculate value of unscaled OOP angle and its derivatives
+! calculate value of unscaled OOP coordinate and its derivatives
   fval=det3(dvecs(1:3,:))
   do i=1,3
     do j=1,3
@@ -737,10 +691,16 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
 ! calculate the scaled oop
   if(sctype.lt.0)then
-    a= exp(coef(1)*(coef(2)-sum(w)))
-    qval = fval * a 
-    bval = fbmat * a - fval * a * coef(1) *(dwdR(1,:)+dwdR(2,:)+dwdR(3,:))
+! use the harmonic mean of scaled distances to scale OOP
+    s(1) = w2(2)*w2(3)
+    s(2) = w2(3)*w2(1)
+    s(3) = w2(1)*w2(2)
+    ss = sum(s)
+    a = w2(1)*s(1)/ss
+    qval= fval*a
+    bval=fbmat*a+fval*(s(1)**2*dwdR2(1,:)+s(2)**2*dwdR2(2,:)+s(3)**2*dwdR2(3,:))/ss**2
   else if(sctype.eq.0)then
+! reciprocal or order scaling
     a = exp(3*coef(1)*log(coef(2)))
     p=product(w)
     if(p<1D-10)p=1D-10
@@ -748,6 +708,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
     qval = fval*a/p1
     bval = fbmat*a/p1-coef(1)*qval/p*(dwdR(1,:)*w(2)*w(3)+dwdR(2,:)*w(1)*w(3)+dwdR(3,:)*w(1)*w(2))
   else
+! multiply all 3 scaled length scaling functions
     eprod = product(w2)
     qval = fval*eprod
     bval = fbmat*eprod+qval*(w2(2)*w2(3)*dwdR2(1,:)+w2(1)*w2(3)*dwdR2(2,:)+w2(1)*w2(2)*dwdR2(3,:))

@@ -63,8 +63,11 @@
 		22532A2D168AE2E000238D30 /* progdata.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = progdata.f90; sourceTree = "<group>"; };
 		22532A2E168AE2E000238D30 /* rdleclse.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = rdleclse.f90; sourceTree = "<group>"; };
 		22532A2F168AE2E000238D30 /* surfgen.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = surfgen.f90; sourceTree = "<group>"; };
+		22535BCD16E67968003F3F34 /* surfgen.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.1; path = man/man1/surfgen.1; sourceTree = "<group>"; };
 		226A266E169547B4003C4445 /* surfgen-app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "surfgen-app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
+		22E02D7116EA83A4001D5AC1 /* coord.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = coord.in.1; path = man/man1/coord.in.1; sourceTree = "<group>"; };
+		22E02D7216EA937A001D5AC1 /* surfgen.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.in.1; path = man/man1/surfgen.in.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +84,7 @@
 		22532A14168AE2A700238D30 = {
 			isa = PBXGroup;
 			children = (
+				22535BCE16E6796E003F3F34 /* Man Pages */,
 				22532A21168AE2CE00238D30 /* Makefile */,
 				22532A22168AE2E000238D30 /* combinatorial.f90 */,
 				22532A23168AE2E000238D30 /* diis.f90 */,
@@ -100,6 +104,16 @@
 				226A266F169547B4003C4445 /* Products */,
 				22BF126E169A66DD00566C40 /* test */,
 			);
+			sourceTree = "<group>";
+		};
+		22535BCE16E6796E003F3F34 /* Man Pages */ = {
+			isa = PBXGroup;
+			children = (
+				22535BCD16E67968003F3F34 /* surfgen.1 */,
+				22E02D7116EA83A4001D5AC1 /* coord.in.1 */,
+				22E02D7216EA937A001D5AC1 /* surfgen.in.1 */,
+			);
+			name = "Man Pages";
 			sourceTree = "<group>";
 		};
 		226A266F169547B4003C4445 /* Products */ = {

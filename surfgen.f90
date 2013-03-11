@@ -53,8 +53,8 @@ SUBROUTINE readinput(jtype)
   jtype      = 0
   natoms     = 2
   printlvl   = 1
-  cntfl      = ''
-  inputfl    = ''
+  cntfl      = 'connect.in'
+  inputfl    = 'hd.data'
   usefij     = .true.
   deg_cap    = 1D-7
   eshift     = dble(0)
