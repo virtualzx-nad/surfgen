@@ -577,7 +577,7 @@ CONTAINS
           end if
         end do!l=1,ncond
         if(selTerm)CALL addTerm(pT,k)
-      end do!k=1,termList(i-1)%term(j)%coord(i-1)
+      end do!k=1,min(pT%coord(i-1),ncoord)
     end do!j=1,termList(i-1)%nTerms
   end do !i=2,order
   call system_clock(COUNT=count2)

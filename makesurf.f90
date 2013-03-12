@@ -1669,17 +1669,21 @@ SUBROUTINE genBasis(gradNorm)
 
 ! generate gradNorm and zero out components that are excluded
     gn0 = 0d0
-    ng0 = 0 
-    do i=1,npoints
-      do j=1,nvibs
-        gradNorm(i,j,k) = dnrm2(ll*rr*nBas(k),WMat(k)%List((i-1)*(nvibs+1)+j+1,1),npoints*(nvibs+1))
-      end do
-      if(dispgeoms(i)%nvibs<nvibs)then
-        gn0= gn0 + sum(gradNorm(i,dispgeoms(i)%nvibs+1:nvibs,k)**2)
-        gradNorm(i,dispgeoms(i)%nvibs+1:nvibs,k) = 0d0
-        ng0 = ng0 + nvibs-dispgeoms(i)%nvibs
-      end if
-    end do    
+    ng0 = 0
+    if(nBas(k)>0)then
+        do i=1,npoints
+          do j=1,nvibs
+            gradNorm(i,j,k) = dnrm2(ll*rr*nBas(k),WMat(k)%List((i-1)*(nvibs+1)+j+1,1),npoints*(nvibs+1))
+          end do
+          if(dispgeoms(i)%nvibs<nvibs)then
+            gn0= gn0 + sum(gradNorm(i,dispgeoms(i)%nvibs+1:nvibs,k)**2)
+            gradNorm(i,dispgeoms(i)%nvibs+1:nvibs,k) = 0d0
+            ng0 = ng0 + nvibs-dispgeoms(i)%nvibs
+          end if
+        end do
+    else  !nBas(k)>0
+        gradNorm(:,:,k) = 0d0
+    end if!nBas(k)>0
     if(printlvl>1) print "(3x,A,E12.5,A,I6,A)","Total norm of contribution zeroed out:",sqrt(gn0)," over ",ng0," equations"
     call system_clock(COUNT=count2)
     if(printlvl>1)print 1001, "     Total contribution to each equation generated in ",dble(count2-count1)/count_rate," s"
@@ -1729,7 +1733,55 @@ SUBROUTINE GetAngles(ckl,npoints,theta,sg)
   end do
 END SUBROUTINE GetAngles
 !---------------------------------------------
+SUBROUTINE testCoord(geom,step)
+  use hddata, only : ncoord
+  use progdata, only:natoms,coordmap,CoordSet
+  IMPLICIT NONE
+  DOUBLE PRECISION,dimension(3*natoms),intent(in)::geom
+  double precision,intent(in) :: step
 
+  INTEGER :: I,j,k,m,n
+  double precision ::   dgeom(3*natoms),cgrad,    &
+                        bmat(ncoord,3*natoms),igeom(ncoord), &
+                        bm2(ncoord,3*natoms)
+  integer,parameter :: maxstep=2
+  double precision,parameter :: fdcoef(maxstep)=[2d0/3,-1d0/12]
+  print *,"Testing Coordinate Gradients."
+  print *,"initial Cartesian geometry: "
+  j=1
+  do i=1,natoms
+    print "(3F12.5)",geom(j:j+2)
+    j=j+3
+  end do
+  call buildWBmat(geom,igeom,bmat)
+  do i=1,ncoord
+    m=coordmap(i,1) !index of set
+    n=coordmap(i,2) !index in set
+    print *,""
+    print *,"Testing Coordinate ",i," (set",m,",ind",n,")"
+    print *,"  Coord Type=",CoordSet(m)%Type,"  , Scaling Mode=",CoordSet(m)%Scaling
+    print *,"  Atoms: ",CoordSet(m)%coord(:,n)
+    print "(A)","   Cart# Analytical Numerical  Difference "
+    do j=1,3*natoms
+    ! calculating numerical gradient of coord i with respect to cartesian j
+        cgrad = 0d0
+        do k=1,maxstep
+            dgeom = geom
+            dgeom(j)=dgeom(j)+step*k
+            call buildWBmat(dgeom,igeom,bm2)
+            cgrad = cgrad+fdcoef(k)*igeom(i)
+            dgeom = geom
+            dgeom(j)=dgeom(j)-step*k
+            call buildWBmat(dgeom,igeom,bm2)
+            cgrad = cgrad-fdcoef(k)*igeom(i)
+        end do!k
+        cgrad=cgrad/step
+        if(abs(cgrad-bmat(i,j))>1d-8)  &
+            print "(3x,I4,2x,3E11.4)",j,bmat(i,j),cgrad,cgrad-bmat(i,j)
+    end do!j=1,3*natoms
+  end do!i=1,ncoord
+END SUBROUTINE testCoord
+!---------------------------------------------
 ! Fit Hd according to Ab initio Data
 SUBROUTINE makesurf()
   use hddata, only: nstates,ncoord,nblks,order,ColGrp,RowGrp,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
@@ -1774,7 +1826,10 @@ SUBROUTINE makesurf()
   double precision,dimension(npoints)   ::   theta2
   DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:)::OLD_HVEC
   integer,allocatable,dimension(:,:) :: coefmaptmp
- 
+
+!  call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
+!  stop                                         only use these for new coordinates
+
   if(printlvl>0)print *,"Entering makesurf"
   call getPtList()
 
@@ -1796,13 +1851,11 @@ IF(EXPANSION_INPUT/='')THEN
   ALLOCATE(OLD_HVEC(NCONS))
   CALL EXTRACTHD(old_hvec,coefmap,ncons)
   allocate(asol(ncons))
-PRINT *,"OLD VEC:"
-PRINT "(12E12.5)",OLD_HVEC
   asol = 0d0
   call updateHd(asol,coefmap,ncons)
   open(unit=1566,file=expansion_input,access='sequential',form='formatted',&
      status='old',action='read',position='rewind',iostat=ios)
-IF(IOS/=0)STOP "CANNOT OPEN EXPANSION INPUT FILE"
+  IF(IOS/=0)STOP "CANNOT OPEN EXPANSION INPUT FILE"
   do i=1,ncons
     read(unit=1566,fmt=*,IOSTAT=ios)TINC(I)
     IF(IOS>0)STOP"ERROR READING DATA IN EXPANSION INPUT"

@@ -31,7 +31,7 @@
 			outputFiles = (
 				"$(TARGET_BUILD_DIR)/$(INPUT_FILE_BASE).o",
 			);
-			script = "/usr/bin/gfortran -g -m64 -fbounds-check -fbacktrace -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR}";
+			script = "/usr/bin/gfortran -g -m64 -fbounds-check -fbacktrace -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR} -Warray-temporaries  -fbounds-check ";
 		};
 /* End PBXBuildRule section */
 

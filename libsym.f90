@@ -286,11 +286,16 @@ CONTAINS
        ! Rij
          case (0)
         ! generate permuted distances.  it will be in the same coordinate set.
-           newCoord(1) = minval(pmtList(i,CoordSet(m)%coord(n,1:2)))
-           newCoord(2) = maxval(pmtList(i,CoordSet(m)%coord(n,1:2)))
+           newCoord(1) = pmtList(i,CoordSet(m)%coord(1,n))
+           newCoord(2) = pmtList(i,CoordSet(m)%coord(2,n))
+           if(newCoord(1)>newCoord(2))then
+                k           =  newCoord(2)
+                newCoord(2) =  newCoord(1)
+                newCoord(1) =  k
+           end if
            do k=1,CoordSet(m)%ncoord
            ! find the permuted pair in the coordinate list
-             if(count(newCoord(1:2).eq.CoordSet(m)%coord(k,:)).eq.2)then
+             if(count(newCoord(1:2).eq.CoordSet(m)%coord(:,k)).eq.2)then
                coordPerm(i,j) = CoordSet(m)%icoord(k)
                sgnCPerm(i,j)  = 1
                exit
@@ -300,10 +305,10 @@ CONTAINS
        ! OOP
          case (-1,-2)
          ! generate the permuted OOP reference atom numbers in cannonical order
-           CALL reorderOOP(pmtList(i,CoordSet(m)%coord(n,:)),newCoord, sgnCPerm(i,j))
+           CALL reorderOOP(pmtList(i,CoordSet(m)%coord(:,n)),newCoord, sgnCPerm(i,j))
 
            do k=1,CoordSet(m)%ncoord
-             if(all(newCoord.eq.CoordSet(m)%coord(k,:)))then
+             if(all(newCoord.eq.CoordSet(m)%coord(:,k)))then
                coordPerm(i,j) = CoordSet(m)%icoord(k)
                exit
              end if ! count(...)==4
@@ -312,12 +317,12 @@ CONTAINS
        ! bond angle
          case (1)
         ! generate permuted angles
-            newCoord(1) = minval(pmtList(i,CoordSet(m)%coord(n,1:2)))
-            newCoord(2) = maxval(pmtList(i,CoordSet(m)%coord(n,1:2)))
-            newCoord(3) = pmtList(i,CoordSet(m)%coord(n,3))
+            newCoord(1) = minval(pmtList(i,CoordSet(m)%coord(1:2,n)))
+            newCoord(2) = maxval(pmtList(i,CoordSet(m)%coord(1:2,n)))
+            newCoord(3) = pmtList(i,CoordSet(m)%coord(3,n))
             do k=1,CoordSet(m)%ncoord
             ! find the permuted pair in the coordinate list
-                if(count(newCoord(1:3).eq.CoordSet(m)%coord(k,:)).eq.3)then
+                if(count(newCoord(1:3).eq.CoordSet(m)%coord(:,k)).eq.3)then
                     coordPerm(i,j) = CoordSet(m)%icoord(k)
                     sgnCPerm(i,j)  = 1
                     exit

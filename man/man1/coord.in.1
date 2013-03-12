@@ -67,13 +67,13 @@ Coordinate set definition is composed of the definition of each of the
 coordinate sets.   For each coordinate, the definition consists of 3 or 4 
 lines, depending on the type and scaling mode of coordinates.   
 .Pp
-.Em General Format
+.Sy General Format
 .Pp
 The first line is a comment line.
 The second line consists of three integers, which defines the type, scaling mode 
 and maximum order of the coordinate.  
 When maximum order is set to 0, no maximum will be imposed on this coordinate.
-.Pp
+.br
 The third line consists of four numbers, 
 .Em A1 , A2 , A3 
 and 
@@ -83,7 +83,7 @@ defines the indices of atoms that are involved in the coordinates.  For coordina
 types that involve less than 4 atoms, the last one or more integers will not be
 used by the program.  However, all 4 numbers will still need to be present, even
 though some are not used.  
-.Pp
+.br
 The fourth line is present for type-scaling mode combinations
 that require scaling parameter input.  This line contains two floating point or
 scientific numbers that will be used to define the coordinates.  When scaling
@@ -94,7 +94,7 @@ be present.
 See the following section for details about the available coordinate types and
 scaling modes and the number of scaling parameters needed for each combination.
 .Pp
-.Em Example
+.Sy Example
 .Pp
 This is an example for out-of-plane bend
 .Bl -column xxxx xxxx xxxx xxxx
@@ -104,7 +104,7 @@ This is an example for out-of-plane bend
 .It 1.000 0.000
 .El
 .Pp
-.Em Coordinate Types
+.Sy Coordinate Types
 .Pp
 The following coordinate types are currently implemented or planned:
 .Bl -tag -width xxxxx
@@ -127,7 +127,9 @@ product of the three displacement vector launching from the special atom
 .Sy s=r1\[u00D7]r2\[u22C5]r3 .
 .El
 .Pp
-.Em Scaling Modes
+.Sy Scaling Modes
+.Pp
+.Em Scaling Modes for Distance Coordinates
 .Pp
 Scaling functions for all supported scaling modes of distance coordinates (
 .Em type=0
@@ -157,7 +159,9 @@ Shifted(chasmless) Yukawa
 .Sy w=exp(-c1*(r-c2))/(r+c2)
 .El
 .Pp
-Supported scaling modes for angles (
+.Em Scaling Modes for Angle Bends
+.Pp
+Supported scaling modes for angle bends (
 .Em type=1
 ) are
 .Bl -tag -width xxxxx
@@ -170,7 +174,7 @@ Cosine scaling
 .Sy w=Cos(t) .  
 No scaling parameters.
 .It 2
-Distance scaled cosine scaling 
+Distance scaled cosine scaling
 .Sy w=Cos(t)/( 1+exp[c1*(r1^2+r2^2-c2^2)] ) ,
 where 
 .Sy r1 
@@ -184,9 +188,13 @@ and
 are required.
 .El
 .Pp
+.Em Scaling Modes for Torsion Coordinates
+.Pp
 Torsion coordinates (
 .Em type=2
 ) are not yet fully implemented.
+.Pp
+.Em Scaling Modes for Tetrahedron Out-of-Plane Coordinates
 .Pp
 Supported scaling modes for tetrahedron out-of-plane coordinates (
 .Em type=-1
@@ -218,6 +226,8 @@ of the distances as the scaling factor
 .Sy w=C1*s/(\[u03A3] rij)^C2
 .El
 .Pp
+.Em Scaling Modes for Umbrella OOP Coordinates
+.Pp
 Umbrella OOP coordinates (
 .Em type=-2
 ) are similar to tetraheron OOP coordinates.  However,
@@ -225,7 +235,7 @@ they experience different permutational properties due to one of the atoms being
 treated special permutationally.   Like in the case of tetrahedron OOPs, two 
 scaling parameters are always required.  The scaling options for umbrella OOPs
 are listed below.  Note that some of these options differ from the tetrahedron case.
-.Bl -tag -width xxxxxx
+.Bl -tag -width xxxxxxx
 .It 0
 Reciprocal scaled with 3 distances from the vertex
 .Sy w=s/(\[u03A0] ri)^C1

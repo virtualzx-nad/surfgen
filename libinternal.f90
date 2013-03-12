@@ -124,7 +124,7 @@ SUBROUTINE evecBTB(dim,cgeom,evals,evecs,cweight)
   double precision,dimension(45*natoms*natoms)  :: scr
   integer                      ::  INFO,i
 
-  call buildWBmat(cgeom(:3*natoms),igeom,bmat,.false.)
+  call buildWBmat(cgeom(:3*natoms),igeom,bmat)
   do i=1,natoms
     bmat(:,i*3-2:i*3)=bmat(:,i*3-2:i*3)/sqrt(cweight(i))
   end do
@@ -162,8 +162,12 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 
       case(0)   
         
-        call calcwij(CoordSet(m)%Scaling,CoordSet(m)%coord(n,1),CoordSet(m)%coord(n,2),&
-                      CoordSet(m)%coef,cgeom,igeom(i),bmat(i,:))
+        call calcwij(CoordSet(m)%Scaling,CoordSet(m)%coord(1,n),CoordSet(m)%coord(2,n),&
+                      CoordSet(m)%coef,cgeom,igeom(i),bval)
+        do j=1,2
+            offs = 3*(CoordSet(m)%coord(j,n)-1)
+            bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+        end do!j=1,2
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !     OOP ANGLE
@@ -174,18 +178,18 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 
           case(0)  ! Reciprocal scaling   Det/(Product[rij])^a
             bmat(i,:) = dble(0)
-            call  oop(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,coordset(m)%coef(1))
+            call  oop(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,coordset(m)%coef(1))
             do j=1,4
-              offs = 3*(CoordSet(m)%coord(n,j)-1)
+              offs = 3*(CoordSet(m)%coord(j,n)-1)
               bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
             end do!j=1,4
             
           case default  ! Exponential scaling using one of the linear scaling types.
             bmat(i,:) = dble(0)
-            call oop2(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,coordset(m)%coef(1),&
+            call oop2(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,coordset(m)%coef(1),&
                                                     CoordSet(m)%Scaling,coordset(m)%coef(2))
             do j=1,4
-              offs = 3*(CoordSet(m)%coord(n,j)-1)
+              offs = 3*(CoordSet(m)%coord(j,n)-1)
               bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
             end do!j=1,4
 
@@ -195,10 +199,10 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case(-2)  !special oop angles
         bmat(i,:) = dble(0)
-        call oop3(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,&
+        call oop3(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
                 coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
         do j=1,4
-          offs = 3*(CoordSet(m)%coord(n,j)-1)
+          offs = 3*(CoordSet(m)%coord(j,n)-1)
           bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
         end do!j=1,4
 
@@ -207,10 +211,10 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case (1) ! angle
         bmat(i,:) = dble(0)
-        call bend(natoms,CoordSet(m)%coord(n,:),cgeom,igeom(i),bval,&
-        coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
+        call bend(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
+                coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
         do j=1,3
-            offs = 3*(CoordSet(m)%coord(n,j)-1)
+            offs = 3*(CoordSet(m)%coord(j,n)-1)
             bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
         end do!j=1,3
 
@@ -413,62 +417,57 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
   DOUBLE PRECISION,dimension(2),INTENT(IN)          :: coef
   DOUBLE PRECISION,dimension(3*natoms),INTENT(IN)   :: cgeom
   DOUBLE PRECISION,INTENT(OUT)                      :: w
-  DOUBLE PRECISION,dimension(3*natoms),INTENT(OUT)  :: dwdR
-  INTEGER                                       :: i,j,offs
+  DOUBLE PRECISION,dimension(12),INTENT(OUT)        :: dwdR
+  INTEGER                                           :: i,j,offs
 
 ! fval     Value of current coordinate in its unscaled form
 ! fbmat    Cartesian gradients of current coordinate in its unscaled form
 ! bval     Derivative of a unscaled coordinate with respect to cartesian 
 !            coordinates of the four reference atoms.
 
-  DOUBLE PRECISION     ::  fval, bval(12), g, fbmat(3*natoms)
+  DOUBLE PRECISION     ::  fval, bval(12), g
 
 !---Plain or scaled Rij coordinates--->>>
 
-  fbmat = dble(0)
   call stre(natoms,a1,a2,cgeom,fval,bval)
-  offs = 3*(a1-1)
-  fbmat(offs+1:offs+3) =  bval(1:3)
-  offs = 3*(a2-1)
-  fbmat(offs+1:offs+3) =  bval(4:6)
-
+  if(scaling<0) stop  "Invalid scaling type in CalcWij"
   select case(scaling) 
     !  no scalings
     case(0)
       w    = fval
-      dwdR = fbmat
+      dwdR = bval
 
     !  Morse functions   Exp(-c1*(r-c2))
     case(1)
       w    =  exp(-coef(1)*(fval-coef(2)))
-      dwdR = -fbmat*w*coef(1)
+      dwdR = -bval*w*coef(1)
 
     !  Gaussian functions Exp(-c1*(r-c2)**2)
     case(2)
-      w    =  exp(-coef(1)*(fval-coef(2))**2) 
-      dwdR = -fbmat*w*coef(1)*2*(fval-coef(2))
+      w    =  exp(-coef(1)*(fval-coef(2))**2)
+      dwdR = -bval*w*coef(1)*2*(fval-coef(2))
 
     !  Screened Columb potential Exp(-c1*(r-c2))/r     (Yukawa, leading term)
     case(3)
       g    =  exp(-coef(1)*(fval-coef(2)))
       w    =  g/(fval+1D-40)
-      dwdR = -fbmat*w*(coef(1)+1/(fval+1D-40))
+      dwdR = -bval*w*(coef(1)+1/(fval+1D-40))
 
     !  Long range term of screened Columb  Exp(-r/c2)*(r/c2)**c1
     case(4)
       w    = exp(1-fval/coef(2))*(fval/coef(2))**coef(1)
-      dwdR = fbmat*w*(coef(1)/fval-1/coef(2))        
+      dwdR = bval*w*(coef(1)/fval-1/coef(2))
 
     !  Lennard Jones functions (c2/r)**c1
     case(5)
       w    =  (coef(2)/fval)**coef(1)
-      dwdR = -fbmat*w*coef(1)/fval
+      dwdR = -bval*w*coef(1)/fval
 
     !  Shifted(chasmless) Yukawa exp(-c1*(r-c2))/(r+c2)
     case(6)
       g    =  exp(-coef(1)*(fval-coef(2)))
       w    =  g/(fval+coef(2))
-      dwdR = -fbmat*w*(coef(1)+1/(fval+coef(2)))
+      dwdR = -bval*w*(coef(1)+1/(fval+coef(2)))
 
    
     case default
@@ -510,7 +509,7 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
   INTEGER           :: i, j, k, sgns(6,4), tp
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
-                       geom(4,3), ddvec(3,3),          &
+                       geom(4,3), ddvec(3,3),   dw(12),       &
                        coef(2), dwdR(6,12), w(6),  denom, ddenrm
   DOUBLE PRECISION, parameter :: vsmall = 1D-50
 ! eprod = product of the scaling exponentials
@@ -532,9 +531,12 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   tp  = sctype
   if(sctype<0) tp = 0
   k = 1
+  dwdR=0d0
   do i=1,3
    do j=i+1,4
-     call calcwij(tp,i,j,coef,cgeom,w(k),dwdR(k,:))
+     call calcwij(tp,atms(i),atms(j),coef,cgeom,w(k),dw)
+     dwdR(k,i*3-2:i*3) = dw(1:3)
+     dwdR(k,j*3-2:j*3) = dw(4:6)
      k = k+1
    end do !j
   end do
@@ -549,15 +551,15 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   dvecs=matmul(sgns,geom)
 
 ! calculate value of unscaled OOP angle and its derivatives
-  fval=det3(dvecs(1:3,:))
+  fval=det3(dvecs(1,1),6)
   do i=1,3
     do j=1,3
       ddvec(i,j)=sum(sgns(:,i)*dvecs(:,j)/dnorm2(:))
     end do
   end do
-  fbmat(1:3)=cross(dvecs(2,:),dvecs(3,:))
-  fbmat(4:6)=cross(dvecs(3,:),dvecs(1,:))
-  fbmat(7:9)=cross(dvecs(1,:),dvecs(2,:))
+  CALL cross(dvecs(2,1),6,dvecs(3,1),6,fbmat(1),1)
+  CALL cross(dvecs(3,1),6,dvecs(1,1),6,fbmat(4),1)
+  CALL cross(dvecs(1,1),6,dvecs(2,1),6,fbmat(7),1)
   fbmat(10:12)=-fbmat(1:3)-fbmat(4:6)-fbmat(7:9)
 
 ! calculate the scaled oop
@@ -584,22 +586,32 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 CONTAINS
 
   ! this function calculates the value of a 3x3 determinant
-  FUNCTION det3(m)
+  FUNCTION det3(m,ldm)
     IMPLICIT NONE
-    double precision ::  det3, m(3,3)
+    integer :: ldm
+    double precision ::  det3, m(ldm,3)
     det3=(m(1,2)*m(2,3)-m(1,3)*m(2,2))*m(3,1)+&
          (m(1,3)*m(2,1)-m(1,1)*m(2,3))*m(3,2)+&
          (m(1,1)*m(2,2)-m(1,2)*m(2,1))*m(3,3)
   END FUNCTION det3
 
   !this function calculate the cross product of two 3D vectors
-  FUNCTION cross(v1,v2)RESULT(v3)
+  SUBROUTINE cross(v1,iv1,v2,iv2,v3,iv3)
     implicit none
-    double precision,dimension(3) :: v1,v2,v3
-    v3(1)=-v1(3)*v2(2)+v1(2)*v2(3)
-    v3(2)=v1(3)*v2(1)-v1(1)*v2(3)
-    v3(3)=-v1(2)*v2(1)+v1(1)*v2(2)
-  END FUNCTION cross
+    integer,intent(in)  ::  iv1,iv2,iv3  !increment of v1,v2 and v3
+    double precision,dimension(*) :: v1,v2,v3
+    integer             ::  i12,i13,i22,i23,i32,i33
+    i12=1+iv1
+    i13=1+2*iv1
+    i22=1+iv2
+    i23=1+2*iv2
+    i32=1+iv3
+    i33=1+2*iv3
+
+    v3(  1)=-v1(i13)*v2(i22)+v1(i12)*v2(i23)
+    v3(i32)= v1(i13)*v2(  1)-v1(  1)*v2(i23)
+    v3(i33)=-v1(i12)*v2(  1)+v1(  1)*v2(i22)
+  END SUBROUTINE cross
 
 END SUBROUTINE oop2
 
@@ -638,7 +650,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
   INTEGER           :: i, j, k, sgns(6,4)
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),     &
-                       geom(4,3), ddvec(3,3), ss,       &
+                       geom(4,3), ddvec(3,3), ss,    dw(12),    &
                        coef(2), dwdR(3,12), w(3), dwdR2(3,12), w2(3)
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
@@ -655,17 +667,23 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
 ! calculate the three scaling factors and their derivatives
 ! scaled distances for the three bonds A1-A2, A1-A3 and A1-A4 are used
+  dwdR = 0d0
   do i=2,4
 ! scaling mode=0   (unscaled).  unscaled distances are produced here
-     call calcwij(int(0),int(1),i,coef,cgeom,w(i-1),dwdR(i-1,:))
+     call calcwij(int(0),atms(1),atms(i),coef,cgeom,w(i-1),dw)
+     dwdR(i-1,1:3) = dw(1:3)
+     dwdR(i-1,i*3-2:i*3) = dw(4:6)
   end do
 
 ! here are the scaled distances
   coef(1) =scale
-  coef(2) =factor 
-  if(sctype.gt.0)then
+  coef(2) =factor
+  dwdR2 = 0d0
+  if(sctype.ne.0)then
     do i=2,4
-     call calcwij(sctype,int(1),i,coef,cgeom,w2(i-1),dwdR2(i-1,:))
+     call calcwij(abs(sctype),atms(1),atms(i),coef,cgeom,w2(i-1),dw)
+     dwdR2(i-1,1:3)= dw(1:3)
+     dwdR2(i-1,i*3-2:i*3)= dw(4:6)
     end do
   end if
 
@@ -701,17 +719,18 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
     bval=fbmat*a+fval*(s(1)**2*dwdR2(1,:)+s(2)**2*dwdR2(2,:)+s(3)**2*dwdR2(3,:))/ss**2
   else if(sctype.eq.0)then
 ! reciprocal or order scaling
-    a = exp(3*coef(1)*log(coef(2)))
-    p=product(w)
-    if(p<1D-10)p=1D-10
-    p1 = exp(coef(1)*log(p))
-    qval = fval*a/p1
-    bval = fbmat*a/p1-coef(1)*qval/p*(dwdR(1,:)*w(2)*w(3)+dwdR(2,:)*w(1)*w(3)+dwdR(3,:)*w(1)*w(2))
+    do i=1,3
+        if(abs(w(i))<1D-20)w(i)=sign(1D-20,w(i))
+    end do
+    p=coef(2)**3/product(w)
+    a=p**coef(1)
+    qval = a*fval
+    bval = a*fbmat-coef(1)*qval*(dwdR(1,:)/w(1)+dwdR(2,:)/w(2)+dwdR(3,:)/w(3))
   else
 ! multiply all 3 scaled length scaling functions
     eprod = product(w2)
     qval = fval*eprod
-    bval = fbmat*eprod+qval*(w2(2)*w2(3)*dwdR2(1,:)+w2(1)*w2(3)*dwdR2(2,:)+w2(1)*w2(2)*dwdR2(3,:))
+    bval = fbmat*eprod+fval*(w2(2)*w2(3)*dwdR2(1,:)+w2(1)*w2(3)*dwdR2(2,:)+w2(1)*w2(2)*dwdR2(3,:))
   end if
 
 CONTAINS
@@ -808,6 +827,6 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
     case  (2)
         tmp  = exp(scale*(d12+d22-factor**2))
         qval = p/(1+tmp)
-        bval = (  dp  +  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
+        bval = (  dp  -  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
   end select!case(sctype)
 END SUBROUTINE BEND

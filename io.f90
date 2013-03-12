@@ -11,7 +11,7 @@ SUBROUTINE readCoordSets()
                               CSETFL,       &  !Unit ID for coordinate definition file
                               nAddCond         !number of additional conditions
 ! temporary variables used to generate definitions
-  integer                  :: tmpCoord(natoms**4,4),& ! temporary coordinate definition holder
+  integer                  :: tmpCoord(4,natoms**4),& ! temporary coordinate definition holder
                               rawCoord(4),ordOOP(4),& ! atoms referenced, before and after ordering
                               prty                    ! parity of OOP angle, just a dummy variable
   integer,dimension(:),allocatable   ::  lhs          ! Left hand side of coordinate order restrictions
@@ -67,13 +67,13 @@ SUBROUTINE readCoordSets()
                         (atomCount(CoordSet(i)%atom(1))-1)/2
 ! allocate memory for field Coord, definition of all the coordinates in the set
             if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-            allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,2))
+            allocate(CoordSet(i)%coord(2,CoordSet(i)%ncoord))
 ! make coord list
             l = 1
             do j=1,atomCount(CoordSet(i)%atom(1))
               do k=j+1,atomCount(CoordSet(i)%atom(1))
-                CoordSet(i)%coord(l,1) = atomList(CoordSet(i)%atom(1),j)
-                CoordSet(i)%coord(l,2) = atomList(CoordSet(i)%atom(1),k)
+                CoordSet(i)%coord(1,l) = atomList(CoordSet(i)%atom(1),j)
+                CoordSet(i)%coord(2,l) = atomList(CoordSet(i)%atom(1),k)
                 l=l+1
               end do !k
             end do !j
@@ -81,13 +81,13 @@ SUBROUTINE readCoordSets()
 ! bond between different types of atoms
             CoordSet(i)%ncoord  =  atomCount(CoordSet(i)%atom(1))  *     &
                                         atomCount(CoordSet(i)%atom(2))
-            allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,2))
+            allocate(CoordSet(i)%coord(2,CoordSet(i)%ncoord))
 ! make coord list
             l = 1
             do j=1,atomCount(CoordSet(i)%atom(1))
               do k=1,atomCount(CoordSet(i)%atom(2))
-                CoordSet(i)%coord(l,1) = atomList(CoordSet(i)%atom(1),j)
-                CoordSet(i)%coord(l,2) = atomList(CoordSet(i)%atom(2),k)
+                CoordSet(i)%coord(1,l) = atomList(CoordSet(i)%atom(1),j)
+                CoordSet(i)%coord(2,l) = atomList(CoordSet(i)%atom(2),k)
                 l=l+1
               end do !k
             end do !j
@@ -122,7 +122,7 @@ SUBROUTINE readCoordSets()
                 call reorderOOP(rawCoord,ordOOP,prty)
                 if(count(rawCoord.eq.ordOOP).eq.4)then ! the atoms are cannonically ordered
                   CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                  tmpCoord( CoordSet(i)%ncoord , : ) = rawCoord
+                  tmpCoord( :, CoordSet(i)%ncoord) = rawCoord
                 end if ! count(...).eq.4
               end do !n
             end do !m
@@ -130,8 +130,8 @@ SUBROUTINE readCoordSets()
         end do ! j
 ! allocate field %coord and transfer definition from temporary array to global structure
         if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,4))
-        CoordSet(i)%coord = tmpCoord(:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
 
 ! load scaling factor
         allocate(CoordSet(i)%Coef(2))
@@ -157,7 +157,7 @@ SUBROUTINE readCoordSets()
                 call reorderOOP(rawCoord,ordOOP,prty)
                 if(count(rawCoord.eq.ordOOP).eq.4)then ! the atoms are cannonically ordered
                   CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                  tmpCoord( CoordSet(i)%ncoord , : ) = rawCoord
+                  tmpCoord( :, CoordSet(i)%ncoord ) = rawCoord
                 end if ! count(...).eq.4
               end do !n
             end do !m
@@ -165,8 +165,8 @@ SUBROUTINE readCoordSets()
         end do ! j
 ! allocate field %coord and transfer definition from temporary array to global structure
         if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,4))
-        CoordSet(i)%coord = tmpCoord(:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
 
 ! load scaling factor
         allocate(CoordSet(i)%Coef(2))
@@ -194,15 +194,15 @@ SUBROUTINE readCoordSets()
               if(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(3)  .and. &
                           rawCoord(3)<=rawCoord(1) .or. rawCoord(3).eq.rawCoord(2))  cycle
               CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-              tmpCoord( CoordSet(i)%ncoord , 1:3 ) = rawCoord(1:3)
+              tmpCoord( 1:3, CoordSet(i)%ncoord ) = rawCoord(1:3)
             end do !l
           end do !k
         end do ! j
 
 ! allocate field %coord and transfer definition from temporary array to global structure
         if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,3))
-        CoordSet(i)%coord = tmpCoord(:CoordSet(i)%ncoord,1:3)
+        allocate(CoordSet(i)%coord(3,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(1:3,1:CoordSet(i)%ncoord)
 
 ! no scaling parameters for bond angles
 
@@ -224,7 +224,7 @@ SUBROUTINE readCoordSets()
                 rawCoord(4) =  atomList(CoordSet(i)%atom(4),n)
                 if(count(rawCoord(4).eq.rawCoord(1:3))>0)cycle  !all indices have to be different
                 CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                tmpCoord( CoordSet(i)%ncoord , : ) = rawCoord
+                tmpCoord( :, CoordSet(i)%ncoord ) = rawCoord
               end do !n
             end do !m
           end do !k
@@ -232,8 +232,8 @@ SUBROUTINE readCoordSets()
 
 ! allocate field %coord and transfer definition from temporary array to global structure
         if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,4))
-        CoordSet(i)%coord = tmpCoord(:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
 
 ! no coefficient to read for torsion
 
@@ -376,7 +376,7 @@ SUBROUTINE readCoords()
         end if  !(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(2))
         ! bond between different atoms
         ! allocate temporary coord set list
-        allocate(tmpCoord(nPmt,2))
+        allocate(tmpCoord(2,nPmt))
         CoordSet(i)%ncoord    = 0
         do l=1,nPmt
             newcrd(1) = minval(pmtList(l,CoordSet(i)%atom(1:2)))
@@ -384,21 +384,21 @@ SUBROUTINE readCoords()
             ! look up if this coordinate is already defined in the list
             found = .false.
             do j=1,CoordSet(i)%ncoord
-                if(newcrd(1)==tmpCoord(j,1).and. &
-                   newcrd(2)==tmpCoord(j,2) ) then
+                if(newcrd(1)==tmpCoord(1,j).and. &
+                   newcrd(2)==tmpCoord(2,j) ) then
                     found = .true.
                     exit
                 end if
             end do!j
             if(.not.found)then
                 CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                tmpCoord(CoordSet(i)%ncoord,:) = newcrd(1:2)
+                tmpCoord(:,CoordSet(i)%ncoord) = newcrd(1:2)
             end if!.not.found
         end do!l=1,nPmt
 
         ! allocate coord list
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,2))
-        CoordSet(i)%coord = tmpCoord(1:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(2,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
 
         ! read scaling coefficients
@@ -415,7 +415,7 @@ SUBROUTINE readCoords()
       case(-1,-2) ! OOP.   %atom = A1, A2, A3, A4
 
         CoordSet(i)%ncoord=0
-        allocate(tmpCoord(nPmt,4))
+        allocate(tmpCoord(4,nPmt))
     ! Generate all possible permutations of the 4 atoms in question.
     ! Coordinates are inserted in cannonical order
         do l=1,nPmt
@@ -424,21 +424,21 @@ SUBROUTINE readCoords()
             ! look up the reordered coordinate in the temporary coordinate list
             found = .false.
             do j=1,CoordSet(i)%ncoord
-                if(count(tmpCoord(j,:).eq.ordOOP).eq.4)then
+                if(count(tmpCoord(:,j).eq.ordOOP).eq.4)then
                     found =.true.
                     exit
                 end if
             end do!j
             if(.not.found)then
                 CoordSet(i)%ncoord = CoordSet(i)%ncoord + 1
-                tmpCoord(CoordSet(i)%ncoord,:) = ordOOP
+                tmpCoord(:,CoordSet(i)%ncoord) = ordOOP
             end if
         end do!l
 
         ! allocate field %coord and transfer definition from temporary array to global structure
         if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,4))
-        CoordSet(i)%coord = tmpCoord(1:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
 
         ! load scaling factor
@@ -463,7 +463,7 @@ SUBROUTINE readCoords()
         end if  !(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(2))
 
         ! allocate temporary coord set list
-        allocate(tmpCoord(nPmt,3))
+        allocate(tmpCoord(3,nPmt))
         CoordSet(i)%ncoord    = 0
         do l=1,nPmt
             newcrd(1) = minval(pmtList(l,CoordSet(i)%atom(1:2)))
@@ -472,22 +472,22 @@ SUBROUTINE readCoords()
             ! look up if this coordinate is already defined in the list
             found = .false.
             do j=1,CoordSet(i)%ncoord
-                if( newcrd(1)==tmpCoord(j,1).and. &
-                    newcrd(2)==tmpCoord(j,2).and. &
-                    newcrd(3)==tmpCoord(j,3) ) then
+                if( newcrd(1)==tmpCoord(1,j).and. &
+                    newcrd(2)==tmpCoord(2,j).and. &
+                    newcrd(3)==tmpCoord(3,j) ) then
                     found = .true.
                     exit
                 end if
             end do!j
             if(.not.found)then
                 CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                tmpCoord(CoordSet(i)%ncoord,:) = newcrd(1:3)
+                tmpCoord(:,CoordSet(i)%ncoord) = newcrd(1:3)
             end if!.not.found
         end do!l=1,nPmt
 
         ! allocate coord list
-        allocate(CoordSet(i)%coord(CoordSet(i)%ncoord,3))
-        CoordSet(i)%coord = tmpCoord(1:CoordSet(i)%ncoord,:)
+        allocate(CoordSet(i)%coord(3,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
 
         ! load scaling factor
