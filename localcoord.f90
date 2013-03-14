@@ -33,11 +33,6 @@
       ptdata%scale = dble(1)
       return
     end if
-print *,"BMATRIX AT POINT:"
-DO I=1,UBOUND(ptdata%bmat,1)
-PRINT "(15F8.3)",ptdata%bmat(i,:)
-end do
-print *,"<===="
     btb=matmul(transpose(ptdata%bmat),ptdata%bmat)
     call DSYEV('V','U',3*natoms,btb,3*natoms,ev,scr,45*natoms*natoms,INFO)
     !reorder the eigenvectors in descending order

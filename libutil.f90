@@ -2,7 +2,7 @@
 ! Group states into minimal sets so that the energy difference between any two states
 ! from different groups is greater than de. Input energies are supposed to be sorted.
 SUBROUTINE genEnerGroups(pt,de,nstates_data)
-  use progdata, only: deg_cap,abpoint
+  use progdata, only: abpoint
   IMPLICIT NONE
   type(abpoint),INTENT(INOUT)              :: pt
   DOUBLE PRECISION,INTENT(IN)              :: de

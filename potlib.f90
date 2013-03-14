@@ -11,6 +11,9 @@ MODULE potdata
 !             generated in libsym
      INTEGER       ::  dcoordls(100)
 
+! how much the energy will be shifted
+     DOUBLE PRECISION  :: eshift
+
      LOGICAL       ::  initialized = .false.
      INTEGER       ::  GUNIT       = -1
      INTEGER       ::  NEval       = 0
@@ -366,7 +369,7 @@ END SUBROUTINE
 !                Gradients of U11,U22 and U12
 ! gV1,gV2        [output] DOUBLE PRECISION, dimension(3*natoms)
 SUBROUTINE pot(Xcart,U11,U22,U12,V1,V2,gU11,gU22,gU12,gV1,gV2,gV12)
-  USE progdata, ONLY : natoms,eshift,switchdiab
+  USE progdata, ONLY : natoms,switchdiab
   USE potdata
   USE hddata, ONLY:  nstates
   IMPLICIT NONE
@@ -379,22 +382,22 @@ SUBROUTINE pot(Xcart,U11,U22,U12,V1,V2,gU11,gU22,gU12,gV1,gV2,gV12)
   double precision,dimension(nstates)                   ::  energy
  
   CALL EvaluateSurfgen(Xcart,energy,cgrads,hmat,dcgrads) 
-  V1=energy(1)-eshift
-  V2=energy(2)-eshift
+  V1=energy(1)+eshift
+  V2=energy(2)+eshift
   gV1=cgrads(:,1,1)
   gV2=cgrads(:,2,2)
   gV12 = cgrads(:,1,2)
   if(switchdiab)then !if the first two diabats should be switched to match adiabats
-    U22  = hmat(1,1)-eshift
+    U22  = hmat(1,1)+eshift
     U12  = hmat(1,2)
-    U11  = hmat(2,2)-eshift
+    U11  = hmat(2,2)+eshift
     gU22 = dcgrads(:,1,1)
     gU12 = dcgrads(:,1,2)
     gU11 = dcgrads(:,2,2)
   else
-    U11  = hmat(1,1)-eshift
+    U11  = hmat(1,1)+eshift
     U12  = hmat(1,2)
-    U22  = hmat(2,2)-eshift
+    U22  = hmat(2,2)+eshift
     gU11 = dcgrads(:,1,1)
     gU12 = dcgrads(:,1,2)
     gU22 = dcgrads(:,2,2)
@@ -735,11 +738,11 @@ SUBROUTINE readginput(jtype)
   INTEGER,DIMENSION(10)           :: groupSym,groupPrty 
   DOUBLE PRECISION,dimension(50)  :: e_guess,B_r1,B_r2,B_h
    
-  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,usefij,& 
-                            printlvl,deg_cap,inputfl,eshift,atmgrp,use_eguess,e_guess 
+  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
+                            printlvl,inputfl,atmgrp
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,cpdissmidpt,dcoordls,errflname, &
-                            timeeval,B_r1,B_r2,B_h,parsing,cpdissrate
+                            timeeval,B_r1,B_r2,B_h,parsing,cpdissrate,eshift
 
   atomlabels(1) = 'N'
   atomlabels(2) = 'H'
@@ -753,12 +756,9 @@ SUBROUTINE readginput(jtype)
   jtype      = 0 
   natoms     = 2 
   printlvl   = 1 
-  inputfl    = '' 
-  usefij     = .true. 
-  deg_cap    = 1D-7 
+  inputfl    = ''
   eshift     = dble(0) 
-  use_eguess = .false. 
-  switchdiab = .false. 
+  switchdiab = .false.
   print *,"Entering readinput()." 
  !----------- GENERAL SECTION ----------------! 
   open(unit=INPUTFILE,file='surfgen.in',access='sequential',form='formatted',& 
@@ -781,17 +781,6 @@ SUBROUTINE readginput(jtype)
   GrpSym=groupsym(1:nGrp) 
   grpPrty=groupprty(1:nGrp) 
   call initGrps(nGrp,irrep(GrpSym(:))%Dim) 
- 
-  if(allocated(eguess))deallocate(eguess) 
-  allocate(eguess(nGrp)) 
-  if(use_eguess)then 
-    eguess=e_guess(1:nGrp)/AU2CM1 
-    print *,"Guess energies: ", eguess 
-  else 
-    do i=1,nGrp 
-     eguess(i)=i*10000/AU2CM1 
-    end do 
-  end if 
  
   if(allocated(innerB_r1))deallocate(innerB_r1)
   if(allocated(innerB_r2))deallocate(innerB_r2)

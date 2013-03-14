@@ -627,6 +627,7 @@ SUBROUTINE initialize(jobtype)
   IMPLICIT NONE
   INTEGER,INTENT(IN)                          :: jobtype
   integer :: i
+  double precision  :: eguess(nGroups)
 
   LOGICAL removed
 
@@ -667,6 +668,9 @@ SUBROUTINE initialize(jobtype)
   call genMaptab()
 
   !allocate space for Hd  
+  do i=1,nGroups
+    eguess(i)=(i-1)*10000*AU2CM1
+  end do
   call allocateHd(eguess)
   if(inputfl/='')then 
     if(printlvl>0)print *,"  Reading Hd Coefficients from ",trim(inputfl)
@@ -677,220 +681,7 @@ SUBROUTINE initialize(jobtype)
   if(printlvl>0)print *,"Exiting Initialize()"
 end SUBROUTINE initialize
 
-!-------------------------------------------------------------------
-!load COLUMBUS geometries on disk and output energies, gradients
-!and derivative couplings predicted by Hd, also in COLUMBUS format
-!
-SUBROUTINE loadgeom()
-  use hddata, only: nstates, ncoord, makehmat, getFLUnit, makedhmat
-  use progdata, only: natoms,loopst,ngeoms,isloop,geomfl, outputdiab,&
-                      AU2CM1,eshift,calchess,abpoint,outputdir,eshift
-  IMPLICIT NONE
-  TYPE(abpoint)                                   :: loadgeoms
-  INTEGER                                         :: i,j,k
-  CHARACTER(4)                                    :: ind,jnd
-  CHARACTER(72)                                   :: fname,enerfl
-  CHARACTER(72),dimension(nstates)                :: gradfl
-  CHARACTER(72),dimension(nstates*(nstates-1)/2)  :: cpfl
-  CHARACTER(3),dimension(natoms)                  :: atoms
-  DOUBLE PRECISION,dimension(natoms)              :: anums,masses
-  double precision,dimension(nstates,nstates)        :: hmat,evec 
-  double precision,dimension(ncoord,nstates,nstates) :: dhmat
-  integer                                         :: m,LWORK,LIWORK,INFO,GUNIT,ios
-  integer,dimension(nstates*2)                    :: ISUPPZ
-  double precision,dimension(nstates*(nstates+26)):: WORK
-  integer,dimension(nstates*10)                   :: IWORK
-  double precision,dimension(ncoord,nstates,nstates)    :: igrads
-  double precision,dimension(3*natoms,nstates,nstates)  :: cgrads,dcgrads
-  character(30)  :: fmtstr,fmtstr2
 
-  LWORK  = nstates*(nstates+26)
-  LIWORK = nstates*10
-  write(fmtstr,'(I3)')nstates
-  write(fmtstr2,'(I3)')nstates*nstates
-  fmtstr='('//trim(adjustl(fmtstr))//'(F16.12,4x))'
-  fmtstr2='('//trim(adjustl(fmtstr2))//'(F16.12,4x))'
-
-  allocate(loadgeoms%cgeom(3*natoms))
-  allocate(loadgeoms%igeom(ncoord))
-  allocate(loadgeoms%hessian(natoms*3,natoms*3))
-  allocate(loadgeoms%freqs(ncoord))
-  allocate(loadgeoms%energy(nstates))
-  allocate(loadgeoms%bmat(ncoord,3*natoms))
-  
-  GUNIT=getFLUnit()
-  call chdir(outputdir)
-  if(isloop)then
-    enerfl='energy.all'
-    do i=1,nstates
-      write(ind,'(i4)')i
-      gradfl(i)='cartgrd.drt1.state'//trim(adjustl(ind))//'.all'
-    end do
-    k=1
-    do i=1,nstates
-      write(ind,'(i4)')i
-      do j=i+1,nstates
-        write(jnd,'(i4)')j
-        cpfl(k)='cartgrd_total.drt1.state'//trim(adjustl(ind))//'.drt1.stat'//&
-                 trim(adjustl(jnd))//'.all'
-        k=k+1
-      end do
-    end do
-  else
-    enerfl='energy'
-    do i=1,nstates
-      write(ind,'(i4)')i
-      gradfl(i)='cartgrd.drt1.state'//trim(adjustl(ind))
-    end do
-    k=1
-    do i=1,nstates
-      write(ind,'(i4)')i
-      do j=i+1,nstates
-        write(jnd,'(i4)')j
-        cpfl(k)='cartgrd_total.drt1.state'//trim(adjustl(ind))//'.drt1.stat'//&
-                 trim(adjustl(jnd))
-        k=k+1
-      end do
-    end do
-  end if
-  !--------------------------------------------
-  ! create output files
-  open(unit=GUNIT,file=enerfl,status='replace',ACCESS='SEQUENTIAL',action='write',&
-          form='FORMATTED',iostat=ios)
-  close(GUNIT)
-  do i=1,nstates
-    open(unit=GUNIT,file=gradfl(i),status='replace',ACCESS='SEQUENTIAL',action='write',&
-         form='FORMATTED',iostat=ios)
-    close(GUNIT)
-  end do
-  do i=1,nstates*(nstates-1)/2
-    open(unit=GUNIT,file=cpfl(i),status='replace',ACCESS='SEQUENTIAL',action='write',&
-         form='FORMATTED',iostat=ios)
-    close(GUNIT)
-  end do
-  ! create output files for diabatic energies and gradients
-  if(outputdiab)then
-    open(unit=GUNIT,file='d'//enerfl,status='replace',ACCESS='SEQUENTIAL',action='write',&
-          form='FORMATTED',iostat=ios)
-    close(GUNIT)
-    do i=1,nstates
-      open(unit=GUNIT,file='d'//gradfl(i),status='replace',ACCESS='SEQUENTIAL',action='write',&
-         form='FORMATTED',iostat=ios)
-      close(GUNIT)
-    end do
-    do i=1,nstates*(nstates-1)/2
-      open(unit=GUNIT,file='d'//cpfl(i),status='replace',ACCESS='SEQUENTIAL',action='write',&
-         form='FORMATTED',iostat=ios)
-      close(GUNIT)
-    end do
-  end if
-  !--------------------------------------------
-  ! Read in geometries and output energies, gradients and couplings
-  !--------------------------------------------
-  do i = 1,ngeoms
-   write(ind,'(i4)')i+loopst-1
-
-   ! determine geometry input filename
-   if(isloop)then
-     fname=trim(adjustl(geomfl))//'.'//trim(adjustl(ind))
-   else
-     fname=trim(adjustl(geomfl))
-   end if
-   print *,"loading from file"
-   ! read in cartesian geometry in COLUMBUS format.  
-   call readColGeom(fname,int(1),natoms,atoms,anums,loadgeoms%cgeom,masses)
-   ! generate internal geometry and B matrix
-   call buildWBMat(loadgeoms%cgeom,loadgeoms%igeom,loadgeoms%bmat,.false.)
-
-   ! generate eigenvectors and energies at current geometry
-   call makehmat(loadgeoms%igeom,hmat)
-   CALL DSYEVR('V','A','U',nstates,hmat,nstates,dble(0),dble(0),0,0,1D-12,m,&
-            loadgeoms%energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
-   
-   print *,"Hd for point ",i
-   do m=1,nstates
-     print *,hmat(m,:)
-   end do
-
-   ! output energies to file   
-   open(unit=GUNIT,file=enerfl,access='sequential',form='formatted',&
-      status='old',action='write',position='append',iostat=ios)
-   write(GUNIT,fmtstr)loadgeoms%energy-eshift
-   close(GUNIT)
-   if(outputdiab)then
-    do j=1,nstates
-      hmat(j,j)=hmat(j,j)-eshift
-    end do
-    open(unit=GUNIT,file='d'//enerfl,access='sequential',form='formatted',&
-      status='old',action='write',position='append',iostat=ios)
-    write(GUNIT,fmtstr2)hmat
-    close(GUNIT)
-   end if
-
-   ! generate gradients of Hd in internal
-   call makedhmat(loadgeoms%igeom,dhmat)
-   do m=1,ncoord
-     igrads(m,:,:)=matmul(transpose(evec),matmul(dhmat(m,:,:),evec))
-   end do!m=1,ncoord
-
-   ! convert gradients and couplings to cartesian coordinates
-   cgrads=dble(0)
-   do k=1,3*natoms
-     do m=1,ncoord
-       cgrads(k,:,:)=cgrads(k,:,:)+igrads(m,:,:)*loadgeoms%bmat(m,k)
-       if(outputdiab)&
-         dcgrads(k,:,:)=dcgrads(k,:,:)+dhmat(m,:,:)*loadgeoms%bmat(m,k)
-     end do !m=1,ncoord
-   end do !k=1,3*natoms
-
-   ! output gradients and couplings to file
-   do m=1,nstates
-     open(unit=GUNIT,file=gradfl(m),access='sequential',form='formatted',&
-        status='old',action='write',position='append',iostat=ios)
-     write(GUNIT,1001)
-     write(GUNIT,1001)cgrads(:,m,m)
-     close(GUNIT)
-     if(outputdiab)then
-      open(unit=GUNIT,file='d'//gradfl(m),access='sequential',form='formatted',&
-         status='old',action='write',position='append',iostat=ios)
-      write(GUNIT,1001)
-      write(GUNIT,1001)dcgrads(:,m,m)
-      close(GUNIT)
-     end if
-   end do
-   k=1
-   do m=1,nstates
-     do j=m+1,nstates
-       open(unit=GUNIT,file=cpfl(k),access='sequential',form='formatted',&
-          status='old',action='write',position='append',iostat=ios)
-       write(GUNIT,1001)
-       write(GUNIT,1001)cgrads(:,m,j)
-       close(GUNIT)
-       if(outputdiab)then
-        open(unit=GUNIT,file='d'//cpfl(k),access='sequential',form='formatted',&
-           status='old',action='write',position='append',iostat=ios)
-        write(GUNIT,1001)
-        write(GUNIT,1001)dcgrads(:,m,j)
-        close(GUNIT)
-       end if
-       k=k+1
-     end do
-   end do
-
-  enddo !i=1,ngeoms
- 
-  call printLoadgeoms()
-
-  deallocate(loadgeoms%cgeom)
-  deallocate(loadgeoms%igeom)
-  deallocate(loadgeoms%hessian)
-  deallocate(loadgeoms%freqs)
-  deallocate(loadgeoms%energy)
-  deallocate(loadgeoms%bmat)
-
-  return
-1001 format(3(2x,E13.6))
-end SUBROUTINE loadgeom
 
 !
 !
@@ -898,16 +689,16 @@ end SUBROUTINE loadgeom
 !
 SUBROUTINE printTitle(jobtype)
   use hddata, only: ncoord
-  use progdata,only:eshift,OUTFILE
+  use progdata,only: OUTFILE
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: jobtype
-  CHARACTER(9),dimension(0:4) :: types = (/'POTLIB   ','MAKESURF ','EXTREMA  ', &
-                                                    'LOADGEOM ','TRANSFORM' /)
+  CHARACTER(9),dimension(-1:2) :: types = (/'GENSYM   ','POTLIB   ','MAKESURF ',&
+                                            'EXTREMA  ' /)
 
   open(unit=OUTFILE,file='surfgen.out',access='sequential',form='formatted')
   write(OUTFILE,1000)'-----------------------------------------------------------'
   write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'                     surfgen.global.x                      '
+  write(OUTFILE,1000)'                     surfgen.global                        '
   write(OUTFILE,1000)'                                                           '
   write(OUTFILE,1000)'   * Creates quasi-diabatic Hamiltonian by reproducing     '
   write(OUTFILE,1000)'   ab initio energy gradients and derivative couplings     '
@@ -928,8 +719,6 @@ SUBROUTINE printTitle(jobtype)
   write(OUTFILE,1000)''
   write(OUTFILE,1000)'  jobtype = '//types(jobtype)
   write(OUTFILE,1000)''
-  write(OUTFILE,1000)'  Energy shift'
-  write(OUTFILE,1002)eshift
   write(OUTFILE,1000)''
 
 1000 format(72a)
@@ -941,81 +730,6 @@ end SUBROUTINE printTitle
 !
 !
 !
-SUBROUTINE printLoadgeoms()
-  use hddata, only:nstates,ncoord
-  use progdata, only: OUTFILE,AU2CM1,nmin,nept,nmex,eshift
-  IMPLICIT NONE
-  INTEGER                             :: i,j,ioff
-  DOUBLE PRECISION,dimension(nstates) :: eners
-
-  ioff = 0
-  write(OUTFILE,1000)
-
-
-  ! print minimum data
-  do i = 1,nmin
-   do j = 1,nstates
-!    eners(j) = (loadgeoms(i)%energy(j)+eshift)*AU2CM1
-   enddo
-   write(OUTFILE,1001)i
-   write(OUTFILE,1004)eners
-!   write(OUTFILE,1005)loadgeoms(i)%igeom
-!   write(OUTFILE,1006)loadgeoms(i)%freqs
-!   write(OUTFILE,1007)0.5*sum(loadgeoms(i)%freqs)
-  enddo
-
-  ! print energy point data
-  ioff = ioff + nmin
-  do i = 1,nept
-   do j = 1,nstates
-!    eners(j) = (loadgeoms(i+ioff)%energy(j)+eshift)*AU2CM1
-   enddo
-   write(OUTFILE,1002)i
-   write(OUTFILE,1004)eners
-!   write(OUTFILE,1005)loadgeoms(i+ioff)%igeom
-  enddo
-
-  ! print out intersection data
-  ioff = ioff + nept
-  do i = 1,nmex
-   do j = 1,nstates
-!    eners(j) = (loadgeoms(i+ioff)%energy(j)+eshift)*AU2CM1
-   enddo
-   write(OUTFILE,1003)i
-   write(OUTFILE,1004)eners
-!   write(OUTFILE,1005)loadgeoms(i+ioff)%igeom
-  enddo
-
-  ! print out vibronic basis data
-  ioff = ioff + nmex
-! do i = 1,nbasis
-!  if(i.eq.1)then
-!   write(OUTFILE,1008)
-!  else
-!   write(OUTFILE,1009)
-!  endif
-!
-!  write(OUTFILE,1005)loadgeoms(i+ioff)%igeom
-!  write(OUTFILE,1006)loadgeoms(i+ioff)%freqs
-
-! enddo
-
-
-  return
-1000 format(/,2x,'-----------------------------------------------------',/, &
-            2x,'--------     Geometries Loaded from File     --------',/, &
-            2x,'-----------------------------------------------------',/)
-1001 format(/,2x,'MINIMUM ',i3,' --------------------')
-1002 format(/,2x,'ENERGY POINT ',i3,'----------------')
-1003 format(/,2x,'CONICAL INTERSECTION ',i3,'--------')
-1004 format(2x,'Energies (cm-1): ',/,9(F10.2,1x))
-1005 format(2x,'Geometry:',/,9(F10.6,1x))
-1006 format(2x,'Frequencies (cm-1):',/,9(F10.2,1x))
-1007 format(2x,'ZPVE (cm-1):',/,F10.2)
-1008 format(/,2x,'Vibronic Basis ----------------------')
-1009 format(/,2x,'Vibronic Reference State ------------')
-end SUBROUTINE printLoadgeoms
-
 
 !
 !
@@ -1179,10 +893,10 @@ end SUBROUTINE readHessian
 !
 !
 !
-FUNCTION filename(s1,s2,suffix)
-  use progdata, only: usefij
+FUNCTION filename(s1,s2,suffix,usefij)
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: s1,s2
+  LOGICAL ,INTENT(IN)         :: usefij
   CHARACTER(10),INTENT(IN)    :: suffix
   CHARACTER(72)               :: filename
   CHARACTER(1)                :: st1,st2

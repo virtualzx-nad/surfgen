@@ -11,10 +11,12 @@ MODULE makesurfdata
 
  ! derived type for eq lists
   TYPE TEqList
-   type(tblk),dimension(:),allocatable         ::  List
-   INTEGER                                     ::  length
+   type(tblk),dimension(:),allocatable         :: List
+   INTEGER                                     :: length
   END TYPE
 
+  DOUBLE PRECISION                             :: eshift    ! uniform shift on ab initio energies
+  DOUBLE PRECISION                             :: deg_cap   ! threshold below which intersection adapted coordinates will be used
   INTEGER                                      :: maxiter
   INTEGER                                      :: mmiter    ! maximum number of micro iterations
   INTEGER                                      :: npoints
@@ -31,9 +33,9 @@ MODULE makesurfdata
   CHARACTER(72)                                :: ckl_output  !if nonempty, output wave functions to this file
   CHARACTER(72)                                :: expansion_input   ! read expansions from this file if present
   CHARACTER(72)                                :: expansion_output  ! save expansions from this file if present
-  CHARACTER(32)                                :: method
-  LOGICAL                                      :: rmsymzero
-  LOGICAL                                      :: fitfij
+
+  LOGICAL                                      :: usefij   ! use coupling instead of coupling*dE
+
   INTEGER                                      :: startorder
 ! weights for equations of reproduction of energy, energy gradients, and non-adiabatic coupling
   DOUBLE PRECISION                             :: w_energy,w_grad,w_fij 
@@ -41,7 +43,6 @@ MODULE makesurfdata
 ! ndiis   : size of diis space
 ! ndstart : number of iterations before starting DIIS acceleration for wavefunctions
   INTEGER                                      :: ndiis,ndstart
-  LOGICAL                                      :: fitEnergy
 
 ! rmsexcl : specify the threshold for point weight below which the point will be excluded from RMS analysis
 !           same format as points.in input
@@ -222,7 +223,7 @@ MODULE makesurfdata
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,gradNorm,wvec)
     use hddata, only: ncoord,nblks,blkmap,nstates
-    use progdata, only: AU2CM1,eshift
+    use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
     integer,dimension(MaxEqs,4),intent(out) :: lseMap,exactEqs
@@ -290,7 +291,7 @@ MODULE makesurfdata
           if(incgrad(i,s1,s2))then
             do j=1,dispgeoms(i)%nvibs
               if(blkMap(s2,s1)>0)then
-               if(gradNorm(i,j,blkMap(s2,s1))>1D-8 .or. .not.rmsymzero)then
+               if(gradNorm(i,j,blkMap(s2,s1))>1D-8)then
                 if(g_exact(i,s2,s1))then                                    ! Exact equations
                   nex=nex+1
                   if(nex>maxEqs)stop 'makeEqMap: nex>maxeqs'
@@ -306,7 +307,7 @@ MODULE makesurfdata
                       wvec(nEqs)=ptWeights(i)*w_grad
                     end if
                     k = 0 
-                    do while(dispgeoms(i)%energy(s1)+eshift>energyT(k+1))  !  determine the bracket of current energy
+                    do while(dispgeoms(i)%energy(s1)>energyT(k+1))  !  determine the bracket of current energy
                       k = k+1
                       if(k==10)exit
                     end do
@@ -320,21 +321,21 @@ MODULE makesurfdata
                       wvec(nEqs)=ptWeights(i)*w_fij
                     end if
                     k = 0
-                    do while(dispgeoms(i)%energy(s1)+dispgeoms(i)%energy(s2)+eshift*2> 2*energyT(k+1))  
+                    do while(dispgeoms(i)%energy(s1)+dispgeoms(i)%energy(s2)> 2*energyT(k+1))
                                  !  determine the bracket of current energy
                       k = k+1
                       if(k==10)exit
                     end do
                     if(k>0) wvec(nEqs) =  wvec(nEqs)*highEScale(k)
-                    if(fitfij.and.nrmediff>0)then
+                    if(nrmediff>0)then
                       ediff=abs(dispgeoms(i)%energy(s1)-dispgeoms(i)%energy(s2))*AU2CM1
                       ediff=(ediff+ediffcutoff)/nrmediff
                       wvec(nEqs)=wvec(nEqs)/ediff
-                    end if!(fitfij.and.nrmediff>0)
+                    end if!(nrmediff>0)
 
                   end if!(s1==s2)
                 end if !(g_exact(i,s2,s1))
-               else !(gradNorm(i,j,blkMap(s2,s1))>1D-8 .or. .not.rmsymzero) ! This gradient othorgonal to the basis.
+               else !(gradNorm(i,j,blkMap(s2,s1))>1D-8)                     ! This gradient othorgonal to the basis.
                 resDir=dispgeoms(i)%grads(j,s1,s2)                          ! This implies a symmetry zero or an inadequate
                 residue=residue+resDir**2                                   ! basis expansion.
                 nr=nr+1
@@ -356,8 +357,7 @@ MODULE makesurfdata
     end do !i=1,npoints
     residue=sqrt(residue/nr)
     if(residue>gcutoff)print *,"   Norm of residue right-hand-side gradients: ",residue
-    if(fitEnergy)then                                                       !  Construct equations for energies
-      do i=1,exactDiff%length
+    do i=1,exactDiff%length
         if(incener(exactDiff%List(i)%point,exactDiff%List(i)%i,exactDiff%List(i)%i).and.&
            incener(exactDiff%List(i)%point,exactDiff%List(i)%j,exactDiff%List(i)%j)) then
           nex=nex+1
@@ -366,8 +366,8 @@ MODULE makesurfdata
                               -exactDiff%List(i)%j,0/)
           incener(exactDiff%List(i)%point,exactDiff%List(i)%i,exactDiff%List(i)%j)=.true.
         end if
-      end do!i=1,exactDiff%length
-      do i=1,npoints
+    end do!i=1,exactDiff%length
+    do i=1,npoints
         if(ptWeights(i)<1D-8)cycle
         do s1=1,nstates
           do s2=1,nstates
@@ -382,7 +382,7 @@ MODULE makesurfdata
                 lseMap(nEqs,:)=(/i,s1,s2,0/)
                 wvec(nEqs)=ptWeights(i)*w_energy
                 k=0
-                do while(dispgeoms(i)%energy(s1)+eshift>energyT(k+1))
+                do while(dispgeoms(i)%energy(s1)>energyT(k+1))
                   k=k+1
                   if(k==10)exit
                 end do 
@@ -403,8 +403,7 @@ MODULE makesurfdata
             end if
           end do !s2=1,nstates
         end do !s1=1,nstates
-      end do!i=1,npoints
-    end if!(fitEnergy)
+    end do!i=1,npoints
   1000 format(8X,"Point",I5,", St",2I3,", dir",I3,", grad=",E10.3)
   1001 format(8X,3F14.10)
   END SUBROUTINE
@@ -415,7 +414,7 @@ MODULE makesurfdata
 !Then determine phase of eigenvectors to best fit couplings.
   SUBROUTINE updateEigenVec(hvec,follow)
     USE hddata, only:nblks,nstates,order,EvaluateHd3
-    USE progdata, only: deg_cap,abpoint,printlvl,AU2CM1
+    USE progdata, only: abpoint,printlvl,AU2CM1
     USE combinatorial
     IMPLICIT NONE
 
@@ -584,7 +583,7 @@ MODULE makesurfdata
 !Generate the matrix A of the linear coefficients between Hd basis and RHS values
   SUBROUTINE makecoefmat(AMat)
     use hddata, only: nblks,nstates,order,RowGrp,ColGrp,offs,grpLen,nBasis
-    use progdata, only: printlvl,AU2CM1,deg_cap
+    use progdata, only: printlvl,AU2CM1
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(nex+neqs,ncons),INTENT(OUT)               :: AMat
     integer  :: ct
@@ -724,7 +723,7 @@ MODULE makesurfdata
 !generate rhs vectors for Hd fitting
   SUBROUTINE makebvec(bvec,diff)
     use hddata, only: nstates,nblks,blkmap
-    use progdata, only: printlvl,eshift,AU2CM1
+    use progdata, only: printlvl,AU2CM1
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(nex+neqs),INTENT(INOUT)             :: bvec
     LOGICAL, INTENT(IN)                                            :: diff
@@ -739,7 +738,7 @@ MODULE makesurfdata
       if(g==0)then !is an energy
         if(s2>0)then !its adiabatic energy or adiabatic off diagonal terms(0)
           if(s1==s2)then
-            bvec(i)=dispgeoms(pt)%energy(s1)+eshift
+            bvec(i)=dispgeoms(pt)%energy(s1)
             if(diff)bvec(i)=bvec(i)-fitE(pt,s1)
           else 
             bvec(i)=dble(0)
@@ -757,7 +756,7 @@ MODULE makesurfdata
 
  !calculate error of fit
  SUBROUTINE getError(nrmener,avgener,nrmgrad,avggrad)
-   USE progdata, ONLY : eshift,printlvl
+   USE progdata, ONLY : printlvl
    USE hddata, ONLY: nstates
    IMPLICIT NONE
    DOUBLE PRECISION,intent(OUT)                   :: nrmener,avgener,nrmgrad,avggrad
@@ -813,12 +812,12 @@ MODULE makesurfdata
            end if
          end do!l
          if(e_exact(j,k,k))then
-           dE_exact= dE_exact + (dispgeoms(j)%energy(k)+eshift-fitE(j,k))**2
+           dE_exact= dE_exact + (dispgeoms(j)%energy(k)-fitE(j,k))**2
            NEx_e = NEx_e+1
          end if!e_exact(j,k,k)
-         if(dispgeoms(j)%energy(k)+eshift<energyT(1))then
-           nrmener = nrmener +    (dispgeoms(j)%energy(k)+eshift-fitE(j,k))**2
-           avgener = avgener + abs(dispgeoms(j)%energy(k)+eshift-fitE(j,k))
+         if(dispgeoms(j)%energy(k)<energyT(1))then
+           nrmener = nrmener +    (dispgeoms(j)%energy(k)-fitE(j,k))**2
+           avgener = avgener + abs(dispgeoms(j)%energy(k)-fitE(j,k))
            inc_e=inc_e+1
            dgrd    =  dot_product(  &
                 dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k), &
@@ -854,7 +853,7 @@ MODULE makesurfdata
   !----------------------------------------------------------------------------------------
   !Calculate numerical gradients with respect to the fitting coefficients
   SUBROUTINE getCGrad(nex,neqs,nc,cilm,dCi,dLambda,lag,weight,jaco)
-    USE progdata, ONLY : eshift, AU2CM1, printlvl, deg_cap
+    USE progdata, ONLY : AU2CM1, printlvl
     USE hddata,   ONLY : RowGrp, ColGrp, offs, GrpLen, nstates,nBasis,nBlks
     IMPLICIT NONE
     INTEGER, INTENT(IN)                                                  :: nex, neqs, nc
@@ -928,7 +927,7 @@ MODULE makesurfdata
       if(g==0)then !is an energy
        if(s2>0)then !its adiabatic energy or adiabatic off diagonal terms(0)
          if(s1==s2)then
-           PmQ(ieq) = dispgeoms(pt)%energy(s1)+eshift - fitE(pt,s1)
+           PmQ(ieq) = dispgeoms(pt)%energy(s1) - fitE(pt,s1)
          else
            PmQ(ieq) = dble(0)
          end if
@@ -1442,7 +1441,7 @@ END SUBROUTINE readCkl
 !   
 SUBROUTINE genBasis(gradNorm)
   use hddata, only: T3DDList,ncoord,order,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,nstates,EvaluateVal
-  use progdata, only: printlvl,eshift
+  use progdata, only: printlvl
   use makesurfdata, only:  npoints,dispgeoms,nvibs,gcutoff,npb,nbas,dWVals,WVals,ncons,coefMap,ptWeights,energyT,highEScale,&
                            TBas,ZBas,ZBasI,WMat,ecutoff,egcutoff,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
   IMPLICIT NONE
@@ -1519,7 +1518,16 @@ SUBROUTINE genBasis(gradNorm)
                      "     Eigenvalue cutoff=",TBas
 ! construct new basis and store them for each block 
   do k=1,nblks
-    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices" 
+    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
+    if(npb(k)==0)then
+        print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
+        nBas(k)=0
+        allocate(ZBas(k)%List(1,1))     ! just a place holder
+        allocate(ZBasI(k)%List(1,1))
+        allocate(WMat(k)%List(pv1,nb))
+        gradNorm(:,:,k) = 0d0
+        cycle
+    end if
     call system_clock(COUNT=count2)
     if(printlvl>1)write(*,"(A)",advance='no'),"   Evaluating primitive basis... "
     ll = nl(k)
@@ -1540,7 +1548,7 @@ SUBROUTINE genBasis(gradNorm)
      CALL EvaluateVal(pbas(n1,1),npoints*(nvibs+1),k,nvibs,dispgeoms(i)%bmat)
 ! create weighed data matrix
      j=0
-     do while(dispgeoms(i)%energy(1)+eshift>energyT(j+1))
+     do while(dispgeoms(i)%energy(1)>energyT(j+1))
        j=j+1
        if(j==10)exit
      end do
@@ -1786,7 +1794,7 @@ END SUBROUTINE testCoord
 SUBROUTINE makesurf()
   use hddata, only: nstates,ncoord,nblks,order,ColGrp,RowGrp,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
                     makecoefmap,ExtractHd,getFLUnit,EvaluateHd3
-  use progdata, only: printlvl,OUTFILE,AU2CM1,eshift,natoms,PI
+  use progdata, only: printlvl,OUTFILE,AU2CM1,natoms,PI
   use makesurfdata
   use rdleclse
   use DIIS
@@ -2173,18 +2181,18 @@ END IF
              if(eqmap(i,2)==eqmap(i,3))then
                print "(A,I6,I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
                     "energy(pt,s):",eqmap(i,1:2),",val=",&
-                    (dispgeoms(eqmap(i,1))%energy(eqmap(i,2))+eshift)*au2cm1,&
+                    (dispgeoms(eqmap(i,1))%energy(eqmap(i,2)))*au2cm1,&
                     ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
              else
                if(eqmap(i,3)>0)then !off diagonal block values
                  print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
                     "E-diff(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(abs(eqmap(i,2:3)))+eshift),&
+                    au2cm1*(dispgeoms(eqmap(i,1))%energy(abs(eqmap(i,2:3)))),&
                     ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
                else   ! energy differences
                  print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
                     "off-diag(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))+eshift),&
+                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
                     ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
                end if
              end if
@@ -2192,12 +2200,12 @@ END IF
              if(eqmap(i,2)==eqmap(i,3))then
                print "(A,I6,2I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
                     "grad(pt,s,g):",eqmap(i,[1,2,4]),",state energie=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2))+eshift),&
+                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2))),&
                     ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
              else
                print "(A,I6,3I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
                     "coupling(pt,s1,s2,g):",eqmap(i,:),",state energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))+eshift),&
+                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
                     ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
              end if
            end if!eqmap(i,4)==0
@@ -2262,18 +2270,17 @@ END IF
      if(diff)then
        ! solve normal equations for change in coefficients
        call system_clock(COUNT=count1)
-       CALL solve(method,ncons,neqs,nex,NEL,rhs,&
-              exacttol,lsetol,dsol,printlvl,INFO)
+       CALL solve(ncons,neqs,nex,NEL,rhs,&
+              exacttol,lsetol,dsol,printlvl)
      else
        dsol = asol(1:ncons)
        ! solve normal equations
        call system_clock(COUNT=count1)
-       CALL solve(method,ncons,neqs,nex,NEL,rhs,&
-              exacttol,lsetol,asol,printlvl,INFO)
+       CALL solve(ncons,neqs,nex,NEL,rhs,&
+              exacttol,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
      end if
 
-     IF(INFO/=0)stop"makesurf():  Failed to solve linear equations."
      CALL cleanArrays()
 
      call system_clock(COUNT=count2)
@@ -2366,7 +2373,7 @@ END IF
      if(theta2(i)<-PI)theta2(i)=theta2(i)+2*PI
      if(abs(theta2(i))>maxRot.or.sg(iter,i).ne.sg(iter-1,i))then
        if(abs(theta2(i))>1d-1) &
-            print "(A,I5,A,2F10.2,A,SP,F7.3,SS,A,L1)"," point ",I,",E1,2=", (dispgeoms(i)%energy(1:2)+eshift)*au2cm1,  &
+            print "(A,I5,A,2F10.2,A,SP,F7.3,SS,A,L1)"," point ",I,",E1,2=", (dispgeoms(i)%energy(1:2))*au2cm1,  &
                    ", rotation =",theta2(i),", change=",sg(iter,i).ne.sg(iter-1,i)
        if(maxRot.ne.0) then
          theta(iter,i) = theta(iter-1,i)+sign(maxRot,theta2(i))
@@ -2510,7 +2517,7 @@ END IF
   enddo!i=1,nstates
   do j = 1,npoints
    do k = 1,nstates
-    enertable(j,2*k-1) = (dispgeoms(j)%energy(k)+eshift)*AU2CM1
+    enertable(j,2*k-1) = (dispgeoms(j)%energy(k))*AU2CM1
     enertable(j,2*k)   = fitE(j,k)*AU2CM1 - enertable(j,2*k-1)
    enddo!k=1,nstates
   enddo!j=1,npoints
@@ -2563,7 +2570,7 @@ END IF
   write(c2,'(i4)')ncoord
   do i=1,npoints
     write(uerrfl,"("//trim(c1)//"E15.7)")    &
-            fitE(i,1:nstates)-(dispgeoms(i)%energy(1:nstates)+eshift)
+            fitE(i,1:nstates)-(dispgeoms(i)%energy(1:nstates))
     do j=1,nstates
       errgrd = dble(0)
       call ginv(ncoord,dispgeoms(i)%nvibs,dispgeoms(i)%bmat,ncoord,binv,1D-2)
@@ -2764,21 +2771,25 @@ SUBROUTINE readMakesurf(INPUTFL)
   USE makesurfdata
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
-  NAMELIST /MAKESURF/       npoints,maxiter,toler,gcutoff,fitEnergy,gorder,exactTol,LSETol,outputfl,       &
-                            flheader,method,rmsymzero,ndiis,ndstart,startorder,enfDiab,fitfij,followPrev,  &
+  NAMELIST /MAKESURF/       npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,       &
+                            flheader,ndiis,ndstart,startorder,enfDiab,followPrev,  &
                             w_energy,w_grad,w_fij,ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,     &
                             useIntGrad,intGradT,intGradS,gradScaleMode,energyT,highEScale,maxd,scaleEx,    &
                             dijscale,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening,     &
                             linNegSteps, gscaler,ckl_output,ckl_input,expansion_input,expansion_output,    &
-                            TBas,ecutoff,egcutoff,maxRot,dijscale2
+                            TBas,ecutoff,egcutoff,maxRot,dijscale2, usefij, deg_cap, eshift
+  npoints   = 0
   gscaler   = 1d-5
   maxiter   = 3
   followprev= .false.
+  usefij    = .true.
+  deg_cap   = 1d-5
   mmiter    = 10
   ecutoff   = 1d0
   egcutoff  = 6d-1
-  TBas      = 1D-6 
-  maxRot    = 0D0  
+  TBas      = 1D-6
+  maxRot    = 0D0
+  eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
   expansion_input = ''
@@ -2791,7 +2802,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   dfstart   = 0
   dijscale  = 1d0
   dijscale2 = 0d0
-  fitenergy = .true.
   useIntGrad= .false.
   intGradT  = 1D-3
   scaleEx   = 1D0
@@ -2802,7 +2812,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   highEScale = 1D0
   gradScaleMode = 2
   toler     = 1D-3
-  gorder    = 1D-7
+  gorder    = 1D-3
   gcutoff   = 1D-14
   exactTol  = 1D-12
   LSETol    = 1D-7
@@ -2811,11 +2821,8 @@ SUBROUTINE readMakesurf(INPUTFL)
   flheader  = '----'
   ndiis     = 10
   ndstart   = 4
-  method    = 'LM-NE'
-  rmsymzero = .true.
   startorder= 1
   enfDiab   = 0
-  fitfij    = .true.
   w_energy  = dble(1)
   w_grad    = dble(1)
   w_fij     = dble(1)
@@ -3017,7 +3024,7 @@ SUBROUTINE printDisps(type,npts)
   write(OUTFILE,'(/,2x,"Ab initio Energies")')
   write(str,'(i4)') nstates
   do j=1,npts
-    write(OUTFILE,'(6x,i5,'//trim(str)//'F14.2)')j,(dispgeoms(j)%energy+eshift)*AU2CM1
+    write(OUTFILE,'(6x,i5,'//trim(str)//'F14.2)')j,dispgeoms(j)%energy*AU2CM1
   end do  
   return
 
@@ -3034,7 +3041,7 @@ end SUBROUTINE printDisps
 !
 SUBROUTINE readdisps()
   use hddata
-  use progdata,only:natoms,printlvl,deg_cap,usefij
+  use progdata,only:natoms,printlvl
   use makesurfdata
   IMPLICIT NONE
   INTEGER                                      :: j,k,l
@@ -3075,7 +3082,7 @@ SUBROUTINE readdisps()
   infile = 'energy.all'
   call readEner(infile,npoints,nstates,eners)
   do j = 1,npoints
-   dispgeoms(j)%energy = eners(:,j)
+   dispgeoms(j)%energy = eners(:,j)+eshift
    call genEnerGroups(dispgeoms(j),deg_cap,nstates)
   enddo
 
@@ -3083,7 +3090,7 @@ SUBROUTINE readdisps()
   do j = 1,nstates
    do k = 1,j
     suffix='.all'
-    infile = filename(k,j,suffix)
+    infile = filename(k,j,suffix,usefij)
     if(printlvl>0) print 1000,"loading COLUMBUS gradients from "//trim(adjustl(infile))
     call readGrads(infile,npoints,natoms,cgrads)
     do l = 1,npoints
@@ -3106,21 +3113,21 @@ SUBROUTINE readdisps()
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gradScaleMode)
     if(printlvl>0)then
       print *,"  Internal Coordinates"
-      print "(12F10.4)",dispgeoms(l)%igeom
+      print "(15F8.3)",dispgeoms(l)%igeom
     end if
     if(printlvl>1)then
        print *,"  Wilson B Matrix in fitting coordinate system"
        do j=1,ncoord
-         print "(12F10.4)",dispgeoms(l)%bmat(j,:)
+         print "(15F8.3)",dispgeoms(l)%bmat(j,:)
        end do
        do j=1,nstates
          print *,"  Gradients for state",j," in fitting coordinate system"
-         print "(12F10.4)",dispgeoms(l)%grads(:,j,j)
+         print "(15F8.3)",dispgeoms(l)%grads(:,j,j)
        end do
        do j=1,nstates-1
          do k=j+1,nstates
            print *,"  Couplings for block",j,k," in fitting coordinate system"
-           print "(12F10.4)",dispgeoms(l)%grads(:,j,k)
+           print "(15F8.3)",dispgeoms(l)%grads(:,j,k)
          end do
        end do
     end if

@@ -1,0 +1,204 @@
+.\"Modified from man(1) of FreeBSD, the NetBSD mdoc.template, and mdoc.samples.
+.\"See Also:
+.\"man mdoc.samples for a complete listing of options
+.\"man mdoc for the short list of editing options
+.\"/usr/share/misc/mdoc.template
+.Dd 3/11/13               \" DATE 
+.Dt surfgen.in 1      \" Program name and manual section number
+.Os Darwin
+.Sh NAME                 \" Section Header - required - don't modify 
+.Nm surgen.in ,
+.Nd General input file for 
+.Sy surfgen .
+.Sh SYNOPSIS             \" Section Header - required - don't modify
+This input file is used by coupled potential surface fitting program
+.Sy surfgen 
+and its potential evaluation library.
+For a detailed description of the program and the evaluation library, see
+.Xr surfgen 1 ,
+.Xr potlib 1
+.Pp
+Place
+.Sy surfgen.in
+in the same directory where
+.Sy surfgen
+is being called.
+.\"
+.Sh DESCRIPTION          \" Section Header - required - don't modify
+.Nm
+is a Fortran 90 namelist input file.  This file contains input parameters that 
+controls the behavior of 
+.Sy surfgen .
+This includes the 
+.Sy GENERAL
+namelist input that specify the job type and, along with other input files, 
+defines the molecular system, the electronic states, their symmetry, the internal
+coordinate basis and the expansion of Hd.  Most job types will have another namelist
+that defines parameters that are specific to a job, except for 
+.Em jobtype=-1 .
+.Pp
+The evaluator library also use the general namelist to define the expansion.  It
+also use a POTLIB namelist to define behaviors such as geometry logging and error
+estimation.
+.Pp
+Developed by 
+.An Yarkony group , Johns Hopkins University 
+2011-2013.
+.\"
+.Sh NAMELIST INPUT
+.Ss GENERAL
+General input that controls the expansion ansatz of the quasi-diabatic Hamiltonian (Hd),
+and the job to be performed by
+.Sy surfgen .
+Input files 
+.Ar connect.in ,
+.Ar coord.in ,
+and
+.Ar irrep.in
+also contain detailed parameters about the definition of the ansatz.
+.Pp
+.Sy List of Input Parameters
+.Bl -tag -width VariableName 
+./"VariableName DefaultValue Descriptions
+.It jobtype
+.Sy INTEGER [0] 
+Specifies the type of job to be performed. Currently the following
+Types are implemented:
+.Bl -tag -width xxx xxxxxxxxxxxxxxxx
+.It -1
+Use the molecule and connectivity definitions to generate all feasible symmetry 
+permutations and print them to the standard output.
+.It 0
+Do nothing during execution.  During initialization the program will construct 
+the expansion and read the coefficients from Hd storage file.   
+Used by potential evaluation libraries only. Requires namelist: 
+.Em POTLIB
+.It 1
+Construct fit Hd from ab initio data. Required namelist: 
+.Em MAKESURF
+.It 2
+Find minima or conical intersections on the ab initio surface corresponding to a 
+fit Hd.   Requires namelist:
+.Em MINMEX
+.El
+.It natoms
+.Sy INTEGER [0]
+Number of atoms in the molecular system.   It is usually unwise to use the
+default value of this parameter.
+.It order
+.Sy INTEGER [2]
+Maximum order of the Hd expansion.  Order here means the number of basis functions
+that are multiplied together, should they be same type of coordinate or not,
+in the form of coordinates defined in 
+.Ar coord.in.
+.It atmgrp
+.Sy INTEGER,dimension(natoms)
+Array that specify the equivalency of the atoms.  Must contain
+.Em natoms
+elements, each of which specify the group index of an atom.  Atoms in the same
+group are considered equivalent by the program and the permutations among them 
+will be generated as symmetry operations.
+.It nGrp
+.Sy INTEGER 
+Number of electronic state groups.  Each group contains a set of electronic 
+states that carry an irreducible representation.  For example, for OH radical 
+the lowest 3 states are contained in 2 groups, an E group with 2 states and 
+A group with 1 state.
+.It groupsym
+.Sy INTEGER,dimension(ngrp) 
+Index of permutational irreducible representations carried by each 
+of the state groups.  For each irrep, representation matrices for 
+every permutation must be supplied in input file irrep.in
+Irreps are indexed as they appear in 
+.Ar irrep.in
+.It groupprty
+.Sy INTEGER,dimension(ngrp) 
+Inversion symmetry (parity) of each of the state group.
+.It usefij
+.Sy LOGICAL [.true.] 
+Specifies if the derivative couplings instead of derivative coupling times
+energy differences will be used as coupling input.  Derivative couplings approach
+infinity at intersections while coupling times energy difference remain well 
+behaved everywhere.  The program expect either input file name to follow 
+.Ar COLUMBUS
+file name convention, with derivative coupling file named as
+.Pa cartgrd_total.drt1.stateX.drt1.stateY 
+and coupling times energy difference as
+.Pa cartgrd.nad.drt1.stateX.drt1.stateY
+.It printlvl
+.Sy INTEGER [1]
+Controls the level of infomation printed to standard output. 
+0 is lowest and 5 is highest level.
+.It inputfl
+.Sy CHARACTER(72) ['hd.data']
+Name of Hd expansion coefficient input file.  Hd will be initialized using
+these coefficients.  When empty or file not exist, uncoupled surface with 
+constant (but not identical) energies will be used to initialize Hd.
+.El
+.Ss MAKESURF
+Parameters that control the surface fitting procedure
+.Bl -tag -width VariableName 
+.It npoints 
+.Sy INTEGER [0]
+Number of points to be fit.
+.It maxiter
+.Sy INTEGER [3]
+Maximum number of iterations for the fitting algorithm.
+.It toler
+.Sy DOUBLE PRECISION [1D-3]
+Convergence tolerance for change in expansion coefficient.
+.It gcutoff
+.Sy DOUBLE PRECISION [1D-14]
+The threshold below which gradients will be considered vanished and treated as exactly 0.
+.It gorder
+.Sy DOUBLE PRECISION [1D-3]
+Threshold for energy difference below which the states will by ordered by gradients 
+instead of absolute energy.
+.It exactTol 
+.Sy DOUBLE PRECISION [1D-12]
+Eigenvalue cutoff when solving constrained normal equations.  This parameter dictates
+how accurate the exact equations will be reproduced.
+.It LSETol 
+.Sy DOUBLE PRECISION [1D-7]
+Diagonal shift on the normal equations when solving linear equations.  Larger value leads 
+to more stable but usually slower convergence.  
+.It outputfl
+.Sy CHARACTER(72) ['']
+Name of the output file that will store the fit surface.
+.It flheader
+.Sy CHARACTER(72) ['----']
+Header that will be printed into the description field of Hd storage file.
+.It ndiis
+.Sy INTEGER [0]
+Maximum dimensionality of DIIS interpolation space
+,ndstart,startorder,enfDiab,followPrev,  &
+                            w_energy,w_grad,w_fij,ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,     &
+                            useIntGrad,intGradT,intGradS,gradScaleMode,energyT,highEScale,maxd,scaleEx,    &
+                            dijscale,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening,     &
+                            linNegSteps, gscaler,ckl_output,ckl_input,expansion_input,expansion_output,    &
+                            TBas,ecutoff,egcutoff,maxRot,dijscale2, usefij, deg_cap, eshift
+
+.El
+.Ss POTLIB
+Parameters that control the behavior of the potential evaluation library
+.\" .Sh DIAGNOSTICS       \" May not be needed
+.\" .Bl -diag
+.\" .It Diagnostic Tag
+.\" Diagnostic informtion here.
+.\" .It Diagnostic Tag
+.\" Diagnostic informtion here.
+.\" .El
+.Sh SEE ALSO 
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr surfgen 1 ,
+.Xr potlib 1 ,
+.Xr hd.data 1 ,
+.Xr irrep.in 1 ,
+.Xr points.in 1 ,
+.Xr coords.in 1 ,
+.Xr connect.in 1
+.Sh BUGS              \" Document known, unremedied bugs
+Please send bug reports to 
+.An Xiaolei Zhu Aq virtualzx@gmail.com
+.\" .Sh HISTORY           \" Document history if command behaves in a unique manner

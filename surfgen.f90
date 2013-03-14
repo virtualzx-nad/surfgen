@@ -19,9 +19,6 @@ program surfgen
      case(2)
       if(printlvl>0)print *,"Performing critical point searches..."
       call minmex()
-     case(3)
-      if(printlvl>0)print *,"Loading geometries..."
-      call loadgeom()
     end select
 
   call cleanup()
@@ -43,22 +40,17 @@ SUBROUTINE readinput(jtype)
   INTEGER,DIMENSION(10)           :: groupSym,groupPrty
   DOUBLE PRECISION,dimension(20)  :: e_guess
 
-  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,usefij,&
-                            switchdiab, printlvl,deg_cap,inputfl,eshift,atmgrp, &
-                            use_eguess,e_guess, cntfl
+  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
+                            switchdiab, printlvl,inputfl,atmgrp, cntfl
   NAMELIST /MINMEX/         nmin,nmex,minguess,mexguess,optiter,opttoler,updatehess,h_recal,surface,&
                              ci,maxstep,xscale,sscale,degtoler,enforcepd
-  NAMELIST /LOADGEOM/       isloop,loopst,ngeoms,geomfl,calchess,outputdir,outputdiab
- 
+
   jtype      = 0
-  natoms     = 2
+  natoms     = 0
+  order      = 2
   printlvl   = 1
   cntfl      = 'connect.in'
   inputfl    = 'hd.data'
-  usefij     = .true.
-  deg_cap    = 1D-7
-  eshift     = dble(0)
-  use_eguess = .false.
   switchdiab = .false.
   print *,"Entering readinput()."
  !----------- GENERAL SECTION ----------------!
@@ -83,17 +75,6 @@ SUBROUTINE readinput(jtype)
       GrpSym=groupsym(1:nGrp)
       grpPrty=groupprty(1:nGrp)
       call initGrps(nGrp,irrep(GrpSym(:))%Dim)
-
-      if(allocated(eguess))deallocate(eguess)
-      allocate(eguess(nGrp))
-      if(use_eguess)then
-        eguess=e_guess(1:nGrp)/AU2CM1
-        print *,"Guess energies: ", eguess
-      else
-        do i=1,nGrp
-         eguess(i)=i*10000/AU2CM1
-        end do
-      end if
   end if!(jtype>=0)
 
   if(printlvl>0)print *,"    Reading job specific inputs."
@@ -165,24 +146,6 @@ SUBROUTINE readinput(jtype)
       mexstart(j,i) = mexguess((i-1)*3*natoms+j)
      enddo
     enddo
-
-   !-------------------------------------------------------
-   ! Load geometries, print out geom/frequency information
-   !-------------------------------------------------------
-   case(3)
-    isloop   = .false.
-    loopst   = 1
-    ngeoms   = 1
-    geomfl   = ''
-    calchess = .true.
-    outputdiab=.false.
-    outputdir= ''
-    read(unit=INPUTFILE,NML=LOADGEOM)
-    if(ngeoms<1)ngeoms=1
-    if(.not.isloop)then
-      loopst=1
-      ngeoms =1
-    end if
   end select
 
   close(unit=INPUTFILE)

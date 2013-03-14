@@ -73,14 +73,21 @@ module progdata
 !         2   Gaussian           Exp(-c1*(r-c2)**2)
 !         3   Reciprocal         Exp(-c1*(r-c2))/r
 !         4   Chasmless Reciprcl Exp(-c1*(r-c2))/(r+c2)
-!   -1    oop
-!         0   asymptotically scaled
-!         1   not implemented
+!   -1    tetrahedron OOP.  all 6 internuclear distances are used to scale
+!         0   scaled by power of the product of reciprocal distances
+!         >0  use the product of scaled distance coordinates to scale the
+!             scalar triple product
+!         <0  use power of the reciprocal of the SUM of scaled distances to 
+!             scale the scalar triple product
+!   -2    umbrella OOP, 3 distance that link one vertex to the other three are
+!         used in the scaling process
+!         >=0 similar to tetrahedron OOP, except 3 distances instead of 6 are used
+!         <0  use the harmonic mean of the scaled dist to scale the triple product
 !    1    angles
 !         0   unscaled
-!         1   sin(theta)
-!         2   cos(theta)
-!    2    torsion
+!         1   cos(theta)
+!         2   cos(theta)/(1+exp(c1*(r1^2+r2^2-c2^2)))
+!    2    torsion  UNIMPLEMENTED
 !         0   unscaled
 !         1   sin(theta)
 !         2   cos(theta)
@@ -119,19 +126,10 @@ module progdata
   INTEGER,DIMENSION(:),ALLOCATABLE             :: condRHS
 
 ! GLOBAL VARIABLES
-  DOUBLE PRECISION                             :: deg_cap
   INTEGER                                      :: printlvl
   INTEGER                                      :: natoms
   CHARACTER(72)                                :: inputfl
   CHARACTER(99)                                :: inputdir
-  DOUBLE PRECISION                             :: eshift
-
-! these parameters control the initialization of 0th order terms of Hd
-  DOUBLE PRECISION,dimension(:),allocatable    :: eguess     ! initial 0th order terms
-  LOGICAL                                      :: use_eguess ! specifies that if guess of 0th order terms will be given
-                                                             ! in input.   strongly recommended if not restarting
-
-  LOGICAL                                      :: usefij
 
 ! MINMEX input parameters
   INTEGER                                      :: nmin
@@ -150,15 +148,6 @@ module progdata
   DOUBLE PRECISION                             :: xscale,sscale
   DOUBLE PRECISION                             :: degtoler
   LOGICAL                                      :: enforcepd
-
-! loadgeom input parameters
-  LOGICAL                                      :: isloop
-  LOGICAL                                      :: calchess
-  INTEGER                                      :: loopst
-  INTEGER                                      :: ngeoms
-  CHARACTER(72)                                :: geomfl, outputdir
-! outputdiab  :   output diabatic energies, cross terms and their derivatives
-  LOGICAL                                      :: outputdiab  
 
 ! * MOLECULE PROPERTIES *
 ! typeCount            :  number of types of indistinguishable atoms.
