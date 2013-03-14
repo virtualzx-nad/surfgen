@@ -2,8 +2,6 @@
 *.swp
 *.lock
 profile
-DerivedData/*
-*.o
-*.mod
-fort.*
-test/
+DerivedData/
+build/
+*.xcuserstate
