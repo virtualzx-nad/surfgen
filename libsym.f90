@@ -305,14 +305,17 @@ CONTAINS
        ! OOP
          case (-1,-2)
          ! generate the permuted OOP reference atom numbers in cannonical order
-           CALL reorderOOP(pmtList(i,CoordSet(m)%coord(:,n)),newCoord, sgnCPerm(i,j))
-
-           do k=1,CoordSet(m)%ncoord
+            if(CoordSet(m)%Type==-1)then
+                CALL reorderOOP(pmtList(i,CoordSet(m)%coord(:,n)),newCoord, sgnCPerm(i,j))
+            else
+                CALL reorderOOP2(pmtList(i,CoordSet(m)%coord(:,n)),newCoord, sgnCPerm(i,j))
+            end if
+            do k=1,CoordSet(m)%ncoord
              if(all(newCoord.eq.CoordSet(m)%coord(:,k)))then
                coordPerm(i,j) = CoordSet(m)%icoord(k)
                exit
              end if ! count(...)==4
-           end do ! k
+            end do ! k
 
        ! bond angle
          case (1)

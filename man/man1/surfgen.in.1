@@ -58,13 +58,13 @@ and
 also contain detailed parameters about the definition of the ansatz.
 .Pp
 .Sy List of Input Parameters
-.Bl -tag -width VariableName 
+.Bl -tag -width VariableNm -compact
 ./"VariableName DefaultValue Descriptions
 .It jobtype
 .Sy INTEGER [0] 
 Specifies the type of job to be performed. Currently the following
 Types are implemented:
-.Bl -tag -width xxx xxxxxxxxxxxxxxxx
+.Bl -tag -width xxx 
 .It -1
 Use the molecule and connectivity definitions to generate all feasible symmetry 
 permutations and print them to the standard output.
@@ -114,17 +114,6 @@ Irreps are indexed as they appear in
 .It groupprty
 .Sy INTEGER,dimension(ngrp) 
 Inversion symmetry (parity) of each of the state group.
-.It usefij
-.Sy LOGICAL [.true.] 
-Specifies if the derivative couplings instead of derivative coupling times
-energy differences will be used as coupling input.  Derivative couplings approach
-infinity at intersections while coupling times energy difference remain well 
-behaved everywhere.  The program expect either input file name to follow 
-.Ar COLUMBUS
-file name convention, with derivative coupling file named as
-.Pa cartgrd_total.drt1.stateX.drt1.stateY 
-and coupling times energy difference as
-.Pa cartgrd.nad.drt1.stateX.drt1.stateY
 .It printlvl
 .Sy INTEGER [1]
 Controls the level of infomation printed to standard output. 
@@ -136,24 +125,107 @@ these coefficients.  When empty or file not exist, uncoupled surface with
 constant (but not identical) energies will be used to initialize Hd.
 .El
 .Ss MAKESURF
-Parameters that control the surface fitting procedure
-.Bl -tag -width VariableName 
+This namelist contains parameters that control the surface fitting procedure.
+These are only used for
+.Em jobtype=-1 .
+.Pp
+.Sy Data Selection and Weighing
+.Bl -tag -width VariableNm -compact
 .It npoints 
 .Sy INTEGER [0]
 Number of points to be fit.
+.It eshift
+.Sy DOUBLE PRECISION [.0]
+A uniform shift applied to all 
+.Ar ab initio 
+energies.
+.It gcutoff
+.Sy DOUBLE PRECISION [1D-14]
+The threshold below which gradients will be considered vanished and treated as exactly 0.
+.It usefij
+.Sy LOGICAL [.true.] 
+Specifies if the derivative couplings instead of derivative coupling times
+energy differences will be used as coupling input.  Derivative couplings approach
+infinity at intersections while coupling times energy difference remain well 
+behaved everywhere.  The program expect either input file name to follow 
+.Ar COLUMBUS
+file name convention, with derivative coupling file named as
+.Pa cartgrd_total.drt1.stateX.drt1.stateY 
+and coupling times energy difference as
+.Pa cartgrd.nad.drt1.stateX.drt1.stateY
+.It w_energy
+.Sy DOUBLE PRECISION [1.]
+Weight factor for energy equations.  This factor is multiplied with point weights
+and high energy scaling weights to yield the final weight of equations.
+.It w_grad
+.Sy DOUBLE PRECISION [1.]
+Weight factor for energy gradient equations. This factor is multiplied with point weights
+and high energy scaling weights to yield the final weight of equations.
+.It w_fij
+.Sy DOUBLE PRECISION [1.]
+Weight factor for coupling equations. This factor is multiplied with point weights
+and high energy scaling weights to yield the final weight of equations.
+.It energyT
+.Sy DOUBLE PRECISION,dimension(10) [1D30]
+.It highEScale
+.Sy DOUBLE PRECISION,dimension(10) [1.]
+.Em energyT
+specifies a series of thresholds for the downscaling of equations when the ab initio
+energy of an electronic state is very high.   When
+.Em E>energyT(i) ,
+weight 
+.Sy highEScale(i)
+is applied to the energy, gradient and derivative coupling equations that involve 
+that state.   For couplings, the higher state is used to determine the weight.  
+The highest possible energy bracket (with lowest weight) will be used.
+.It ediffcutoff
+.Sy DOUBLE PRECISION [20.]
+.It nrmediff
+.Sy DOUBLE PRECISION [2D4]
+The weight for derivative coupling equations is weighed down by factor
+.Sy nrmediff/(\[u0394]E+ediffcutoff) .
+This weighing procedure is due to the fact that coupling times energy difference
+is being fit instead of the coupling itself, which is singular near intersections.
+Increasing the weight according to energy difference ensures that residue couplings
+are properly minimized, and the cutoff term prevents problematic singular behavior.
+This prevents the mathematical complexity of directly taking deratives of the couplings
+with respect to fitting coefficients, which will give rise to term that correspond
+to change in energy difference.
+.It ediffcutoff2
+.Sy DOUBLE PRECISION [1.]
+.It nrmediff2
+.Sy DOUBLE PRECISION [100.]
+Similar to the above case, the energy equations are weighed up by factor
+.Sy nrmediff2/(\[u0394]E+ediffcutoff2)
+if this value is greater than 1.   This is to ensure that energy differences
+are properly reproduced for points that are close to degeneracy.
+.El
+.Pp
+.Sy Fitting Algorithm and Acceleration
+.Bl -tag -width VariableNm -compact
 .It maxiter
 .Sy INTEGER [3]
 Maximum number of iterations for the fitting algorithm.
 .It toler
 .Sy DOUBLE PRECISION [1D-3]
 Convergence tolerance for change in expansion coefficient.
-.It gcutoff
-.Sy DOUBLE PRECISION [1D-14]
-The threshold below which gradients will be considered vanished and treated as exactly 0.
-.It gorder
-.Sy DOUBLE PRECISION [1D-3]
-Threshold for energy difference below which the states will by ordered by gradients 
-instead of absolute energy.
+.It maxd
+.Sy DOUBLE PRECISION [1D0]
+Maximum allowed change in Hd expansion coefficients between iterations. 
+.It dfstart
+.Sy INTEGER [0]
+Iteration at which differential convergence will be started.  The normal equations
+will be constructed for the 
+.Em change
+of coefficients instead of expansion coefficients themselves.  This will usually
+result in better fit and allows dumping while lifting the flattening term to very
+small value.  However, this convergence mode has more tendency to experience 
+oscillations and should not be enabled if the fit is qualitatively incorrect.
+.br
+It is recommended that when differential convergence is enabled, set
+.Em DijScale=1
+and 
+.Em DijScale2=1
 .It exactTol 
 .Sy DOUBLE PRECISION [1D-12]
 Eigenvalue cutoff when solving constrained normal equations.  This parameter dictates
@@ -162,22 +234,216 @@ how accurate the exact equations will be reproduced.
 .Sy DOUBLE PRECISION [1D-7]
 Diagonal shift on the normal equations when solving linear equations.  Larger value leads 
 to more stable but usually slower convergence.  
+.It flattening
+.Sy DOUBLE PRECISION [1D-8]
+Flattening term that will be included in the objective function.  In differential 
+convergence mode, this option will remove contributions that have very small contributions
+to the quality of fit.  As opposed to 
+.Ar LSETol ,
+which only changes the convergence procedure but does not affect the converged results,
+.Ar flattening 
+changes the Lagrangian and thus will result in a different converged Hd.
+.It ndiis
+.Sy INTEGER [10]
+Maximum dimensionality of DIIS interpolation space
+.It ndstart
+.Sy INTEGER [10]
+The number of iterations to start DIIS interpolation.
+.It linSteps
+.Sy INTEGER [0]
+Number of linear steps to perform.  When greater than 0, the program will break the 
+predicted change into 
+.Sy linSteps
+smaller steps and try to find the step length that yields the smallest gradient
+for the Lagrangian.  Step sizes are automatically shrinked when the norm of the 
+gradient increases.
+.It linNegSteps
+.Sy INTEGER [0]
+Number of linear steps to be taken to the opposite direction of the predicted change
+but with the same size.  This should only be used when the normal equations fail
+to give the correct direction of changes and the linear steps towards the positive
+direction encounter an immediate increase in the norm of Lagrangian.
+.It DijScale
+.Sy DOUBLE PRECISION [1.]
+This option controls the multiplier of the derivative of eigenvectors with respect
+to the fitting coefficients.  When set to 0, the dependency of eigenvectors on 
+fitting coefficients are ignored.  When set to 1, the first order response of 
+eigenvectors with respect to the change in fitting coefficients is fully implemented.
+This option is used by the construction of normal equations as well as evaluation
+of gradients of the Lagrange multipliers.  It is recommended to have 
+.Em DijScale=1.0 
+in most cases.   It only needs to be turned down when eigenvectors are changing 
+too rapidly and gives oscillations.
+.It DijScale2
+.Sy DOUBLE PRECISION [1.]
+Similar to 
+.Sy DijScale ,
+this option is an additional multiplier that only scales the eigenvector derivatives
+in the normal equations, but does not affect the evaluation of Lagrangian gradients.
+.It scaleEx
+.Sy DOUBLE PRECISION [1.]
+Uniformly scale all exact equations.  Since there is no weight for exact equations,
+this is done through scaling the gradient of the Lagrangian with respect to Lagrange
+multipliers.  This option normally does not need to be changed.  Only use it when 
+convergence problems occur.
+.It stepMethod
+.Sy INTEGER [0]
+This option specifies the algorithm used for fitting procedure.  Currently 
+.Em method 0
+uses linear equality constrained least squares equations and 
+.Em method 1
+uses gradient projection technique.  
+.Sy Method 1 is not working very well at the moment.  Please use 0.
+.It ExConv
+.Sy DOUBLE PRECISION [1D-5]
+Convergence criteria for exact equations.  Used by 
+.Em stepMethod=1 .
+.It maxED
+.Sy DOUBLE PRECISION [1D-2]
+Maximum step length for exact step.  Used by
+.Em stepMethod=1 .
+.It mmiter
+.Sy INTEGER [10]
+Number of micro iterations for 
+.Em stepMethod=1 .
+.It gscaler
+.Sy DOUBLE PRECISION [1D-5]
+Scaling factor for projected gradient.  Used by 
+.Em stepMethod=1 .
+.El
+./"  DELETED: EXPANSION_INPUT, EXPANSION_OUTPUT
+.Pp
+.Sy Eigenvector Ordering and Phasing
+.Bl -tag -width VariableNm -compact
+.It enfDiab
+.Sy INTEGER [0]
+Specify a point where diabatic and adiabatic representation will be forced to coincide.
+Every iteration the program will force the eigenvector of this point to be unit vectors.
+The off-diagonal element will be fit to 0 and the derivative of eigenvectors at this 
+point (Dij) will also be 0 under all conditions.  
+.br
+The adiabatic-diabatic transformation is subject to a globally constant transformation.
+Since such transformation does not affect the Hamiltonian in any manner, it cannot be 
+determined from the fitting procedure itself. When states have different symmetry, 
+such degree of freedom can be removed through the use of correct symmetry.  When some
+states carry the same symmetry, this option is used to eliminate the extra degree of freedom.
+.It gorder
+.Sy DOUBLE PRECISION [1D-3]
+Threshold for energy difference below which the states will by ordered by gradients 
+instead of absolute energy.  This option is ignored when 
+.Em followPrev=.true.
+.It ckl_input
+.Sy CHARACTER(72) ['']
+Input file that contains the initial guess of eigenvectors at each data point.  
+When left empty or file not exist, the eigenvectors are initialized by diagonalizing
+initial Hd.
+.It ckl_output
+.Sy CHARACTER(72) ['ckl.out']
+Output file that contains the final eigenvectors at each data point.
+.It followPrev
+.Sy LOGICAL [.false.]
+Whether the new eigenvectors will be ordered and phased to match the vectors 
+from the previous iteration.  This allows a more consistent and smoother convergence
+but may increase the tendency to match the states in a non-optimal way.
+.It maxRot
+.Sy DOUBLE PRECISION [.0]
+When set greater than 0, the eigenvectors rotation between rotations are monitored 
+and when the rotation is larger than this parameter the rotation is dumped to this value.
+.Sy HAVE NOT BEEN TESTED FOR MORE THAN 2 STATES.  DO NOT USE IT IF YOU HAVE >2 STATES!
+.El
+.Pp
+.Sy Local Coordinate Construction
+.Bl -tag -width VariableNm -compact
+.It useIntGrad
+.Sy LOGICAL [.true.]
+Specifies wether the gradients and derivative couplings will be fit using Cartesian 
+components or a transformed coordinate constructed at each point that removes the
+null equations (translations, rotations, relative motion of dissociated fragments 
+and symmetry zeros).  This coordinate is constructed by obtaining the eigenvectors
+of matrix B^T.B, where B is the Wilson's B matrix.
+.It intGradT
+.Sy DOUBLE PRECISION [1D-3]
+Threshold for eigenvalue cut off of B^T.B matrix.   When an eigenvalue is lower than
+.Em intGradT ,
+the coordinate is considered non-internal and removed from the fitting equaitons.
+.It intGradS
+.Sy DOUBLE PRECISION [1D-1]
+Threshold for diminished weights.  New coordinates that correspond to eigenvalues lower than
+.Em intGradS 
+will be weighed by factor
+.Sy ev/intGradS ,
+where
+.Sy ev
+is the eigenvalue.
+.It gScaleMode
+.Sy INTEGER [2]
+Controls how the gradients and couplings will be weighed according to 
+.Em intGradS .
+Available scaling methods are :
+.Bl -tag -width xxxx -compact
+.It =0   
+Do not scale
+.It >0   
+Scale all coordinates
+.It <0   
+Scale couplings only
+.El
+.It deg_cap
+.Sy DOUBLE PRECISION [1D-5]
+Threshold for energy difference below which the states will be considered degenerate.
+Intersection adapted coordinate will be used for these electronic states.   
+.Em Degeneracy for more than 2 states is coded but never tested.
+.El
+.Pp
+.Sy Removal of Null Space
+.Bl -tag -width VariableNm -compact
+.It TBas
+.Sy DOUBLE PRECISION [1D-6]
+Theshold for eigenvalue cutoff of the primitive basis overlap matrix.  This 
+controls the degree of linear dependency that will be allowed in the basis 
+constructed for the fit.
+.It ecutoff
+.Sy DOUBLE PRECISION [1.]
+Energy threshold in 
+.Em hartree
+above which the energy data will not be considered in null space removal procedure.
+This is used to prevent the equations that are irrelevant from introducing extra
+degrees of freedom.
+.It egcutoff
+.Sy DOUBLE PRECISION [0.6]
+The gradients and couplings data of a point will not be considered in null space
+removal procedure when the ab initio energy of the lowest state is higher than 
+this value.  Similar to 
+.Sy ecutoff ,
+this parameter is used to prevent irrelevant high energy data points from introducing
+unnecessary degrees of freedom.
+.El
+.Pp
+.Sy Input and Output
+.Bl -tag -width VariableNm -compact
 .It outputfl
 .Sy CHARACTER(72) ['']
 Name of the output file that will store the fit surface.
 .It flheader
 .Sy CHARACTER(72) ['----']
 Header that will be printed into the description field of Hd storage file.
-.It ndiis
+.It rmsexcl
 .Sy INTEGER [0]
-Maximum dimensionality of DIIS interpolation space
-,ndstart,startorder,enfDiab,followPrev,  &
-                            w_energy,w_grad,w_fij,ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,     &
-                            useIntGrad,intGradT,intGradS,gradScaleMode,energyT,highEScale,maxd,scaleEx,    &
-                            dijscale,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening,     &
-                            linNegSteps, gscaler,ckl_output,ckl_input,expansion_input,expansion_output,    &
-                            TBas,ecutoff,egcutoff,maxRot,dijscale2, usefij, deg_cap, eshift
-
+This parameter controls if low weight points will be included in the RMS analysis.
+Points with weight lower than 
+.Sy -1/rmsexcl 
+will be excluded when 
+.Em rmsexcl<0 .
+No effect when 
+.Em rmsexcl>=0
+.El
+.Pp
+.Sy Testing
+.Bl -tag -width VariableNm -compact
+.It ntest
+.Sy INTEGER [0]
+Number of test points.   When greater than 0, Hd gradient test will be performed.
+Used only for debugging purpose.
 .El
 .Ss POTLIB
 Parameters that control the behavior of the potential evaluation library

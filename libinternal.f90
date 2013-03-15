@@ -45,8 +45,33 @@ SUBROUTINE ginv(m,n,bmat,ldb,invB,tol)
 END SUBROUTINE ginv
 
 !***********************************************************************
-!reorder oop atoms to canonical order and returns the parity of perm
+!reorder tetrahedron oop atoms to canonical order and returns the parity of perm
+!this subroutine is used for tetrahedron coordinates where any permutations of 
+!the 4 atoms yield the same coordinate, up to a sign.
 SUBROUTINE reorderOOP(oldOOP,newOOP,parity)
+  implicit none
+  INTEGER,DIMENSION(4),INTENT(IN)   ::  oldOOP
+  INTEGER,DIMENSION(4),INTENT(OUT)  ::  newOOP
+  INTEGER,INTENT(OUT)               ::  parity
+  integer          ::  loc, tmp, i
+  parity=1
+  newOOP=oldOOP
+  do i=4,2,-1
+    loc   = maxloc(newOOP(1:i),1)+1
+    if(loc/=i)then
+      tmp   = newOOP(loc)
+      newOOP(loc)  =newOOP(i)
+      newOOP(i)  = tmp
+      parity  = -parity
+    end if
+  end do
+END SUBROUTINE reorderOOP
+
+!***********************************************************************
+!reorder umbrella oop atoms to canonical order and returns the parity of perm
+!this subroutine is used for umbrella coordinate where any permutation of 3
+!in the 4 atoms yield the same coordinate, up to a sign.
+SUBROUTINE reorderOOP2(oldOOP,newOOP,parity)
   implicit none
   INTEGER,DIMENSION(4),INTENT(IN)   ::  oldOOP
   INTEGER,DIMENSION(4),INTENT(OUT)  ::  newOOP
@@ -57,13 +82,13 @@ SUBROUTINE reorderOOP(oldOOP,newOOP,parity)
   do i=4,3,-1
     loc   = maxloc(newOOP(2:i),1)+1
     if(loc/=i)then
-      tmp   = newOOP(loc)
-      newOOP(loc)  =newOOP(i)
-      newOOP(i)  = tmp
-      parity  = -parity
+        tmp   = newOOP(loc)
+        newOOP(loc)  =newOOP(i)
+        newOOP(i)  = tmp
+        parity  = -parity
     end if
   end do
-END SUBROUTINE reorderOOP
+END SUBROUTINE reorderOOP2
 
 !***********************************************************************
 !reorder atom reference of torsion angle to canonical order and returns

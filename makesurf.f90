@@ -31,12 +31,9 @@ MODULE makesurfdata
   CHARACTER(72)                                :: flheader  !comment line in the outputfile
   CHARACTER(72)                                :: ckl_input   !if nonempty, read wave functions from this file
   CHARACTER(72)                                :: ckl_output  !if nonempty, output wave functions to this file
-  CHARACTER(72)                                :: expansion_input   ! read expansions from this file if present
-  CHARACTER(72)                                :: expansion_output  ! save expansions from this file if present
 
   LOGICAL                                      :: usefij   ! use coupling instead of coupling*dE
 
-  INTEGER                                      :: startorder
 ! weights for equations of reproduction of energy, energy gradients, and non-adiabatic coupling
   DOUBLE PRECISION                             :: w_energy,w_grad,w_fij 
   DOUBLE PRECISION                             :: nrmediff, ediffcutoff, nrmediff2, ediffcutoff2
@@ -70,12 +67,12 @@ MODULE makesurfdata
 ! intGradT     :   Threshold for eigenvalue of B^T.B higher than which the coordinate is considered internal
 ! intGradS     :   Threshold for eigenvalue of B^T.B lower than which the coordinate will be scaled with a
 !                  factor    eval/intGrad,   where eval is the eigenvalue
-! GradScaleMode:  =0   Do not scale
+! gScaleMode:     =0   Do not scale
 !                 >0   Scale all coordinates
 !                 <0   Scale couplings only
   LOGICAL                                      :: useIntGrad
   DOUBLE PRECISION                             :: intGradT,intGradS 
-  INTEGER                                      :: GradScaleMode
+  INTEGER                                      :: gScaleMode
 
 ! nvibs:  number of coordinates along which gradients will be taken.
 !  3*natoms when useIntGrad=.FALSE.,  3*natoms-5 when useIntGrad=.TRUE. 
@@ -184,6 +181,7 @@ MODULE makesurfdata
             incgrad(i,s1,s2)=.true.
           end do
           incener(i,s1,s1)=.true.
+          if(i==enfDiab)incener(i,:,:)=.true.
         end do!s1=1,nstates
       end if
     end do
@@ -301,7 +299,7 @@ MODULE makesurfdata
                   if(nEqs>maxEqs)stop 'makeEqMap: neqs>maxeqs'
                   lseMap(nEqs,:)=(/i,s1,s2,j/)
                   if(s1==s2)then                                            ! Energy gradient
-                    if(gradScaleMode==1)then
+                    if(gScaleMode==1)then
                       wvec(nEqs)=ptWeights(i)*w_grad*dispgeoms(i)%scale(j)
                     else
                       wvec(nEqs)=ptWeights(i)*w_grad
@@ -313,9 +311,9 @@ MODULE makesurfdata
                     end do
                     if(k>0) wvec(nEqs) =  wvec(nEqs)*highEScale(k)
                   else  !(s1==s2)                                           ! Derivative couplings
-                    if(gradScaleMode==3)then
+                    if(gScaleMode==3)then
                       wvec(nEqs)=ptWeights(i)*w_fij*dispgeoms(i)%scale(j)**2
-                    else if(gradScaleMode>0.or.gradScaleMode==-2)then
+                    else if(gScaleMode>0.or.gScaleMode==-2)then
                       wvec(nEqs)=ptWeights(i)*w_fij*dispgeoms(i)%scale(j)
                     else
                       wvec(nEqs)=ptWeights(i)*w_fij
@@ -641,6 +639,7 @@ MODULE makesurfdata
             if(abs(DijScale*DijScale2)>1D-30)then
   ! construct DIJ from WIJ.  It is non zero only on the off diagonal
               do i=1,npoints
+                if(i==enfDiab)cycle !no rotation for reference point
                 ediff = fitE(i,s2)-fitE(i,s1)
                 if(abs(ediff)<deg_cap)then
                   DIJ(i,s1,s2)=dble(0)
@@ -993,6 +992,7 @@ MODULE makesurfdata
           if(J.ne.I) then 
    ! construct DIJ from WIJ.  It is non zero only on the off diagonal
             do ipt=1,npoints
+              if (ipt==enfDiab) cycle
               EIJ = fitE(ipt,J)-fitE(ipt,I)
               if(abs(EIJ).le.deg_cap)then 
                 DIJ(ipt,I,J)=0
@@ -1844,59 +1844,14 @@ SUBROUTINE makesurf()
   if(printlvl>0)print*,"   Making list of unknown coefficients."
   ncons = 0
   do i = 1,nblks
-   do j= startorder,order
+   do j= 0,order
      ncons=ncons+nBasis(j,i)
    end do
   enddo
   allocate(coefMap(ncons,3))
-  call makeCoefMap(startorder,order,coefMap,ncons)
+  call makeCoefMap(0,order,coefMap,ncons)
 
   if(printlvl>0)print*,"        ncons=",ncons
-!TEMPERORY SOLUTION, FILTERING TERMS WITH INTEGER LIST
-IF(EXPANSION_INPUT/='')THEN
-  NCON_TOTAL=NCONS
-  ALLOCATE(TINC(NCONS))
-  ALLOCATE(OLD_HVEC(NCONS))
-  CALL EXTRACTHD(old_hvec,coefmap,ncons)
-  allocate(asol(ncons))
-  asol = 0d0
-  call updateHd(asol,coefmap,ncons)
-  open(unit=1566,file=expansion_input,access='sequential',form='formatted',&
-     status='old',action='read',position='rewind',iostat=ios)
-  IF(IOS/=0)STOP "CANNOT OPEN EXPANSION INPUT FILE"
-  do i=1,ncons
-    read(unit=1566,fmt=*,IOSTAT=ios)TINC(I)
-    IF(IOS>0)STOP"ERROR READING DATA IN EXPANSION INPUT"
-    IF(IOS<0)THEN
-      NCONS = I-1
-      EXIT
-    END IF
-  end do
-
-  CLOSE(1566)
-  PRINT *,"NEW NUMBER OF COEFFICIENTS AFTER MANUAL TERM SELECTION",NCONS
-  allocate(coefmaptmp(ncons,3))
-  DO TT=1,NCONS
-    TI = MINLOC(TINC(1:NCONS),1)
-    TF = TINC(TI)
-    COEFMAPtmp(TT,:)=COEFMAP(TF,:)
-PRINT "(I5,A,I5,A,I5,3I5)",TF," -> ",TT,":",COEFMAP(TF,:)
-    asol(tt)=old_hvec(tf)
-    TINC(TI) = NCON_TOTAL+1
-  END DO
-  deallocate(coefmap)
-  allocate(coefmap(ncons,3))
-  coefmap(1:ncons,:) = coefmaptmp(1:ncons,:)
-  deallocate(coefmaptmp)
-PRINT *,"RECONSTRUCTING HD"
-  call updateHd(asol,coefmap,ncons)
-  DEALLOCATE(TINC)
-  deallocate(asol)
-  deallocate(old_hvec)
-PRINT *,"TERM SELECTION FINISHED"
-ELSE 
-  NCON_TOTAL=NCONS
-END IF
 
   if(allocated(ckl))deallocate(ckl)
   allocate(ckl(npoints,nstates,nstates))
@@ -2529,7 +2484,7 @@ END IF
   print trim(fmt)," PT ","  WT  ",(("   ErrG  ",k=1,j),j=1,nstates),&
                            ((" Ab Grd  ",k=1,j),j=1,nstates)
   fmt=""
-  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(X,E17.8))")'),(nstates+1)*nstates
+  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(X,E12.5))")'),(nstates+1)*nstates
   do i=1,npoints
     do k=1,nstates
       dener(k,k)=1D0
@@ -2545,7 +2500,7 @@ END IF
   print *,""
   print *,"Gradients and their errors of hij instead of fij(g:err,ab,fit;h:err,ab,fit)"
   fmt=""
-  write(fmt,'("(I5,2X,",I2,"(X,E17.8))")'),(nstates-1)*nstates*3
+  write(fmt,'("(I5,2X,",I2,"(X,E12.5))")'),(nstates-1)*nstates*3
   do i=1,npoints
     print trim(fmt),i,( (errGradh(i,j,k),k=1,j-1) ,j=1,nstates),&
        ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,k),int(1)), &
@@ -2772,11 +2727,11 @@ SUBROUTINE readMakesurf(INPUTFL)
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
   NAMELIST /MAKESURF/       npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,       &
-                            flheader,ndiis,ndstart,startorder,enfDiab,followPrev,  &
+                            flheader,ndiis,ndstart,enfDiab,followPrev,  &
                             w_energy,w_grad,w_fij,ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,     &
-                            useIntGrad,intGradT,intGradS,gradScaleMode,energyT,highEScale,maxd,scaleEx,    &
+                            useIntGrad,intGradT,intGradS,gScaleMode,energyT,highEScale,maxd,scaleEx,    &
                             dijscale,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening,     &
-                            linNegSteps, gscaler,ckl_output,ckl_input,expansion_input,expansion_output,    &
+                            linNegSteps, gscaler,ckl_output,ckl_input,    &
                             TBas,ecutoff,egcutoff,maxRot,dijscale2, usefij, deg_cap, eshift
   npoints   = 0
   gscaler   = 1d-5
@@ -2792,8 +2747,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
-  expansion_input = ''
-  expansion_output = ''
   ntest     = 0
   linSteps  = 0
   linNegSteps = 0
@@ -2802,7 +2755,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   dfstart   = 0
   dijscale  = 1d0
   dijscale2 = 0d0
-  useIntGrad= .false.
+  useIntGrad= .true.
   intGradT  = 1D-3
   scaleEx   = 1D0
   intGradS  = 1D-1
@@ -2810,7 +2763,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   maxed     = 1D-2
   energyT   = 1D30
   highEScale = 1D0
-  gradScaleMode = 2
+  gScaleMode = 2
   toler     = 1D-3
   gorder    = 1D-3
   gcutoff   = 1D-14
@@ -2820,8 +2773,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   outputfl  = ''
   flheader  = '----'
   ndiis     = 10
-  ndstart   = 4
-  startorder= 1
+  ndstart   = 10
   enfDiab   = 0
   w_energy  = dble(1)
   w_grad    = dble(1)
@@ -2840,8 +2792,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   if(linNegSteps<0) linNegSteps=0
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
-  if(startorder<0)startorder=0
-  if(startorder>order)startorder=order
   if(nstates>nstates.or.nstates<1)nstates=nstates
 END SUBROUTINE
 
@@ -3110,7 +3060,7 @@ SUBROUTINE readdisps()
   do l = 1,npoints
     call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%bmat,.false.)
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
-    CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gradScaleMode)
+    CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)
     if(printlvl>0)then
       print *,"  Internal Coordinates"
       print "(15F8.3)",dispgeoms(l)%igeom

@@ -141,7 +141,7 @@ SUBROUTINE readCoordSets()
       case(-2) ! OOP.   %atom = A1, A2, A3, A4
 
         CoordSet(i)%ncoord=0
-! Generate all possible 4 combinations.  Only the ones that are cannonically
+! Generate all possible 3 atom combinations.  Only the ones that are cannonically
 ! ordered will be inserted into the list.
         do j=1,atomCount(CoordSet(i)%atom(1))
           rawCoord(1) =  atomList(CoordSet(i)%atom(1),j) 
@@ -154,7 +154,7 @@ SUBROUTINE readCoordSets()
               do n=1,atomCount(CoordSet(i)%atom(4))
                 rawCoord(4) =  atomList(CoordSet(i)%atom(4),n) 
                 if(count(rawCoord(4).eq.rawCoord(1:3))>0)cycle  !all indices have to be different
-                call reorderOOP(rawCoord,ordOOP,prty)
+                call reorderOOP2(rawCoord,ordOOP,prty)
                 if(count(rawCoord.eq.ordOOP).eq.4)then ! the atoms are cannonically ordered
                   CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
                   tmpCoord( :, CoordSet(i)%ncoord ) = rawCoord
@@ -420,7 +420,11 @@ SUBROUTINE readCoords()
     ! Coordinates are inserted in cannonical order
         do l=1,nPmt
             rawCoord = pmtList(l,CoordSet(i)%atom)
-            call reorderOOP(rawCoord,ordOOP,prty)
+            if(CoordSet(i)%Type==-1)then
+                call reorderOOP(rawCoord,ordOOP,prty)
+            else
+                call reorderOOP2(rawCoord,ordOOP,prty)
+            end if
             ! look up the reordered coordinate in the temporary coordinate list
             found = .false.
             do j=1,CoordSet(i)%ncoord
@@ -669,7 +673,7 @@ SUBROUTINE initialize(jobtype)
 
   !allocate space for Hd  
   do i=1,nGroups
-    eguess(i)=(i-1)*10000*AU2CM1
+    eguess(i)=(i-1)*10000/AU2CM1
   end do
   call allocateHd(eguess)
   if(inputfl/='')then 

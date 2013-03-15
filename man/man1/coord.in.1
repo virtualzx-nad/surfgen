@@ -119,12 +119,16 @@ Torsion or scaled torsion coordinate.
 Tetrahedron out-of-plane coordinate where all four vertices are permutable.  
 The coordinate is defined from the scalar triple product of the three displacement
 vectors launching from any one vertex
-.Sy s=r1\[u00D7]r2\[u22C5]r3 .
+.Sy s=r1\[u22C5](r2xr3) .
 .It -2
 Umbrella out-of-plane coordinate where 3 vertices are permutable, 
-but a fourth atom is special.  The coordinate is defined from the scalar triple
+but one other atom is special.  
+.br
+.Sy The atom in position 1 is the special atom.
+.br
+The coordinate is defined from the scalar triple
 product of the three displacement vector launching from the special atom
-.Sy s=r1\[u00D7]r2\[u22C5]r3 .
+.Sy s=r1\[u22C5](r2xr3) .
 .El
 .Pp
 .Sy Scaling Modes
@@ -200,7 +204,7 @@ Supported scaling modes for tetrahedron out-of-plane coordinates (
 .Em type=-1
 ) are shown in the following list.  2 scaling parameters are always required.  
 Here the scalar triple product
-.Sy s=r1\[u00D7]r2\[u22C5]r3 
+.Sy s=r1\[u22C5](r2xr3) 
 and 
 .Sy ri
 denotes the array of all 
