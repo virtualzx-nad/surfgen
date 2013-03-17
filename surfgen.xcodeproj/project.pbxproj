@@ -31,7 +31,7 @@
 			outputFiles = (
 				"$(TARGET_BUILD_DIR)/$(INPUT_FILE_BASE).o",
 			);
-			script = "/usr/bin/gfortran -g -m64 -fbounds-check -fbacktrace -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR} -Warray-temporaries  -fbounds-check ";
+			script = "/usr/bin/gfortran -m64 -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR} ${XZHU_BUILD_SETTING}";
 		};
 /* End PBXBuildRule section */
 
@@ -68,6 +68,7 @@
 		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
 		22E02D7116EA83A4001D5AC1 /* coord.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = coord.in.1; path = man/man1/coord.in.1; sourceTree = "<group>"; };
 		22E02D7216EA937A001D5AC1 /* surfgen.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.in.1; path = man/man1/surfgen.in.1; sourceTree = "<group>"; };
+		22EC242F16F3D80B00A8C67B /* points.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = points.in.1; path = man/man1/points.in.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +113,7 @@
 				22535BCD16E67968003F3F34 /* surfgen.1 */,
 				22E02D7116EA83A4001D5AC1 /* coord.in.1 */,
 				22E02D7216EA937A001D5AC1 /* surfgen.in.1 */,
+				22EC242F16F3D80B00A8C67B /* points.in.1 */,
 			);
 			name = "Man Pages";
 			sourceTree = "<group>";
@@ -228,7 +230,9 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -245,6 +249,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				VERSION_INFO_SUFFIX = global.debug;
 			};
 			name = Debug;
 		};
@@ -257,7 +262,9 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = YES;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -267,6 +274,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				SDKROOT = macosx;
+				VERSION_INFO_SUFFIX = global.release;
 			};
 			name = Release;
 		};
@@ -298,6 +306,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				OTHER_LDFLAGS = (
 					"-L/usr/local/lib",
 					"-lgfortran",
@@ -305,6 +315,8 @@
 					vecLib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSION_INFO_SUFFIX = global.debug;
+				XZHU_BUILD_SETTING = "-g -Warray-temporaries -Wall -Wextra -fbounds-check -fbacktrace ";
 			};
 			name = Debug;
 		};
@@ -312,6 +324,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				OTHER_LDFLAGS = (
 					"-L/usr/local/lib",
 					"-lgfortran",
@@ -319,6 +333,8 @@
 					vecLib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSION_INFO_SUFFIX = global.release;
+				XZHU_BUILD_SETTING = "-O3";
 			};
 			name = Release;
 		};

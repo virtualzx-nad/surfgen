@@ -1,0 +1,173 @@
+.\"Modified from man(1) of FreeBSD, the NetBSD mdoc.template, and mdoc.samples.
+.\"See Also:
+.\"man mdoc.samples for a complete listing of options
+.\"man mdoc for the short list of editing options
+.\"/usr/share/misc/mdoc.template
+.Dd 3/11/13               \" DATE 
+.Dt points.in 1      \" Program name and manual section number
+.Os Darwin
+.Sh NAME                 \" Section Header - required - don't modify 
+.Nm points.in ,
+.Nd Point specific input file for
+.Sy surfgen .
+.Sh SYNOPSIS             \" Section Header - required - don't modify
+This input file is used by coupled potential surface fitting program
+.Sy surfgen .
+For a detailed description of the program and the evaluation library, see
+.Xr surfgen 1 .
+.Pp
+Place
+.Pa points.in
+in the same directory where
+.Sy surfgen
+is being called.
+.\"
+.Sh DESCRIPTION          \" Section Header - required - don't modify
+.Nm
+contains input options that will be applied to individual points or set of points
+during the surface fitting procedure of
+.Sy surfgen .
+.Nm 
+is a
+.Em FORMATTED 
+input file.  Please read 
+.Sx FORMAT
+section for details.
+.Pp
+Developed by
+.An Yarkony group , Johns Hopkins University 
+2010-2013.
+.\"
+.Sh FORMAT
+The file consists of two lines of comments followed arbitrary lines of point-specific
+options.  
+.Ar surfgen
+will process options from top down.  When conflicting options are given for the 
+same point(s), later options will automatically override earlier ones without
+warning.  Each option consists of a two character keyword and three integers, with
+the input format
+.br
+.Va (A2,X,3I5)
+.Pp
+The keywords are 
+.Em case insensitive .
+If any state or point specifications exceeds the scope of data, it will
+be ignored.  If a range of states or a range of points exceeds the boundary, it
+will be rounded to the corresponding boundary.  For example, point range -2 to 5
+will be automatically changed to 1 to 5, since the lowest allowed point index is 1.
+Unrecognized keywords will be ignored with warning messages.
+.Pp
+The last two integer inputs will often be used to specify a range of states or points.
+The program will recognize the smaller (larger) number in the pair and use it as 
+the lower (upper) bound of the range.
+.Sh KEYWORDS
+This section contains description of supported keywords and the meaning of the 
+corresponding integer input parameters.
+.Ss Weight Data Points
+.Bl -tag -width xxxxxxxxxxxxxxxxxxx -compact
+.It Sy WT Em $wgt $pt1 $pt2 
+Set the weight for points from
+.Va $pt1
+to
+.Va $pt2 .
+When 
+.Em $wgt=0 ,
+the points in the range will be excluded.
+When
+.Em $wgt>0 ,
+the points in the range will be weighed by factor 
+.Va $wgt .
+When
+.Em $wgt<0 ,
+the points in the range will be weighed by factor
+.Sy 1/abs($wgt) .
+.El
+.Ss Exact Equations
+.Bl -tag -width xxxxxxxxxxxxxxxxxxx -compact
+.It Sy LE Em $pnt $st1 $st2 
+Fit the energy(energies) of electronic states from 
+.Va $st1
+to 
+.Va $st2
+at point
+.Va $pnt
+exactly with Lagrange multipliers.  Naturally, it is recommended that
+.Em 1\[u2264]$st1,$st2\[u2264]$nstates 
+and 
+.Va $pnt
+specifies a valid point.  Note that setting the weight of a point to 0 will
+override the exact condition and remove the exact equations at the point. 
+.It Sy LD Em $pnt $st1 $st2
+Fits the 
+.Em energy difference
+between states
+.Va $st1
+and
+.Va $st2
+at point
+.Va $pnt
+exactly with Lagrange multipliers.  They do not have to be adjacent states.
+Note that setting the weight of a point to 0 will override the exact condition 
+and remove the exact equations at the point. 
+.It Sy LG Em $pnt $st1 $st2
+Fit gradient or coupling associated with states 
+.Va $st1 
+and 
+.Va $st2 
+exactly at point 
+.Va $pnt.
+When 
+.Em $st1=$st2 ,
+this option specifies the energy gradient vector of a state; otherwise, it 
+specifies the derivative coupling between states 
+.Va $st1 
+and 
+.Va $st2 .
+.El
+.Ss Excluding Equations
+.Bl -tag -width xxxxxxxxxxxxxxxxxxx -compact
+.It Sy EE Em $pnt $st1 $st2
+Exclude energy of block 
+.Em $st1,$st2
+for point 
+.Va $pnt .
+This could specify either a diagonal or off-diagonal block.  Note that 
+off-diagonal block may or may not be fit to 0, depending on the value of option
+.Ar DijScale
+in 
+.Pa surfgen.in .
+.It Sy EG Em $pnt $st1 $st2
+Exclude gradient or derivative coupling data for point 
+.Va $pnt .
+When 
+.Em $st1=$st2 ,
+this option specifies the energy gradient vector of a state; otherwise, it 
+specifies the derivative coupling between states 
+.Va $st1 
+and 
+.Va $st2 .
+.El
+.Ss Gradient Ordering
+.Bl -tag -width xxxxxxxxxxxxxxxxxxx -compact
+.It Sy GO Em $pnt $st1 $st2
+Enforce states from 
+.Va $st1
+to
+.Va $st2
+to be ordered by gradient matching instead of energy matching at point
+.Va $pnt .
+Note that this option can be overriden when gradient ordering is turned off 
+altogether by setting 
+.Em gOrder/[u2264]0
+in
+.Pa surfgen.in .
+.El
+.Sh SEE ALSO 
+.\" List links in ascending order by section, alphabetically within a section.
+.\" Please do not reference files that do not exist without filing a bug report
+.Xr surfgen 1 ,
+.Xr surfgen.in 1
+.Sh BUGS              \" Document known, unremedied bugs
+Please send bug reports to 
+.An Xiaolei Zhu Aq virtualzx@gmail.com
+.\" .Sh HISTORY           \" Document history if command behaves in a unique manner

@@ -220,7 +220,7 @@ MODULE makesurfdata
 !nex             :  Number of exact equations actually generated
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,gradNorm,wvec)
-    use hddata, only: ncoord,nblks,blkmap,nstates
+    use hddata, only: nblks,blkmap,nstates
     use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
@@ -411,7 +411,7 @@ MODULE makesurfdata
 !Reorder states by best fit of energy gradients if energy difference lower than gorder.
 !Then determine phase of eigenvectors to best fit couplings.
   SUBROUTINE updateEigenVec(hvec,follow)
-    USE hddata, only:nblks,nstates,order,EvaluateHd3
+    USE hddata, only:nstates,EvaluateHd3
     USE progdata, only: abpoint,printlvl,AU2CM1
     USE combinatorial
     IMPLICIT NONE
@@ -435,7 +435,7 @@ MODULE makesurfdata
 
     DOUBLE PRECISION,dimension(nstates,nstates)      :: hmatPT
     DOUBLE PRECISION,dimension(nvibs,nstates,nstates):: dhmatPT
-    INTEGER                                          :: i,j,k,INFO,l,u,iblk
+    INTEGER                                          :: i,j,k,INFO
     DOUBLE PRECISION,dimension(5*nstates*nstates)    :: scr
     type(abpoint)                                    :: fitpt
     integer,dimension(2**(nstates-1),nstates)        :: phaseList
@@ -524,7 +524,6 @@ MODULE makesurfdata
     deallocate(fitpt%energy)
     deallocate(fitpt%grads)
     deallocate(fitpt%deg_groups)
-  1000 format(6X,"Transforming eigenvectors to conform with intersection adapted coordinates.")
   END SUBROUTINE
 !-----------------------------------------------------------------------------------
 ! determine ordering and phase of Ckl by comparing with previous ckl
@@ -551,7 +550,6 @@ MODULE makesurfdata
     DOUBLE PRECISION,DIMENSION(nstates,nstates),INTENT(IN)    :: cklold
 
     integer  ::  i,j
-    double precision,dimension(nstates,nstates) :: omat !overlap matrix between old and new vectors
     double precision   ::  ototal,&    ! total overlap of a specific ordering scheme
                            omax,  &    ! maximum overlap so far
                            ovlp        ! overlap between individual vector
@@ -580,18 +578,17 @@ MODULE makesurfdata
 !-----------------------------------------------------------------------------------
 !Generate the matrix A of the linear coefficients between Hd basis and RHS values
   SUBROUTINE makecoefmat(AMat)
-    use hddata, only: nblks,nstates,order,RowGrp,ColGrp,offs,grpLen,nBasis
-    use progdata, only: printlvl,AU2CM1
+    use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
+    use progdata, only: printlvl
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(nex+neqs,ncons),INTENT(OUT)               :: AMat
-    integer  :: ct
-    INTEGER      :: i,j,l,r,l0,r0,pt,s1,s2,g,as1,as2,iBlk,iBasis,ll,rr,imblk
+    INTEGER      :: i,j,l,r,l0,r0,pt,s1,s2,g,as1,as2,iBlk,iBasis,ll,rr
     double precision  :: ediff,error
     double precision  :: wij(npoints,nstates,nstates),Dij(npoints,nstates,nstates)
     DOUBLE PRECISION,dimension(:,:,:,:),allocatable  :: VIJ
     double precision  :: cc(npoints)
     integer  :: count1,count2,count_rate
-    INTEGER    ::  Id(npoints),Jd(npoints),ndeg,Pd(npoints),ind1,ind2,ng
+    INTEGER    ::  Id(npoints),Jd(npoints),ndeg,Pd(npoints),ind1
     DOUBLE PRECISION :: gvec(nvibs),hvec(nvibs)
 
 ! construct Wij, Dij and Vij matrices for all data points
@@ -721,13 +718,11 @@ MODULE makesurfdata
 !-----------------------------------------------------------------------------------
 !generate rhs vectors for Hd fitting
   SUBROUTINE makebvec(bvec,diff)
-    use hddata, only: nstates,nblks,blkmap
-    use progdata, only: printlvl,AU2CM1
+    use progdata, only: printlvl
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(nex+neqs),INTENT(INOUT)             :: bvec
     LOGICAL, INTENT(IN)                                            :: diff
-    INTEGER                                                :: i,pt,s1,s2,g,j
-    double precision :: ediff
+    INTEGER                                                :: i,pt,s1,s2,g
     if(printlvl>0)print *,"   Making right hand side vectors."
     do i = 1,nex+neqs
       pt=eqmap(i,1)
@@ -760,7 +755,7 @@ MODULE makesurfdata
    IMPLICIT NONE
    DOUBLE PRECISION,intent(OUT)                   :: nrmener,avgener,nrmgrad,avggrad
 
-   INTEGER  :: incdata,i,j,k,l,NEx_E,NEx_grd,nvpt,inc_e,inc_cp
+   INTEGER  :: incdata,j,k,l,NEx_E,NEx_grd,nvpt,inc_e,inc_cp
    DOUBLE PRECISION  :: gnrm,dgrd,rmsexclthreshold,dE_exact,dG_exact,dcp,nrmcp,nrmdcp,ncp,de1,de2
 
    if(rmsexcl>=0)then
@@ -852,7 +847,7 @@ MODULE makesurfdata
   !----------------------------------------------------------------------------------------
   !Calculate numerical gradients with respect to the fitting coefficients
   SUBROUTINE getCGrad(nex,neqs,nc,cilm,dCi,dLambda,lag,weight,jaco)
-    USE progdata, ONLY : AU2CM1, printlvl
+    USE progdata, ONLY : printlvl
     USE hddata,   ONLY : RowGrp, ColGrp, offs, GrpLen, nstates,nBasis,nBlks
     IMPLICIT NONE
     INTEGER, INTENT(IN)                                                  :: nex, neqs, nc
@@ -888,15 +883,15 @@ MODULE makesurfdata
 !  temporary vector for basis values and gradients and for multiplication of two C^kl 
     DOUBLE PRECISION  ::  cc(npoints)
 !  timing variables
-    DOUBLE PRECISION  ::  t1,t2,t3,t4,t5,t6,t7
+    DOUBLE PRECISION  ::  t1,t2,t3,t4,t5,t6
     INTEGER           ::  count0,count1,count2,count_rate
 !  variables that specify coefficient
     INTEGER    ::  iBlk,iBasis
 !  variables that specify equation
-    INTEGER    ::  pt, s1, s2, g,ind1,ind2,ng
-    INTEGER    ::  I,J,K,L,Z, K0,nK, L0,nL,Id(npoints),Jd(npoints),ndeg,Pd(npoints)
+    INTEGER    ::  pt, s1, s2, g,ind1
+    INTEGER    ::  I,J,K,L,K0,nK, L0,nL,Id(npoints),Jd(npoints),ndeg,Pd(npoints)
 !  other local variables
-    DOUBLE PRECISION :: ediff, EIJ,diffsq
+    DOUBLE PRECISION :: EIJ,diffsq
 !  used to store g and h vectors for degenerate case
     DOUBLE PRECISION :: gvec(nvibs),hvec(nvibs)
 !  external BLAS subroutine
@@ -1099,14 +1094,13 @@ MODULE makesurfdata
 ! of the norm of the gradient of Lagrangian, the subroutine attempts
 ! to minimize norm of gradient of L.
 ! On output, the rows of B are orthongalized by the transformation matrix Q
-  SUBROUTINE optLag(nc,nex,B,ldb,dCi,dLambda,asol,Borth)
+  SUBROUTINE optLag(nc,nex,B,ldb,dCi,asol,Borth)
     USE progdata, ONlY: printlvl
     IMPLICIT NONE
     INTEGER, INTENT(IN)                                         :: nex, nc, ldb
     DOUBLE PRECISION,dimension(ldb,nc),intent(IN)               :: B
     DOUBLE PRECISION,dimension(ldb,nc),intent(OUT)              :: Borth
     DOUBLE PRECISION, INTENT(INOUT),dimension(nc)               :: dCi
-    DOUBLE PRECISION, INTENT(IN),   dimension(nex)              :: dLambda
     DOUBLE PRECISION,dimension(nex+nc),INTENT(INOUT)            :: asol
 
     double precision,dimension(nex,nex)   ::  BBt
@@ -1299,10 +1293,10 @@ MODULE makesurfdata
     DOUBLE PRECISION,INTENT(OUT)          ::  dcex(ncons),pgrad(ncons)
     
     double precision,dimension(nex,nex)   ::  BBt
-    double precision,dimension(nex,ncons) ::  BOrth   ,Bsave
-    double precision,dimension(nex)       ::  bex,w   ,gsave
+    double precision,dimension(nex,ncons) ::  BOrth  
+    double precision,dimension(nex)       ::  bex,w ,bexw
     double precision                      ::  WORK(2+7*nex+3*nex**2), nrmG,nrmEx,nrmPG,dp(ncons)
-    integer                               ::  LWORK,LIWORK,i,j,INFO,IWORK(4+6*nex), NNull
+    integer                               ::  LWORK,LIWORK,i,INFO,IWORK(4+6*nex), NNull
     double precision,external             ::  dnrm2
 
     LWORK  = 2+7*nex+3*nex**2
@@ -1330,10 +1324,11 @@ MODULE makesurfdata
     end do
     if(printlvl>2) print *,"  Dimensionaliy of Null Space: ",NNull
     !make exact displacement vector
-    CALL DGEMV('T',nex,ncons,dble(1),BOrth,nex,bex*w,int(1),dble(0),dcex,int(1))
+    bexw=bex*w
+    CALL DGEMV('T',nex,ncons,dble(1),BOrth,nex,bexw,int(1),dble(0),dcex,int(1))
 
     !calculation the gradient of cost function
-    CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1:,:),neqs,bvec(nex+1:),int(1),dble(0),pgrad,int(1))
+    CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1,1),neqs+nex,bvec(nex+1),int(1),dble(0),pgrad,int(1))
     nrmG = dnrm2(ncons,pgrad,int(1))
     dp   = pgrad
     !orthorgonalize it with respect to exact displacements
@@ -1346,17 +1341,11 @@ MODULE makesurfdata
     if(printlvl>1)print "(3(A,E12.5))","  Norm of gradients:",nrmG,", Overlapping component:",nrmEx,", Orthogonal component:",nrmPG
   END SUBROUTINE GradProj
 
-! Perform linear search to optimize cost function
-  SUBROUTINE LinSearch(asol,dsol,dmin,dmax)
-    IMPLICIT NONE
-    DOUBLE PRECISION,INTENT(IN),DIMENSION(ncons) :: asol, dsol
-    DOUBLE PRECISION,INTENT(IN)                  :: dmin,dmax
-  END SUBROUTINE LinSearch
 !----------------------------------------------------------------------------------------
 ! updates Hd then evaluate the RMS error from LSE and exact equations
   SUBROUTINE evaluateError(asol,weight,LSErr,ExErr)
     USE progdata, only: printlvl
-    USE hddata, only: nstates, updateHd
+    USE hddata, only: updateHd
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(ncons),INTENT(IN)  ::  asol
     DOUBLE PRECISION,dimension(neqs),INTENT(IN)   ::  weight
@@ -1440,24 +1429,21 @@ END SUBROUTINE readCkl
 !     from each individual d values (wave functions), which will be removed from fitting procedure.
 !   
 SUBROUTINE genBasis(gradNorm)
-  use hddata, only: T3DDList,ncoord,order,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,nstates,EvaluateVal
+  use hddata, only: T3DDList,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,EvaluateVal
   use progdata, only: printlvl
-  use makesurfdata, only:  npoints,dispgeoms,nvibs,gcutoff,npb,nbas,dWVals,WVals,ncons,coefMap,ptWeights,energyT,highEScale,&
-                           TBas,ZBas,ZBasI,WMat,ecutoff,egcutoff,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
+  use makesurfdata, only:  npoints,dispgeoms,nvibs,npb,nbas,dWVals,WVals,ncons,coefMap,ptWeights,energyT,highEScale,&
+                           TBas,ZBas,ZBasI,WMat,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
   IMPLICIT NONE
   DOUBLE PRECISION,dimension(npoints,nvibs,nblks),intent(OUT):: gradNorm
-  type(T3DDList),dimension(ncoord,order,nblks)          :: tmpGrad
-
-  integer  :: i,j,k,l,m,count1,count2,count_rate,count3,u,pv,pvb,pb,pv1,n1,n2,n3
-  integer  :: ll,rr,p,q,  nb
-  
-  double precision,external :: dnrm2
-
+  integer  :: i,j,k,count1,count2,count_rate,pv1,n1,n2
+  integer  :: ll,rr,p,nb
   double precision,allocatable,dimension(:)   :: WORK, eval
   double precision,allocatable,dimension(:,:) :: evec, pbas, dmat, pbasw 
-  double precision   ::  pval,  dmin,dmax,omin,omax, gn0, wt
+  double precision   ::  gn0, wt
   integer,allocatable,dimension(:)  :: IWORK,ISUP
   integer  :: INFO, ng0
+
+  double precision,external :: dnrm2
 
   call system_clock(COUNT_RATE=count_rate)
   gradNorm=dble(0)
@@ -1792,16 +1778,16 @@ END SUBROUTINE testCoord
 !---------------------------------------------
 ! Fit Hd according to Ab initio Data
 SUBROUTINE makesurf()
-  use hddata, only: nstates,ncoord,nblks,order,ColGrp,RowGrp,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
+  use hddata, only: nstates,ncoord,nblks,order,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
                     makecoefmap,ExtractHd,getFLUnit,EvaluateHd3
   use progdata, only: printlvl,OUTFILE,AU2CM1,natoms,PI
   use makesurfdata
   use rdleclse
   use DIIS
   IMPLICIT NONE
-  INTEGER                                        :: i,j,k,l,count1,count2,count_rate,imblk,p,q
+  INTEGER                                        :: i,j,k,l,count1,count2,count_rate
   INTEGER                                        :: m,maxeqs, plvl
-  INTEGER                                        :: iter,INFO, uerrfl,miter
+  INTEGER                                        :: iter,uerrfl,miter
   DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,dCi2,hvec,bvecP
   DOUBLE PRECISION,dimension(:,:),allocatable    :: AMat,jaco,jaco2
   DOUBLE PRECISION,dimension(npoints,nvibs,nblks):: gradNorm
@@ -1811,7 +1797,7 @@ SUBROUTINE makesurf()
   DOUBLE PRECISION,dimension(:),allocatable      :: tmpW,weight, grdv1,grdv2,dis0
   DOUBLE PRECISION                               :: adif,nrmener,avgener,lag,gmin,nrmG, dmin, dinc, disp
   double precision                               :: LSErr,ExErr,LSE0,LSE1,LSE2,beta, denom
-  DOUBLE PRECISION                               :: nrmgrad,avggrad,dgrd,gnrm,nrmD,stepl
+  DOUBLE PRECISION                               :: nrmgrad,avggrad,nrmD,stepl
   CHARACTER(4)                                   :: c1,c2
   CHARACTER(16),dimension(npoints)               :: rlabs
   CHARACTER(16),dimension(nvibs*2)               :: clabs
@@ -1820,20 +1806,17 @@ SUBROUTINE makesurf()
   double precision,dimension(ncoord,3*natoms)    :: binv
   CHARACTER(50)                                  :: fmt
   double precision            ::  dener(nstates,nstates)
-  integer                     ::  incdata, ios, status
+  integer                     ::  ios, status
   double precision, external  ::  dnrm2
   logical                     ::  diff  !whether differential convergence will be used
   logical                     ::  loadC !whether initial CKL will be loaded from input file
   DOUBLE PRECISION,dimension(nstates,nstates)            :: hmatPT
   DOUBLE PRECISION,dimension(nvibs,nstates,nstates)      :: dhmatPT
   
-  integer  :: ncon_total, ti, tf,tt   !term movement index.  moving from tf to tt
-  integer,allocatable,dimension(:) :: TINC
+  integer  :: ncon_total
   double precision,dimension(0:maxiter,npoints)   ::   theta  ! rotation angle
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision,dimension(npoints)   ::   theta2
-  DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:)::OLD_HVEC
-  integer,allocatable,dimension(:,:) :: coefmaptmp
 
 !  call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
 !  stop                                         only use these for new coordinates
@@ -1957,7 +1940,7 @@ SUBROUTINE makesurf()
   call testSurfgen(1D-5,asol2,weight)
   asol = asol2
   CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-  CALL optLag(ncons,nex,jaco,nex,dCi,dLambda,asol,jaco2)
+  CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
   nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
   grdv1 = 0d0
   grdv2 =-dCi
@@ -2106,7 +2089,7 @@ SUBROUTINE makesurf()
         dis0 = dsol 
       else 
         denom = dot_product(grdv1,grdv1)
-        if(denom==0)then
+        if(denom<1D-30)then
           beta = 0d0
         else
           beta = dot_product(grdv2,grdv2-grdv1)/denom
@@ -2181,11 +2164,10 @@ SUBROUTINE makesurf()
        bvec(i)   = bvec(i)*scaleEx
      end do
 
-     CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1:nex+neqs,1:ncons),&
-         neqs,dble(0),NEL(nex+1,nex+1),ncons+nex)
+     CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1,1),&
+         neqs+nex,dble(0),NEL(nex+1,nex+1),ncons+nex)
      do i=nex+1,nex+ncons-1
-       CALL DCOPY(ncons+nex-i,NEL(i,i+1:ncons+nex),int(1),&
-               NEL(i+1:ncons+nex,i),int(1))
+       CALL DCOPY(ncons+nex-i,NEL(i,i+1),ncons+nex,NEL(i+1,i),int(1))
      end do
   
      if(diff)then
@@ -2195,8 +2177,8 @@ SUBROUTINE makesurf()
      else
        !construct rhs for normal eqs block y2=A**T.y
        rhs(1:nex)=bvec(1:nex)
-       CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1:nex+neqs,:),neqs,&
-          bvec(nex+1:nex+neqs),int(1),dble(0),rhs(nex+1:nex+ncons),INT(1))
+       CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1,1),neqs+nex,&
+          bvec(nex+1),int(1),dble(0),rhs(nex+1),INT(1))
      end if!diff
   
      !construct Lagrange Multipliers block
@@ -2207,19 +2189,6 @@ SUBROUTINE makesurf()
      !zero out L-L block
      NEL(1:nex,1:nex)=dble(0)
  ! 
-!PRINT *,"FIRST 20x20 BLOCK OF BLOCK1"
-!DO I=1,20
-!PRINT "(20F7.2)",NEL(I+NEX,1+NEX:20+NEX)
-!END DO
-!PRINT *,"FIRST 20x20 BLOCK OF BLOCK2"
-!DO I=1,20
-!PRINT "(20F7.2)",NEL(I+NEX+nBas(1),1+NEX+nBas(1):20+NEX+nBas(1))
-!END DO
-!PRINT *,"FIRST 20x20 BLOCK OF BLOCK3"
-!DO I=1,20
-!PRINT "(20F7.2)",NEL(I+NEX+nBas(1)+nbas(2),1+NEX+nBas(1)+nbas(2):20+NEX+nBas(1)+nbas(2))
-!END DO
-!STOP
      deallocate(AMat)
   
      if(diff)then
@@ -2238,7 +2207,7 @@ SUBROUTINE makesurf()
 
      CALL cleanArrays()
 
-     call system_clock(COUNT=count2)
+     call system_clock(COUNT=count2,COUNT_RATE=count_rate)
      if(printlvl>0)print 1002,dble(count2-count1)/count_rate  
    end select !step method
 
@@ -2268,7 +2237,7 @@ SUBROUTINE makesurf()
          call evaluateError(asol,weight,LSErr,ExErr)
          CALL getError(nrmener,avgener,nrmgrad,avggrad)
          CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-         CALL optLag(ncons,nex,jaco,nex,dCi,dLambda,asol,jaco2)
+         CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
          nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
          if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
                ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
@@ -2291,7 +2260,7 @@ SUBROUTINE makesurf()
          call evaluateError(asol,weight,LSErr,ExErr)
          CALL getError(nrmener,avgener,nrmgrad,avggrad)
          CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-         CALL optLag(ncons,nex,jaco,nex,dCi,dLambda,asol,jaco2)
+         CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
          nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
          if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
                ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
@@ -2313,7 +2282,7 @@ SUBROUTINE makesurf()
      ! make new eigenvectors
      call updateEigenVec(asol,followPrev)
      CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-     CALL optLag(ncons,nex,jaco,nex,dCi,dLambda,asol,jaco2)
+     CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
      grdv1 = grdv2
      grdv2 = -dCi
      nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
@@ -2330,7 +2299,7 @@ SUBROUTINE makesurf()
        if(abs(theta2(i))>1d-1) &
             print "(A,I5,A,2F10.2,A,SP,F7.3,SS,A,L1)"," point ",I,",E1,2=", (dispgeoms(i)%energy(1:2))*au2cm1,  &
                    ", rotation =",theta2(i),", change=",sg(iter,i).ne.sg(iter-1,i)
-       if(maxRot.ne.0) then
+       if(maxRot>1D-30) then
          theta(iter,i) = theta(iter-1,i)+sign(maxRot,theta2(i))
          if(maxRot>0) sg(iter,i)=sg(iter-1,i)
          print *,"BEFORE:",ckl(i,:,:)
@@ -2556,8 +2525,8 @@ SUBROUTINE makesurf()
 1002 format(4X,"Hd coefficients solved after ",F8.2," seconds.")
 1003 format(3X,"Generating initial eigenvectors.")
 1004 format(3X,"Loading initial eigenvectors.")
-1005 format(1x,'Iteration',i4,": Delta=",E9.2,", d[g]%=",f7.2,", &
-                    <d[g]%>=",f7.2,"%, d[E]=",f8.2,", <d[E]>=",f8.2)
+1005 format(1x,'Iteration',i4,": Delta=",E9.2,", d[g]%=",f7.2,   &
+                ", <d[g]%>=",f7.2,"%, d[E]=",f8.2,", <d[E]>=",f8.2)
 1006 format(/,2x,'Computation Converged after ',i5,' Iterations')
 1007 format(/,2x,'Computation did not Converge')
 1014 format(/,2x,'REPRODUCTION OF LEAST-SQUARES DATA ---------')
@@ -2608,8 +2577,7 @@ end SUBROUTINE printSurfHeader
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
   SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList)
-    use hddata, only: nstates,nblks
-    use progdata, only: printlvl
+    use hddata, only: nstates
     IMPLICIT NONE
     INTEGER,intent(IN)                                        :: nvibs
     DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)           :: fitgrad
@@ -2654,7 +2622,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   use combinatorial
   use hddata,only: nstates
   use progdata, only: abpoint,printlvl
-  use makesurfdata, only: nvibs,incgrad,incener,e_exact,g_exact
+  use makesurfdata, only: incgrad,incener,e_exact,g_exact
   IMPLICIT NONE
   type(abpoint),INTENT(IN)                                   :: abpt
   type(abpoint),INTENT(INOUT)                                :: fitpt
@@ -2721,7 +2689,7 @@ END SUBROUTINE
 
 ! read input parameters for makesurf
 SUBROUTINE readMakesurf(INPUTFL)
-  USE hddata,only: order,nstates,nGroups
+  USE hddata,only: nstates
   USE progdata,only: natoms, AU2CM1
   USE makesurfdata
   IMPLICIT NONE
@@ -3001,9 +2969,6 @@ SUBROUTINE readdisps()
   character(10)                                :: suffix
   character(3),dimension(natoms)               :: atoms
   double precision,dimension(natoms)           :: anums,masses
-  double precision,dimension(3*natoms,ncoord+nstates*(nstates+1)/2)  :: bmatp
-  double precision,dimension(3*natoms) :: norms, diff
-  character(3)                                 :: str
 
   if(printlvl>0)print '(7X,A,I3,A)','Reading',npoints,' displacements'
   if(allocated(dispgeoms))deallocate(dispgeoms)

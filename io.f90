@@ -304,14 +304,13 @@ END SUBROUTINE
 ! load coordinate sets
 SUBROUTINE readCoords()
   use hddata,  only:ncoord,order,getFLUnit
-  use progdata,only:nrij,nout,printlvl,natoms,atomCount,atomList,&
-    nCoordSets,CoordSet,coordmap,nCoordCond,CoordCond,condRHS
+  use progdata,only:printlvl,nCoordSets,CoordSet,coordmap,nCoordCond,CoordCond,condRHS
   use CNPI, only: nPmt, pmtList
   implicit none
   character(72) :: comment
   character(4)  :: str
   logical       :: found
-  integer       :: ios,i,j,k,l,m,n,newcrd(4), &
+  integer       :: ios,i,j,k,l,newcrd(4), &
                    CSETFL,         &  !Unit ID for coordinate definition file
                    nAddCond           !number of additional conditions
 ! temporary variables used to generate definitions
@@ -379,8 +378,13 @@ SUBROUTINE readCoords()
         allocate(tmpCoord(2,nPmt))
         CoordSet(i)%ncoord    = 0
         do l=1,nPmt
-            newcrd(1) = minval(pmtList(l,CoordSet(i)%atom(1:2)))
-            newcrd(2) = maxval(pmtList(l,CoordSet(i)%atom(1:2)))
+            newcrd(1)=pmtList(l,CoordSet(i)%atom(1))
+            newcrd(2)=pmtList(l,CoordSet(i)%atom(2))
+            if(newcrd(1)>newcrd(2))then
+                newcrd(3) = newcrd(1)
+                newcrd(1) = newcrd(2)
+                newcrd(2) = newcrd(3)
+            end if
             ! look up if this coordinate is already defined in the list
             found = .false.
             do j=1,CoordSet(i)%ncoord
@@ -470,8 +474,13 @@ SUBROUTINE readCoords()
         allocate(tmpCoord(3,nPmt))
         CoordSet(i)%ncoord    = 0
         do l=1,nPmt
-            newcrd(1) = minval(pmtList(l,CoordSet(i)%atom(1:2)))
-            newcrd(2) = maxval(pmtList(l,CoordSet(i)%atom(1:2)))
+            newcrd(1) = pmtList(l,CoordSet(i)%atom(1))
+            newcrd(2) = pmtList(l,CoordSet(i)%atom(2))
+            if(newcrd(1)>newcrd(2))then
+                newcrd(3) =  newcrd(1)
+                newcrd(1) =  newcrd(2)
+                newcrd(2) =  newcrd(3)
+            end if
             newcrd(3) = pmtList(l,CoordSet(i)%atom(3))
             ! look up if this coordinate is already defined in the list
             found = .false.
@@ -692,7 +701,6 @@ end SUBROUTINE initialize
 !
 !
 SUBROUTINE printTitle(jobtype)
-  use hddata, only: ncoord
   use progdata,only: OUTFILE
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: jobtype
@@ -726,7 +734,6 @@ SUBROUTINE printTitle(jobtype)
   write(OUTFILE,1000)''
 
 1000 format(72a)
-1002 format(6(3x,F15.8))
 end SUBROUTINE printTitle
 
 ! output surface to file
@@ -743,7 +750,7 @@ SUBROUTINE cleanup()
   use progdata
   use CNPI
   IMPLICIT NONE
-  INTEGER                 :: i,j
+  INTEGER                 :: i
 
   if(allocated(pmtList))deallocate(pmtList)
   if(allocated(subPerm))deallocate(subPerm)
