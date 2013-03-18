@@ -338,7 +338,7 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				VERSION_INFO_SUFFIX = global.release;
-				XZHU_BUILD_SETTING = "-O3";
+				XZHU_BUILD_SETTING = "-O3 -g";
 			};
 			name = Release;
 		};

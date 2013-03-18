@@ -28,17 +28,16 @@ end program surfgen
 ! and read in job specific input according to jtype
 SUBROUTINE readinput(jtype)
   use progdata
-  use hddata, only: initGrps,ncoord,nstates,order
+  use hddata, only: initGrps,nstates,order
   use CNPI, only: irrep,grpPrty,grpSym
   IMPLICIT NONE
   INTEGER,INTENT(INOUT)           :: jtype
-  INTEGER                         :: i,j,mkadiabat,ios
+  INTEGER                         :: i,j,ios
   INTEGER                         :: nGrp,jobtype
   INTEGER,dimension(10)           :: surface,updatehess
   INTEGER,dimension(50)           :: ci,atmgrp
   DOUBLE PRECISION,dimension(500) :: minguess,mexguess
   INTEGER,DIMENSION(10)           :: groupSym,groupPrty
-  DOUBLE PRECISION,dimension(20)  :: e_guess
 
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             switchdiab, printlvl,inputfl,atmgrp, cntfl

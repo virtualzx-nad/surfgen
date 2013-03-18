@@ -270,8 +270,7 @@ CONTAINS
  SUBROUTINE EvalRawTermsL(geom)
   IMPLICIT NONE
   DOUBLE PRECISION,DIMENSION(ncoord),INTENT(IN)             :: geom
-  integer                 :: i,j
-  type(TTermDef),pointer  :: pT
+  integer                 :: i
 
   !evaluate the values of raw terms
   do i=1,order
@@ -372,15 +371,13 @@ CONTAINS
   DOUBLE PRECISION,DIMENSION(nstates,nstates),INTENT(OUT)        :: hmat
   DOUBLE PRECISION,DIMENSION(ncoord,nstates,nstates),INTENT(OUT) :: dhmat
 
-  integer                 :: i,j,l,r,icor
-  type(TTermDef),pointer  :: pT
+  integer                 :: i,l,r,icor
   double precision,external ::  ddot
 
   hmat  = dble(0)
   dhmat = dble(0)
   do i=0,order
-
-   do l=1,nstates
+  do l=1,nstates
      do r=l,nstates
        hmat(l,r)=hmat(l,r)+ddot(termList(i)%nterms,TValL(i)%List,int(1),hdl(i,l,r)%List,int(1))
        if(i.eq.order)cycle
@@ -861,8 +858,7 @@ CONTAINS
  END SUBROUTINE initGrps
  SUBROUTINE initHd()
    IMPLICIT NONE
-   integer                  ::  i,j,m
-   type(TMTabBasis),pointer ::  pM
+   integer                  ::  i,j
    type(TTermDef),pointer   :: pT
    !initialize termList
    allocate(termList(0:order))
@@ -1199,7 +1195,7 @@ SUBROUTINE EvaluateHd3 (hvec,nBas,npoints,ipt,nvibs,hmat,dhmat,wmat)
    DOUBLE PRECISION,DIMENSION(nstates,nstates),INTENT(OUT)         :: hmat
    DOUBLE PRECISION,DIMENSION(nvibs,nstates,nstates),INTENT(OUT)   :: dhmat
 
-   integer   :: i,j,l1,l2,r1,r2,nf,l,r,m,count1,count2,pv,mord
+   integer   :: i,j,l1,l2,r1,r2,nf,l,r,m,count1,pv
 
    hmat=dble(0)
    dhmat = dble(0)

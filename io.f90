@@ -1,302 +1,3 @@
-! load coordinate sets
-
-SUBROUTINE readCoordSets()
-  use hddata,  only:ncoord,order,getFLUnit
-  use progdata,only:nrij,nout,printlvl,natoms,atomCount,atomList,&
-       nCoordSets,CoordSet,coordmap,nCoordCond,CoordCond,condRHS
-  implicit none
-  character(72)            :: comment
-  character(4)             :: str
-  integer                  :: ios,i,j,k,l,m,n,&
-                              CSETFL,       &  !Unit ID for coordinate definition file
-                              nAddCond         !number of additional conditions
-! temporary variables used to generate definitions
-  integer                  :: tmpCoord(4,natoms**4),& ! temporary coordinate definition holder
-                              rawCoord(4),ordOOP(4),& ! atoms referenced, before and after ordering
-                              prty                    ! parity of OOP angle, just a dummy variable
-  integer,dimension(:),allocatable   ::  lhs          ! Left hand side of coordinate order restrictions
-  CSETFL=getFLUnit()
-! total coordinates count
-  ncoord=0
-! total coordinate condition count
-  nCoordCond=0
-
-! Load coordinate definition file
-  if(printlvl>0)print *,"   Reading coordinate set definitions."
-  open(unit=CSETFL,file='coord.in',access='sequential',form='formatted',&
-    STATUS='OLD',ACTION='READ',POSITION='REWIND',IOSTAT=ios)
-  read(CSETFL,1000,IOSTAT=ios) comment
-! Get number of coordinate sets and additional conditions
-  read(CSETFL,*,IOSTAT=ios) nCoordSets,nAddCond
-  if(ios/=0.or.nCoordSets<1)stop"Error reading coord set definitions."
-
-  if(allocated(CoordSet))deallocate(CoordSet)
-  allocate(CoordSet(nCoordSets))
-
-  if(printlvl>0)Print *,"      generating",nCoordSets," sets"  
-  allocate(lhs(nCoordSets))
-
-  do i=1,nCoordSets
-! read in definition for one set of coordinates
-    read(CSETFL,1000,IOSTAT=ios) comment
-    read(CSETFL,*,IOSTAT=ios)CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order
-    read(CSETFL,*,IOSTAT=ios)CoordSet(i)%atom
-    if(ios/=0)stop "Error reading coord set definitions."
-! check order settings
-    if(CoordSet(i)%Order<0)stop "Error:  Wrong maximum order value"
-    if(CoordSet(i)%Order==0.or.CoordSet(i)%Order>=order)then
-       CoordSet(i)%Order=order
-    else
-       nCoordCond=nCoordCond+1
-    end if!(CoordSet(i)%Order==0.or.CoordSet(i)%Order>order)
-    if(printlvl>0)Print '("     set ",I4," type=",I4 ," scaling=",I4," max order=",I4)',&
-                                i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order
-
-    select case(CoordSet(i)%Type)
-
-!----Plain or Scaled Internuclear distance coordinate
-
-      case(0)  !rij or scaled rij.   %atom = A1 , A2 ,  X , X
-
-! field 1 and 2 of atom record the atom group the end point atoms belong to
-! field 3 and 4 are not used
-          if(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(2))theN
-! bond between same type of atoms
-! determine number of coordinates contained in the set
-            CoordSet(i)%ncoord  =  atomCount(CoordSet(i)%atom(1))  *     &
-                        (atomCount(CoordSet(i)%atom(1))-1)/2
-! allocate memory for field Coord, definition of all the coordinates in the set
-            if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-            allocate(CoordSet(i)%coord(2,CoordSet(i)%ncoord))
-! make coord list
-            l = 1
-            do j=1,atomCount(CoordSet(i)%atom(1))
-              do k=j+1,atomCount(CoordSet(i)%atom(1))
-                CoordSet(i)%coord(1,l) = atomList(CoordSet(i)%atom(1),j)
-                CoordSet(i)%coord(2,l) = atomList(CoordSet(i)%atom(1),k)
-                l=l+1
-              end do !k
-            end do !j
-          else   !(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(2))
-! bond between different types of atoms
-            CoordSet(i)%ncoord  =  atomCount(CoordSet(i)%atom(1))  *     &
-                                        atomCount(CoordSet(i)%atom(2))
-            allocate(CoordSet(i)%coord(2,CoordSet(i)%ncoord))
-! make coord list
-            l = 1
-            do j=1,atomCount(CoordSet(i)%atom(1))
-              do k=1,atomCount(CoordSet(i)%atom(2))
-                CoordSet(i)%coord(1,l) = atomList(CoordSet(i)%atom(1),j)
-                CoordSet(i)%coord(2,l) = atomList(CoordSet(i)%atom(2),k)
-                l=l+1
-              end do !k
-            end do !j
-          end if !(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(2))
-! Read in scaling parameters if is scaled Rij
-        allocate(CoordSet(i)%Coef(2))
-        if(CoordSet(i)%Scaling.ne.0)then
-          read(CSETFL,'(2F10.6)',IOSTAT=ios) CoordSet(i)%Coef(:)
-          if(ios/=0)stop "Error reading coord set definitions."
-        end if !(CoordSet(i)%Scaling.ne.0)
-
-
-!-- Out of plane angle coordinate
-
-
-      case(-1) ! OOP.   %atom = A1, A2, A3, A4
-
-        CoordSet(i)%ncoord=0
-! Generate all possible 4 combinations.  Only the ones that are cannonically
-! ordered will be inserted into the list.
-        do j=1,atomCount(CoordSet(i)%atom(1))
-          rawCoord(1) =  atomList(CoordSet(i)%atom(1),j) 
-          do k=1,atomCount(CoordSet(i)%atom(2))
-            rawCoord(2) =  atomList(CoordSet(i)%atom(2),k) 
-            if(rawCoord(2)==rawCoord(1))cycle
-            do m=1,atomCount(CoordSet(i)%atom(3))
-              rawCoord(3) =  atomList(CoordSet(i)%atom(3),m) 
-              if(count(rawCoord(3)==rawCoord(1:2))>0)cycle
-              do n=1,atomCount(CoordSet(i)%atom(4))
-                rawCoord(4) =  atomList(CoordSet(i)%atom(4),n) 
-                if(count(rawCoord(4).eq.rawCoord(1:3))>0)cycle  !all indices have to be different
-                call reorderOOP(rawCoord,ordOOP,prty)
-                if(count(rawCoord.eq.ordOOP).eq.4)then ! the atoms are cannonically ordered
-                  CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                  tmpCoord( :, CoordSet(i)%ncoord) = rawCoord
-                end if ! count(...).eq.4
-              end do !n
-            end do !m
-          end do !k
-        end do ! j
-! allocate field %coord and transfer definition from temporary array to global structure
-        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
-        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
-
-! load scaling factor
-        allocate(CoordSet(i)%Coef(2))
-        read(CSETFL,'(2F10.6)',IOSTAT=ios) CoordSet(i)%Coef
-        if(ios/=0)stop "Error reading coord set definitions."
-
-      case(-2) ! OOP.   %atom = A1, A2, A3, A4
-
-        CoordSet(i)%ncoord=0
-! Generate all possible 3 atom combinations.  Only the ones that are cannonically
-! ordered will be inserted into the list.
-        do j=1,atomCount(CoordSet(i)%atom(1))
-          rawCoord(1) =  atomList(CoordSet(i)%atom(1),j) 
-          do k=1,atomCount(CoordSet(i)%atom(2))
-            rawCoord(2) =  atomList(CoordSet(i)%atom(2),k) 
-            if(rawCoord(2)==rawCoord(1))cycle
-            do m=1,atomCount(CoordSet(i)%atom(3))
-              rawCoord(3) =  atomList(CoordSet(i)%atom(3),m) 
-              if(count(rawCoord(3)==rawCoord(1:2))>0)cycle
-              do n=1,atomCount(CoordSet(i)%atom(4))
-                rawCoord(4) =  atomList(CoordSet(i)%atom(4),n) 
-                if(count(rawCoord(4).eq.rawCoord(1:3))>0)cycle  !all indices have to be different
-                call reorderOOP2(rawCoord,ordOOP,prty)
-                if(count(rawCoord.eq.ordOOP).eq.4)then ! the atoms are cannonically ordered
-                  CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                  tmpCoord( :, CoordSet(i)%ncoord ) = rawCoord
-                end if ! count(...).eq.4
-              end do !n
-            end do !m
-          end do !k
-        end do ! j
-! allocate field %coord and transfer definition from temporary array to global structure
-        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
-        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
-
-! load scaling factor
-        allocate(CoordSet(i)%Coef(2))
-        read(CSETFL,'(2F10.6)',IOSTAT=ios) CoordSet(i)%Coef
-        if(ios/=0)stop "Error reading coord set definitions."
-
-
-! no coefficient to read for OOP
-
-!---Bond angle coordinates and their periodic scalings
-
-      case(1)  ! angle A1-A2-A3.   %atom = A1, A2, A3, X. 
-
-        CoordSet(i)%ncoord=0
-! Generate all possible 4 combinations.  Only the ones that are cannonically
-! ordered will be inserted into the list. (ie, A3>A1 when same type, and that
-! A1,A2,A3 are all different )
-        do j=1,atomCount(CoordSet(i)%atom(1))
-          rawCoord(1) =  atomList(CoordSet(i)%atom(1),j)
-          do k=1,atomCount(CoordSet(i)%atom(2))
-            rawCoord(2) =  atomList(CoordSet(i)%atom(2),k)
-            if(rawCoord(2).eq.rawCoord(1))cycle
-            do l=1,atomCount(CoordSet(i)%atom(3))
-              rawCoord(3) =  atomList(CoordSet(i)%atom(3),l)
-              if(CoordSet(i)%atom(1).eq.CoordSet(i)%atom(3)  .and. &
-                          rawCoord(3)<=rawCoord(1) .or. rawCoord(3).eq.rawCoord(2))  cycle
-              CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-              tmpCoord( 1:3, CoordSet(i)%ncoord ) = rawCoord(1:3)
-            end do !l
-          end do !k
-        end do ! j
-
-! allocate field %coord and transfer definition from temporary array to global structure
-        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(3,CoordSet(i)%ncoord))
-        CoordSet(i)%coord = tmpCoord(1:3,1:CoordSet(i)%ncoord)
-
-! no scaling parameters for bond angles
-
-!---Torsion angle coordinates and their periodic scalings
-
-      case (2) ! torsion A1-A2-A3-A4.   %atom = A1, A2, A3, A4
-
-        CoordSet(i)%ncoord=0
-! cannonical order = A3>A2 and all atom indices are different
-        do j=1,atomCount(CoordSet(i)%atom(1))
-          rawCoord(1) =  atomList(CoordSet(i)%atom(1),j)
-          do k=1,atomCount(CoordSet(i)%atom(2))
-            rawCoord(2) =  atomList(CoordSet(i)%atom(2),k)
-            if(rawCoord(2).eq.rawCoord(1))cycle
-            do m=1,atomCount(CoordSet(i)%atom(3))
-              rawCoord(3) =  atomList(CoordSet(i)%atom(3),m)
-              if(rawCoord(3).eq.rawCoord(1) .or. rawCoord(3)<=rawCoord(2))cycle
-              do n=1,atomCount(CoordSet(i)%atom(4))
-                rawCoord(4) =  atomList(CoordSet(i)%atom(4),n)
-                if(count(rawCoord(4).eq.rawCoord(1:3))>0)cycle  !all indices have to be different
-                CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
-                tmpCoord( :, CoordSet(i)%ncoord ) = rawCoord
-              end do !n
-            end do !m
-          end do !k
-        end do ! j
-
-! allocate field %coord and transfer definition from temporary array to global structure
-        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
-        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
-        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
-
-! no coefficient to read for torsion
-
-!-- Other types
-
-      case default
-        print *,"TYPE=",CoordSet(i)%Type
-        stop "Error : COORDINATE TYPE NOT SUPPORTED. "
-    end select!case(CoordSet(i)%Type)
-
-! %icoord  maps coordinate index inside set to full coordinate list index
-
-    allocate(CoordSet(i)%icoord(CoordSet(i)%ncoord))
-    do j=1,CoordSet(i)%ncoord
-      CoordSet(i)%icoord(j)=j+ncoord
-    end do!j=1,CoordSet(i)%ncoord
-    ncoord=ncoord+CoordSet(i)%ncoord
-
-  end do!i=1,nCoordSets
-
-! generate coordinate map from full coordinate list to coordinate set list
-  if(allocated(coordmap))deallocate(coordmap)
-  allocate(coordmap(ncoord,2))
-  k=0
-  do i=1,nCoordSets
-    do j=1,CoordSet(i)%ncoord
-      k=k+1
-      coordmap(k,1)=i   !(:,1) = index of set
-      coordmap(k,2)=j   !(:,2) = index within a set
-    end do!j=1,CoordSet(i)%ncoord
-  end do!i=1,nCoordSets
-
-!Generate coordinate inequality conditions for hddata
-  allocate(CoordCond(nCoordCond+nAddCond,ncoord))
-  allocate(condRHS(nCoordCond+nAddCond))
-  nCoordCond=0
-  CoordCond=0
-
-! Generate individual set order limits
-  do i=1,nCoordSets
-    if(CoordSet(i)%Order>=order)cycle
-    nCoordCond=nCoordCond+1
-    CoordCond(nCoordCond,CoordSet(i)%icoord)=1
-    condRHS(nCoordCond)=CoordSet(i)%Order
-  end do!i=1,nCoordSets
-
-! Additional set order restrictions
-  write(str,'(I4)') nCoordSets+1
-  if(printlvl>0)print *,"      Reading ",naddcond," additional order restrictions."
-  do i=1,nAddCond
-    nCoordCond=nCoordCond+1
-    read(CSETFL,*,IOSTAT=ios) lhs,condRHS(nCoordCond)
-    if(ios/=0)stop "Error reading addintional coordinate order restrictions."
-    if(printlvl>1)print *,"      lhs: ",lhs," rhs:",condRHS(nCoordCond)
-    do j=1,nCoordSets
-      CoordCond(nCoordCond,CoordSet(j)%icoord)=lhs(j)
-    end do
-  end do
-  close(unit=CSETFL)
-  deallocate(lhs)
-1000 format(72a)
-END SUBROUTINE
-
 !-------------------------------------------------------------------------------
 ! read coordinate definitions.   coordinates are defined by atom index instead
 ! of atom group index.  the permutated atoms are generated using the list of 
@@ -543,6 +244,39 @@ SUBROUTINE readCoords()
 
   end do!i=1,nCoordSets
 
+  ! print out all the coordinates
+  if(printlvl>0)then
+    print *,"Fitting Coordinate Sets Defined as:"
+    print *,"   Index  Set#  Type  Scaling Atoms        Scaling Parameters"
+    k=1
+    do i=1,nCoordSets
+        do j=1,CoordSet(i)%ncoord
+            select case (CoordSet(i)%Type)
+                case (0) ! stre
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,2I3,6x)",advance="no") &
+                        k,i,"stretch",CoordSet(i)%Scaling,CoordSet(i)%atom(1:2)
+                case (1) ! bend
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,3I3,3x)",advance="no") &
+                        k,i,"bending",CoordSet(i)%Scaling,CoordSet(i)%atom(1:3)
+                case (-1) ! oop tetr
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
+                        k,i,"TetrOOP",CoordSet(i)%Scaling,CoordSet(i)%atom(1:4)
+                case (-2) ! oop umbr
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
+                        k,i,"UmbrOOP",CoordSet(i)%Scaling,CoordSet(i)%atom(1:4)
+                case default
+                    stop "UNSUPPORTED COORDINATE TYPE"
+            end select
+            if(allocated(CoordSet(i)%coef))then
+                print "(x,2F12.8)",CoordSet(i)%coef
+            else
+                print *,""
+            end if
+            k=k+1
+        end do! j=1,CoordSet(i)%ncoord
+    end do!i=1,nCoordSets
+  end if
+
   ! generate coordinate map from full coordinate list to coordinate set list
   if(allocated(coordmap))deallocate(coordmap)
   allocate(coordmap(ncoord,2))
@@ -662,13 +396,7 @@ SUBROUTINE initialize(jobtype)
     stop
   end if
 
-!  if(removed)then
-!    if(printlvl>0)print *,"  Using atom indexes to define coordinates"
-    call readCoords()
-!  else!removed
-!    if(printlvl>0)print *,"  Using atom group index to define coordinates"
-!    call readCoordSets()
-!  end if!removed
+  call readCoords()
   if(printlvl>0)print *,"  Generating permutations for scaled coordinates"
   call genCoordPerm()
   CALL initHd()

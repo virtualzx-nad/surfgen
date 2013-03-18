@@ -174,6 +174,8 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !            coordinates of the four reference atoms.
   DOUBLE PRECISION     ::  bval(12)
 
+! intialize bmat
+  bmat = 0d0
   do i=1,ncoord
     m=coordmap(i,1) !index of set
     n=coordmap(i,2) !index in set

@@ -1818,8 +1818,8 @@ SUBROUTINE makesurf()
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision,dimension(npoints)   ::   theta2
 
-  ! call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
-  ! stop                                     !  only use these for new coordinates
+!   call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
+!   stop                                     !  only use these for new coordinates
 
   if(printlvl>0)print *,"Entering makesurf"
   call getPtList()
@@ -3023,7 +3023,7 @@ SUBROUTINE readdisps()
   if(printlvl>0)print 1000,"Generating displacement Wilson's B-Matrices"
   if(printlvl>0.and.useIntGrad)print 1000,'Local internal coordinates will be constructed from B-matrices'
   do l = 1,npoints
-    call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%bmat,.false.)
+    call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%bmat)
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)
     if(printlvl>0)then

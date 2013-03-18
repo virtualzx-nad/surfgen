@@ -156,7 +156,6 @@ CONTAINS
               6X,'Number of Unkown:',I7,', LSE:',I5,', Exact Eq:',I4)
   1001 format(6X,'Value of Lagrange Multipliers:')
   1002 format(6X,7F9.2)
-  1003 format(6X,"Memory required for intermediate matrices:",F8.2,"MB")
   1004 format(6X,"Memory required for symmetric EVD:    ",F12.2,"MB")
   1998 format(6X,'Undetermined Unknowns:',I5,4X,'RMS Sol Vector:',F7.3)
   END SUBROUTINE solve

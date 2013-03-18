@@ -178,7 +178,7 @@ CONTAINS
  SUBROUTINE genAtomList(atmgrp)
   IMPLICIT NONE
   INTEGER           :: atmgrp(natoms)
-  INTEGER           :: i, j
+  INTEGER           :: i
   character(3)      :: tpStr
   !deallocate global arrays if already allocated
   if (allocated(atomList))deallocate(atomList)

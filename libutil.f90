@@ -67,7 +67,7 @@ END SUBROUTINE orthgh
 ! the norm of the corresponding coupling block rather than eliminating them.   
 SUBROUTINE makeXCoords(pt,dhmat,maxiter,toler,nstates_data)
   USE hddata, only: nstates
-  USE progdata, only: natoms,abpoint,printlvl
+  USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
   TYPE(abpoint),INTENT(INOUT)                                     :: pt
   DOUBLE PRECISION,DIMENSION(pt%nvibs,nstates,nstates),INTENT(IN) :: dhmat
@@ -171,14 +171,14 @@ SUBROUTINE makeXCoords(pt,dhmat,maxiter,toler,nstates_data)
 1003 format(12X,3E16.7)
 CONTAINS
   FUNCTION getBeta(i,j) RESULT(beta)
-    USE progdata, only : abpoint,natoms
+    USE progdata, only : abpoint
     IMPLICIT NONE
     INTEGER,INTENT(IN)         :: i,j
     DOUBLE PRECISION           :: beta
 
     double precision, dimension(pt%nvibs)                :: g,h
     double precision                  :: pi
-    double precision  ::  errg, errh, errcurr, errrot
+    double precision  ::  errcurr, errrot
 
     pi=atan(dble(1))*4
     g=(pt%grads(:pt%nvibs,i,i)-pt%grads(:pt%nvibs,j,j))/2
@@ -360,12 +360,12 @@ SUBROUTINE Schdmit(m,n,A,d,tol,rank,nstart)
   do while(i<=rank)
     !Compute the inner product with all row vectors above
     if(i>1)then
-      CALL DGEMV('N',i-1,d,dble(1),A,m,A(i,:),int(1),dble(0),p,int(1))
-      CALL DGEMV('T',i-1,n,dble(-1),A,m,p,int(1),dble(1),A(i,:),int(1))
+      CALL DGEMV('N',i-1,d,dble(1),A,m,A(i,1),m,dble(0),p,int(1))
+      CALL DGEMV('T',i-1,n,dble(-1),A,m,p,int(1),dble(1),A(i,1),m)
     end if!(i>1)
-    nrm=DNRM2(d,A(i,:),int(1))
+    nrm=DNRM2(d,A(i,1),m)
     if(nrm<tol)then
-      CALL DSWAP(n,A(i,:),int(1),A(rank,:),int(1))
+      CALL DSWAP(n,A(i,1),m,A(rank,1),m)
       rank=rank-1
     else!if(nrm<tol)
       A(i,:)=A(i,:)/nrm
@@ -461,7 +461,7 @@ END SUBROUTINE
 !   EvalHdDirect  hddata.f90
 !   DSYEVR        LAPACK
 SUBROUTINE getCartHd(cgeom,energy,cgrads,hmat,dcgrads)
-  USE progdata, ONLY : natoms,atoms
+  USE progdata, ONLY : natoms
   USE hddata, ONLY:  nstates,ncoord,EvalRawTermsL,EvalHdDirect
   IMPLICIT NONE
   DOUBLE PRECISION,dimension(3*natoms),intent(IN)                  ::  cgeom
@@ -477,7 +477,7 @@ SUBROUTINE getCartHd(cgeom,energy,cgrads,hmat,dcgrads)
   integer,dimension(nstates*2)                      :: ISUPPZ
   double precision,dimension(nstates*(nstates+26))  :: WORK
   integer,dimension(nstates*10)                     :: IWORK
-  integer   :: i,j,k
+  integer   :: i,j
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -520,7 +520,7 @@ END SUBROUTINE getCartHd
 ! the norm of the corresponding coupling block rather than eliminating them.   
 SUBROUTINE OrthGH_ab(pt,maxiter,toler)
   USE hddata, only: nstates
-  USE progdata, only: natoms,abpoint,printlvl
+  USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
   TYPE(abpoint),INTENT(INOUT)                                     :: pt
   INTEGER,INTENT(IN)                                              :: maxiter
@@ -617,13 +617,12 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler)
 1003 format(12X,3E16.7)
 CONTAINS
   FUNCTION getBeta(i,j) RESULT(beta)
-    USE progdata, only : abpoint,natoms,pi
+    USE progdata, only : abpoint,pi
     IMPLICIT NONE
     INTEGER,INTENT(IN)         :: i,j
     DOUBLE PRECISION           :: beta
 
     double precision, dimension(pt%nvibs)                :: g,h
-    double precision  ::  errg, errh, errcurr, errrot
 
     g=(pt%grads(:pt%nvibs,i,i)-pt%grads(:pt%nvibs,j,j))/2
     h=pt%grads(:pt%nvibs,i,j)
@@ -654,7 +653,7 @@ END SUBROUTINE
 ! the norm of the corresponding coupling block rather than eliminating them.   
 SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler)
   USE hddata, only: nstates
-  USE progdata, only: natoms,abpoint,printlvl
+  USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
   TYPE(abpoint),INTENT(IN)                                        :: pt
   INTEGER,INTENT(IN)                                              :: maxiter
@@ -778,7 +777,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler)
 1003 format(12X,3E16.7)
 CONTAINS
   FUNCTION getBetaHd(i,j) RESULT(beta)
-    USE progdata, only : abpoint,natoms,pi
+    USE progdata, only : abpoint,pi
     IMPLICIT NONE
     INTEGER,INTENT(IN)         :: i,j
     DOUBLE PRECISION           :: beta

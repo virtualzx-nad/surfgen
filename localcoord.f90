@@ -23,7 +23,7 @@
     character(3)                 ::  str
  
     double precision,external :: dnrm2
- 
+
     if(.not. useIntG)then
       ptdata%nvibs=nvibs
       ptdata%lmat=dble(0)
@@ -62,12 +62,15 @@
           ptdata%nvibs=i
           if(i>nvibs)then
             print *,"PT",ptdata%id,"NVIBS(PT) = ",i,", natoms = ",natoms
+            print *, "GEOM:"
+            print "(3F11.7)",ptdata%CGEOM
+
             print *, "B Matrix "
             do n1=1,ncoord
               print "(12E11.2)",ptdata%bmat(n1,:)
             end do
             print *,"EV:",ev
-            stop "Number of degrees of freedom exceeded theoretical maximum"
+            stop "Error: Number of degrees of freedom exceeded theoretical maximum"
           end if
           if(ev(3*natoms+1-i)<intGS)ptdata%scale(i)=ev(3*natoms+1-i)/intGS
         else
