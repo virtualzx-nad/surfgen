@@ -1818,8 +1818,8 @@ SUBROUTINE makesurf()
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision,dimension(npoints)   ::   theta2
 
-!  call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
-!  stop                                         only use these for new coordinates
+  ! call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
+  ! stop                                     !  only use these for new coordinates
 
   if(printlvl>0)print *,"Entering makesurf"
   call getPtList()
@@ -2927,17 +2927,17 @@ SUBROUTINE printDisps(type,npts)
 
   do i = 1,npts
    write(str,'(i4)')i
-   clabs(i) = ' POINT'//trim(adjustl(str))
+   clabs(i) = 'POINT'//trim(adjustl(str))
   enddo
 
-  npr = 9
+  npr = 10
 
   do j = 1,npts
    do k = 1,ncoord
     disps(k,j) = dispgeoms(j)%igeom(k)
    enddo
   enddo
-  call printMatrix(OUTFILE,rlabs,clabs,npr,ncoord,npts,disps,int(10),int(6))
+  call printMatrix(OUTFILE,rlabs,clabs,npr,ncoord,npts,disps,int(11),int(6))
 
   write(OUTFILE,'(/,2x,"Ab initio Energies")')
   write(str,'(i4)') nstates
@@ -2970,7 +2970,7 @@ SUBROUTINE readdisps()
   character(3),dimension(natoms)               :: atoms
   double precision,dimension(natoms)           :: anums,masses
 
-  if(printlvl>0)print '(7X,A,I3,A)','Reading',npoints,' displacements'
+  if(printlvl>0)print '(7X,A,I5,A)','Reading',npoints,' displacements'
   if(allocated(dispgeoms))deallocate(dispgeoms)
   allocate(dispgeoms(npoints))
   do j = 1,npoints

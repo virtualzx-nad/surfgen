@@ -1,46 +1,107 @@
+&COMMENTS
+jobtypes: 
+1 = read reference, make surface, write surface to disk
+2 = read reference, read surface, find extrema
+3 = read reference, read surface, reshape surface
+4 = read reference, read surface, output surface in new coordinate system
+5 = read reference, load geometry information
+
+Irreducible representation matrices are given in irrep.in
+states are partitioned into groups that each n-state group carries an n-dimensional irrep.  
+groupsym specifies the irreducible those groups carry.
+The numbers correspond to the index in irrep.in.
+groupprty specifies the parity of each group.
+
 /
 &GENERAL
-printlvl=3
-jobtype=1
-natoms=5
-atmgrp=1,2,3,3,4
-cntfl='connect.in'
-ngrp=3
-groupsym=2,1,1
-groupprty=-1,1,1
-order=3
-inputfl=''
+printlvl   = 3,
+jobtype    = 1, 
+natoms     = 4,
+atmgrp     = 1,2,2,2
+order      = 3,
+ngrp       = 2,
+groupsym   = 1,2
+groupprty  = 1,-1
+inputfl    = ''
 /
 &MAKESURF
-eshift=114.8486354349
-usefij=.true.
-gScaleMode=2
-dijscale=1d0
-dfstart=0
-intGradS=1D-1
-useIntGrad=.true.
-intGradT=1D-3
-rmsexcl=-5
-npoints=70
-gcutoff=1D-7
-maxiter=20
-toler=1D-3
-LSETol=1.0D-7
-exactTol=1D-9
-maxd=1d1
-tbas=1d-10
-gorder=5000.
-outputfl='hd.data'
-enfDiab = 0
-flheader='high order tester'
-w_energy=1D0
-w_grad=5D-1
-w_fij=2D-1
-nrmediff=1D3
-ediffcutoff=1D1
-nrmediff2=1D2
-ediffcutoff2=1d0
-ndstart=100
-ndiis=5
+eshift     = 56.475986184916D0 
+usefij     = .true.
+deg_cap    = 1D-5
+dijscale   = 1d0
+energyT    = 5.5D4,6D4,7.0D4,1D5,1D6,1D7
+highEScale = 5D-1,2D-1,5D-2,1D-2,1D-3,1D-4
+gscalemode = 0
+useIntGrad = .true.
+linsteps   = 0
+linNegSteps= 0
+stepmethod = 0
+maxd       = 1D2
+intGradT   = 1D-2
+TBas       = 0
+rmsexcl    = -2
+npoints    = 2553 
+dfstart    = -1
+gcutoff    = 1D-7
+maxiter    = 10  
+toler      = 1D-7
+LSETol     = 1.0D-8 
+flattening = 1.0D-8 
+exactTol   = 1.0D-12
+gorder     = 5000.
+outputfl   = 'hd.data2'
+flheader   = 'hd coefficient file of nh3 made with surfgen'
+w_energy   = 1D0
+w_grad     = 2D-1
+w_fij      = 2D-1
+nrmediff   = 1D4
+ediffcutoff= 3D2
+nrmediff2  = 2d2
+ediffcutoff2=1d2   
+ndstart    = 200
+ndiis      = 35 
 /
-
+&MINMEX
+nmin       = 2,
+nmex       = 0,
+minguess   = 0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+            -0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+mexguess   = 0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,
+optiter    = 1000,
+opttoler   = 1E-8,
+surface    = 1,1
+ci         = 1,2,0, 1,2,3
+usehessian = 1,1,
+hessupdate = 25,
+/
+&RESHAPE
+nmin       = 2,
+nept       = 0,
+cmethod    = 1,
+fixiter    = 25,
+conlist    = 3,1,1, 3,2,2, 3,3,3, 3,4,4, 3,5,5, 3,6,6, 3,7,7, 3,8,8, 3,9,9, 3,10,10, 3,11,11, 3,12,12, 3,13,13, 3,14,14, 3,15,15,
+             3,16,16, 3,17,17, 3,18,18
+minguess   = 0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+            -0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+optiter    = 2000,
+opttoler   = 1E-7,
+surface    = 1,1
+usehessian = 1,1
+hessupdate = 25,
+makemap    = 1,1
+modeweight = 1.,1.,1.,1.,1.,0.05,0.05,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,0.05,
+             1.,1.,1.,1.,1.,0.05,0.05,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,0.05,
+funcweight = 0.01,0.05,0.89,0.05,0.0,
+/
+&TRANSFORM
+mkadiabat  = 1,
+nbasis     = 2,
+/
+&LOADGEOM
+isloop     = .true.
+loopst     = 1
+ngeoms     = 20
+geomfl     = 'geom'
+calchess   = .false.
+outputdir  = 'path4'
+/

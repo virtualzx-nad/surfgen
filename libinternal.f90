@@ -57,7 +57,7 @@ SUBROUTINE reorderOOP(oldOOP,newOOP,parity)
   parity=1
   newOOP=oldOOP
   do i=4,2,-1
-    loc   = maxloc(newOOP(1:i),1)+1
+    loc   = maxloc(newOOP(1:i),1)
     if(loc/=i)then
       tmp   = newOOP(loc)
       newOOP(loc)  =newOOP(i)
@@ -163,7 +163,7 @@ END SUBROUTINE
 !
 SUBROUTINE buildWBmat(cgeom,igeom,bmat)
   use hddata, only: ncoord
-  use progdata, only: natoms,nrij,nout,coordmap,CoordSet
+  use progdata, only: natoms,coordmap,CoordSet
   IMPLICIT NONE
   DOUBLE PRECISION,dimension(3*natoms),INTENT(IN)           :: cgeom
   DOUBLE PRECISION,dimension(ncoord),INTENT(OUT)            :: igeom
@@ -173,12 +173,10 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 ! bval     Derivative of a unscaled coordinate with respect to cartesian 
 !            coordinates of the four reference atoms.
   DOUBLE PRECISION     ::  bval(12)
-  DOUBLE PRECISION     ::  w(3), dwdR(3,3*natoms),coef(2),s(3),ss,fs
 
   do i=1,ncoord
     m=coordmap(i,1) !index of set
     n=coordmap(i,2) !index in set
-
     select case(CoordSet(m)%Type)
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -186,7 +184,7 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
       case(0)   
-        
+
         call calcwij(CoordSet(m)%Scaling,CoordSet(m)%coord(1,n),CoordSet(m)%coord(2,n),&
                       CoordSet(m)%coef,cgeom,igeom(i),bval)
         do j=1,2
@@ -316,7 +314,7 @@ SUBROUTINE oop(natoms,atms,cgeom,qval,bval,scale)
 
 ! calculate value of scaled OOP angle and its derivatives
   denom=exp(log(product(dnorm2))/2*scale)
-  if(denom==0)stop "OOP angle cannot be defined when atoms coincide."
+  if(abs(denom)<1d-30)stop "OOP angle cannot be defined when atoms coincide."
   qval=det3(dvecs(1:3,:))/denom
   do i=1,3
     do j=1,3
@@ -375,7 +373,7 @@ SUBROUTINE dvec(na,a1,a2,cgeom,vec,vnorm)
   enddo
 
   vnorm = Sqrt(vnorm)
-  if(vnorm.eq.0)then
+  if(vnorm<1d-30)then
    denom = dble(1)
   else
    denom = vnorm
@@ -409,7 +407,7 @@ SUBROUTINE cprod(vec1,vec2,cpvec,cpnorm)
   enddo
 
   cpnorm = Sqrt(cpnorm)
-  if(cpnorm.eq.0) then
+  if(cpnorm<1d-30) then
    denom = 1.
   else
    denom = cpnorm
@@ -443,7 +441,6 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
   DOUBLE PRECISION,dimension(3*natoms),INTENT(IN)   :: cgeom
   DOUBLE PRECISION,INTENT(OUT)                      :: w
   DOUBLE PRECISION,dimension(12),INTENT(OUT)        :: dwdR
-  INTEGER                                           :: i,j,offs
 
 ! fval     Value of current coordinate in its unscaled form
 ! fbmat    Cartesian gradients of current coordinate in its unscaled form
@@ -456,7 +453,7 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
 
   call stre(natoms,a1,a2,cgeom,fval,bval)
   if(scaling<0) stop  "Invalid scaling type in CalcWij"
-  select case(scaling) 
+  select case(scaling)
     !  no scalings
     case(0)
       w    = fval
@@ -536,7 +533,6 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3),   &
                        geom(4,3), ddvec(3,3),   dw(12),       &
                        coef(2), dwdR(6,12), w(6),  denom, ddenrm
-  DOUBLE PRECISION, parameter :: vsmall = 1D-50
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
 ! fbmat = derivatives of unscaled OOP coordinate
@@ -673,14 +669,14 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   DOUBLE PRECISION,DIMENSION(12),INTENT(OUT)      :: bval
   double precision,intent(IN)                     :: factor 
 
-  INTEGER           :: i, j, k, sgns(6,4)
-  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),     &
+  INTEGER           :: i, j, sgns(6,4)
+  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),  pw,   &
                        geom(4,3), ddvec(3,3), ss,    dw(12),    &
                        coef(2), dwdR(3,12), w(3), dwdR2(3,12), w2(3)
 ! eprod = product of the scaling exponentials
 ! fval  = value of unscaled oop coordinate (the triple product)
 ! fbmat = derivatives of unscaled OOP coordinate
-  DOUBLE PRECISION  :: eprod, fval, fbmat(12),efactor,a,p,p1
+  DOUBLE PRECISION  :: eprod, fval, fbmat(12),a,p
 
 ! The oriented direction vectors between all 6 atom pairs
   sgns(1,:)=(/ 1, 0, 0,-1/)
@@ -696,6 +692,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   do i=2,4
 ! scaling mode=0   (unscaled).  unscaled distances are produced here
      call calcwij(int(0),atms(1),atms(i),coef,cgeom,w(i-1),dw)
+     if(abs(w(i-1))<1D-30) w(i-1)=sign(1D-30,w(i-1))
      dwdR(i-1,1:3) = dw(1:3)
      dwdR(i-1,i*3-2:i*3) = dw(4:6)
   end do
@@ -731,6 +728,10 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   fbmat(4:6)=cross(dvecs(3,:),dvecs(1,:))
   fbmat(7:9)=cross(dvecs(1,:),dvecs(2,:))
   fbmat(10:12)=-fbmat(1:3)-fbmat(4:6)-fbmat(7:9)
+
+  pw = product(w)
+  fval=fval/pw
+  fbmat=fbmat/pw-fval*(dwdR(1,:)/w(1)+dwdR(2,:)/w(2)+dwdr(3,:)/w(3))
 
 ! calculate the scaled oop
   if(sctype.lt.0)then
@@ -794,7 +795,7 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   double precision,intent(IN)                     :: factor
 
   double precision ::  v, dv(9), d1(3),d2(3), d12, d22, dd12(9), dd22(9)
-  double precision ::  p, dp(9), denom, tmp
+  double precision ::  p, dp(9), tmp
   integer,dimension(3,9) ::   dd1,dd2    ! derivatives of d1 and d2
   integer  ::  i
 

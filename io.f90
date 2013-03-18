@@ -968,7 +968,7 @@ SUBROUTINE printMatrix(ofile,rlabs,clabs,pcols,nr,nc,mat,fld,dcml)
   rspace = int((flen-clen)/2.)
   lspace = flen - clen - rspace
   if(rspace.lt.0)rspace=0
-  if(lspace.lt.0)lspace=1
+  if(lspace.lt.1)lspace=1
   write(lstr,'(i4)')lspace
   write(rstr,'(i4)')rspace
   FMT3 = '('//trim(adjustl(lstr))//'x,a'//trim(adjustl(clstr))//','//trim(adjustl(rstr))//'x)'
