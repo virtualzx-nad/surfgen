@@ -33,7 +33,8 @@
       ptdata%scale = dble(1)
       return
     end if
-    btb=matmul(transpose(ptdata%bmat),ptdata%bmat)
+
+    call DSYRK('U','T',3*natoms,ncoord,1d0,ptdata%bmat,ncoord,0d0,btb,3*natoms)
     call DSYEV('V','U',3*natoms,btb,3*natoms,ev,scr,45*natoms*natoms,INFO)
     !reorder the eigenvectors in descending order
     do i=1,3*natoms/2

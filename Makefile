@@ -12,17 +12,16 @@ JDIR  := $(shell pwd)
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
-  DEBUGFLAG := -g -fbounds-check -fbacktrace
+  DEBUGFLAG := -g -fbounds-check -fbacktrace -Wall -Wextra
 else
-  DEBUGFLAG :=
+  DEBUGFLAG := 
 endif
 
 # setting up the parameters to work from both local (mac) and on the cluster
-# on the cluster, for both running from node056 (64 bit node with all libraries)
-# from other nodes, log into node056 and compile
+# on the cluster, ifort needs to be in the seek path and MKL libraries 
+# needs to be properly defiled with variable $BLAS_LIB 
 ifneq ($(findstring Mac,$(HNAME)),)
   Msg:=Building on local Mac
-  PREFIX := sh -c
   COMPILER := gfortran
   AR := ar -rv
   # location of LAPACK and BLAS library for Mac
@@ -35,25 +34,16 @@ ifneq ($(findstring Mac,$(HNAME)),)
   EXEC     :=surfgen
 else
   Msg:=Building on Linux
-  ifeq ($(HNAME),node056)
-    PREFIX := sh -c 
-    COMPILER := ifort
-    AR := xiar -rv
-  else
-    PREFIX := ssh node056 
-    COMPILER := cd $(JDIR) ; ifort
-    AR := cd $(JDIR) ; xiar -rv
-  endif
+  COMPILER := ifort
+  AR := xiar -rv
   # location of LAPACK and BLAS library for 64 bit
-  LIBS     := -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a \
-            $(MKLROOT)/lib/em64t/libmkl_intel_thread.a  \
-            $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -lpthread -lm 
+  LIBS     := $(BLAS_LIB) 
   #compile options
-  CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -axS
+  CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -xHost -no-opt-matmul -i8 
   #link options
   LKOPT    := -auto -lpthread -parallel
   #executable naming
-  EXEC     :=surfgen.x  
+  EXEC     :=surfgen  
 endif
 
 RM := rm -rf
@@ -61,9 +51,12 @@ RM := rm -rf
 #target for standalone fitting and analysis program
 all  :  $(OBJS)    
 	@echo 'MESSAGE : $(Msg), Debug flag=$(DEBUGFLAG)'
-	@echo 'Building target: $@'
+	@echo 'BLAS/LAPACK LIB:  $(LIBS)'
+	@echo 'Compiler options: $(CPOPT)'
+	@echo 'Linking options:  $(LKOPT)'
+	@echo 'Building target:  $@'
 	@echo 'Invoking: Linker'
-	$(PREFIX) "$(COMPILER) -o $(EXEC) $(OBJS) $(LIBS) $(LKOPT)"
+	$(COMPILER) -o $(prefix)$(EXEC) $(OBJS) $(LIBS) $(LKOPT)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -71,7 +64,7 @@ all  :  $(OBJS)
 lib  :  $(OBJSL)
 	@echo 'Building target: $@'
 	@echo 'Archiving the object into library libsurfgen.a'
-	$(PREFIX) "$(AR) libsurfgen.a $(OBJSL)"
+	$(AR) $(prefix)libsurfgen.a $(OBJSL)
 	@echo ' '
 
 #
@@ -83,7 +76,7 @@ clean:
 %.o : ./%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	$(PREFIX) "$(COMPILER) -o $@ $< $(CPOPT) $(DEBUGFLAG)"
+	$(COMPILER) -o $@ $< $(CPOPT) $(DEBUGFLAG)
 	@echo 'Finished building: $<'
 	@echo ' '
 

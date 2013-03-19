@@ -174,7 +174,7 @@ MODULE makesurfdata
     g_exact=.false.
     do i=1,npoints
       if(abs(ptWeights(i)-1)>1d-5.and.printlvl>1) &
-         print *,"point ",i," weight=",ptWeights(i), " nvibs=",dispgeoms(i)%nvibs
+         print "(A,I6,A,F9.4,A,I6)","point ",i," weight=",ptWeights(i), " nvibs=",dispgeoms(i)%nvibs
       if(ptWeights(i)>1D-8)then
         do s1=1,nstates
           do s2=1,s1
@@ -1601,7 +1601,7 @@ SUBROUTINE genBasis(gradNorm)
       eval(i)=sqrt(eval(i))  
     end do
     nBas(k) = nb
-    if(printlvl>0)print *," Size of intermediate basis for block ",k," : ",nb
+    if(printlvl>0)print "(2(A,I6))"," Size of intermediate basis for block ",k," : ",nb
     if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
 ! form the transformation matrix.Z=U.L^-1/2
     allocate(ZBas(k)%List(npb(k),nb))
