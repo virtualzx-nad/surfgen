@@ -11,19 +11,19 @@
 		220AAE5916F80E6A00956284 /* coord.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22E02D7116EA83A4001D5AC1 /* coord.in.1 */; };
 		220AAE5A16F80E6A00956284 /* surfgen.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22E02D7216EA937A001D5AC1 /* surfgen.in.1 */; };
 		220AAE5B16F80E6A00956284 /* points.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22EC242F16F3D80B00A8C67B /* points.in.1 */; };
-		226A267B16954893003C4445 /* combinatorial.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A22168AE2E000238D30 /* combinatorial.f90 */; };
-		226A267C16954893003C4445 /* diis.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A23168AE2E000238D30 /* diis.f90 */; };
-		226A267D16954893003C4445 /* hddata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A24168AE2E000238D30 /* hddata.f90 */; };
-		226A267E16954893003C4445 /* io.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A25168AE2E000238D30 /* io.f90 */; };
-		226A267F16954893003C4445 /* libinternal.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A26168AE2E000238D30 /* libinternal.f90 */; };
-		226A268016954893003C4445 /* libsym.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A27168AE2E000238D30 /* libsym.f90 */; };
-		226A268116954893003C4445 /* libutil.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A28168AE2E000238D30 /* libutil.f90 */; };
-		226A268216954893003C4445 /* localcoord.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A29168AE2E000238D30 /* localcoord.f90 */; };
-		226A268316954893003C4445 /* makesurf.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A2A168AE2E000238D30 /* makesurf.f90 */; };
-		226A268416954893003C4445 /* minmex.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A2B168AE2E000238D30 /* minmex.f90 */; };
-		226A268616954893003C4445 /* progdata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A2D168AE2E000238D30 /* progdata.f90 */; };
-		226A268716954893003C4445 /* rdleclse.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A2E168AE2E000238D30 /* rdleclse.f90 */; };
-		226A268816954893003C4445 /* surfgen.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A2F168AE2E000238D30 /* surfgen.f90 */; };
+		22489C8516F900A300F2007F /* combinatorial.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7716F9008100F2007F /* combinatorial.f90 */; };
+		22489C8616F900A300F2007F /* diis.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7816F9008100F2007F /* diis.f90 */; };
+		22489C8716F900A300F2007F /* hddata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7916F9008100F2007F /* hddata.f90 */; };
+		22489C8816F900A300F2007F /* io.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7A16F9008100F2007F /* io.f90 */; };
+		22489C8916F900A300F2007F /* libinternal.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7B16F9008100F2007F /* libinternal.f90 */; };
+		22489C8A16F900A300F2007F /* libsym.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7C16F9008100F2007F /* libsym.f90 */; };
+		22489C8B16F900A300F2007F /* libutil.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7D16F9008100F2007F /* libutil.f90 */; };
+		22489C8C16F900A300F2007F /* localcoord.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7E16F9008100F2007F /* localcoord.f90 */; };
+		22489C8D16F900A300F2007F /* makesurf.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7F16F9008100F2007F /* makesurf.f90 */; };
+		22489C8E16F900A300F2007F /* minmex.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8016F9008100F2007F /* minmex.f90 */; };
+		22489C9016F900A300F2007F /* progdata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8216F9008100F2007F /* progdata.f90 */; };
+		22489C9116F900A300F2007F /* rdleclse.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8316F9008100F2007F /* rdleclse.f90 */; };
+		22489C9216F900A300F2007F /* surfgen.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8416F9008100F2007F /* surfgen.f90 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -56,23 +56,23 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		22489C7716F9008100F2007F /* combinatorial.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = combinatorial.f90; path = source/combinatorial.f90; sourceTree = "<group>"; };
+		22489C7816F9008100F2007F /* diis.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = diis.f90; path = source/diis.f90; sourceTree = "<group>"; };
+		22489C7916F9008100F2007F /* hddata.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = hddata.f90; path = source/hddata.f90; sourceTree = "<group>"; };
+		22489C7A16F9008100F2007F /* io.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = io.f90; path = source/io.f90; sourceTree = "<group>"; };
+		22489C7B16F9008100F2007F /* libinternal.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = libinternal.f90; path = source/libinternal.f90; sourceTree = "<group>"; };
+		22489C7C16F9008100F2007F /* libsym.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = libsym.f90; path = source/libsym.f90; sourceTree = "<group>"; };
+		22489C7D16F9008100F2007F /* libutil.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = libutil.f90; path = source/libutil.f90; sourceTree = "<group>"; };
+		22489C7E16F9008100F2007F /* localcoord.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = localcoord.f90; path = source/localcoord.f90; sourceTree = "<group>"; };
+		22489C7F16F9008100F2007F /* makesurf.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = makesurf.f90; path = source/makesurf.f90; sourceTree = "<group>"; };
+		22489C8016F9008100F2007F /* minmex.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = minmex.f90; path = source/minmex.f90; sourceTree = "<group>"; };
+		22489C8116F9008100F2007F /* potlib.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = potlib.f90; path = source/potlib.f90; sourceTree = "<group>"; };
+		22489C8216F9008100F2007F /* progdata.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = progdata.f90; path = source/progdata.f90; sourceTree = "<group>"; };
+		22489C8316F9008100F2007F /* rdleclse.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = rdleclse.f90; path = source/rdleclse.f90; sourceTree = "<group>"; };
+		22489C8416F9008100F2007F /* surfgen.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = surfgen.f90; path = source/surfgen.f90; sourceTree = "<group>"; };
 		22532A21168AE2CE00238D30 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		22532A22168AE2E000238D30 /* combinatorial.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = combinatorial.f90; sourceTree = "<group>"; };
-		22532A23168AE2E000238D30 /* diis.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = diis.f90; sourceTree = "<group>"; };
-		22532A24168AE2E000238D30 /* hddata.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = hddata.f90; sourceTree = "<group>"; };
-		22532A25168AE2E000238D30 /* io.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = io.f90; sourceTree = "<group>"; };
-		22532A26168AE2E000238D30 /* libinternal.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libinternal.f90; sourceTree = "<group>"; };
-		22532A27168AE2E000238D30 /* libsym.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libsym.f90; sourceTree = "<group>"; };
-		22532A28168AE2E000238D30 /* libutil.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = libutil.f90; sourceTree = "<group>"; };
-		22532A29168AE2E000238D30 /* localcoord.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = localcoord.f90; sourceTree = "<group>"; };
-		22532A2A168AE2E000238D30 /* makesurf.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = makesurf.f90; sourceTree = "<group>"; };
-		22532A2B168AE2E000238D30 /* minmex.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = minmex.f90; sourceTree = "<group>"; };
-		22532A2C168AE2E000238D30 /* potlib.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = potlib.f90; sourceTree = "<group>"; };
-		22532A2D168AE2E000238D30 /* progdata.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = progdata.f90; sourceTree = "<group>"; };
-		22532A2E168AE2E000238D30 /* rdleclse.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = rdleclse.f90; sourceTree = "<group>"; };
-		22532A2F168AE2E000238D30 /* surfgen.f90 */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.fortran.f90; path = surfgen.f90; sourceTree = "<group>"; };
 		22535BCD16E67968003F3F34 /* surfgen.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.1; path = man/man1/surfgen.1; sourceTree = "<group>"; };
-		226A266E169547B4003C4445 /* surfgen-app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "surfgen-app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		226A266E169547B4003C4445 /* surfgen-app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "surfgen-app"; path = "Surfgen-OSX-ML"; sourceTree = BUILT_PRODUCTS_DIR; };
 		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
 		22E02D7116EA83A4001D5AC1 /* coord.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = coord.in.1; path = man/man1/coord.in.1; sourceTree = "<group>"; };
 		22E02D7216EA937A001D5AC1 /* surfgen.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.in.1; path = man/man1/surfgen.in.1; sourceTree = "<group>"; };
@@ -90,26 +90,33 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		22489C7616F9001600F2007F /* Source Code */ = {
+			isa = PBXGroup;
+			children = (
+				22489C7716F9008100F2007F /* combinatorial.f90 */,
+				22489C7816F9008100F2007F /* diis.f90 */,
+				22489C7916F9008100F2007F /* hddata.f90 */,
+				22489C7A16F9008100F2007F /* io.f90 */,
+				22489C7B16F9008100F2007F /* libinternal.f90 */,
+				22489C7C16F9008100F2007F /* libsym.f90 */,
+				22489C7D16F9008100F2007F /* libutil.f90 */,
+				22489C7E16F9008100F2007F /* localcoord.f90 */,
+				22489C7F16F9008100F2007F /* makesurf.f90 */,
+				22489C8016F9008100F2007F /* minmex.f90 */,
+				22489C8116F9008100F2007F /* potlib.f90 */,
+				22489C8216F9008100F2007F /* progdata.f90 */,
+				22489C8316F9008100F2007F /* rdleclse.f90 */,
+				22489C8416F9008100F2007F /* surfgen.f90 */,
+			);
+			name = "Source Code";
+			sourceTree = "<group>";
+		};
 		22532A14168AE2A700238D30 = {
 			isa = PBXGroup;
 			children = (
 				22535BCE16E6796E003F3F34 /* Man Pages */,
 				22532A21168AE2CE00238D30 /* Makefile */,
-				22532A22168AE2E000238D30 /* combinatorial.f90 */,
-				22532A23168AE2E000238D30 /* diis.f90 */,
-				22532A24168AE2E000238D30 /* hddata.f90 */,
-				22532A25168AE2E000238D30 /* io.f90 */,
-				22532A28168AE2E000238D30 /* libutil.f90 */,
-				22532A26168AE2E000238D30 /* libinternal.f90 */,
-				22532A27168AE2E000238D30 /* libsym.f90 */,
-				22532A29168AE2E000238D30 /* localcoord.f90 */,
-				22532A2A168AE2E000238D30 /* makesurf.f90 */,
-				22532A2B168AE2E000238D30 /* minmex.f90 */,
-				22532A2C168AE2E000238D30 /* potlib.f90 */,
-				22532A2D168AE2E000238D30 /* progdata.f90 */,
-				22532A2E168AE2E000238D30 /* rdleclse.f90 */,
-				22532A2F168AE2E000238D30 /* surfgen.f90 */,
-				226A2671169547B4003C4445 /* surfgen-app */,
+				22489C7616F9001600F2007F /* Source Code */,
 				226A266F169547B4003C4445 /* Products */,
 				22BF126E169A66DD00566C40 /* test */,
 			);
@@ -132,13 +139,6 @@
 				226A266E169547B4003C4445 /* surfgen-app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		226A2671169547B4003C4445 /* surfgen-app */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = "surfgen-app";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -210,19 +210,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				226A267B16954893003C4445 /* combinatorial.f90 in Sources */,
-				226A267C16954893003C4445 /* diis.f90 in Sources */,
-				226A267D16954893003C4445 /* hddata.f90 in Sources */,
-				226A268616954893003C4445 /* progdata.f90 in Sources */,
-				226A268016954893003C4445 /* libsym.f90 in Sources */,
-				226A267F16954893003C4445 /* libinternal.f90 in Sources */,
-				226A268116954893003C4445 /* libutil.f90 in Sources */,
-				226A268216954893003C4445 /* localcoord.f90 in Sources */,
-				226A267E16954893003C4445 /* io.f90 in Sources */,
-				226A268716954893003C4445 /* rdleclse.f90 in Sources */,
-				226A268416954893003C4445 /* minmex.f90 in Sources */,
-				226A268316954893003C4445 /* makesurf.f90 in Sources */,
-				226A268816954893003C4445 /* surfgen.f90 in Sources */,
+				22489C8516F900A300F2007F /* combinatorial.f90 in Sources */,
+				22489C8616F900A300F2007F /* diis.f90 in Sources */,
+				22489C9016F900A300F2007F /* progdata.f90 in Sources */,
+				22489C8716F900A300F2007F /* hddata.f90 in Sources */,
+				22489C8916F900A300F2007F /* libinternal.f90 in Sources */,
+				22489C8A16F900A300F2007F /* libsym.f90 in Sources */,
+				22489C8B16F900A300F2007F /* libutil.f90 in Sources */,
+				22489C8C16F900A300F2007F /* localcoord.f90 in Sources */,
+				22489C8E16F900A300F2007F /* minmex.f90 in Sources */,
+				22489C9116F900A300F2007F /* rdleclse.f90 in Sources */,
+				22489C8D16F900A300F2007F /* makesurf.f90 in Sources */,
+				22489C8816F900A300F2007F /* io.f90 in Sources */,
+				22489C9216F900A300F2007F /* surfgen.f90 in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

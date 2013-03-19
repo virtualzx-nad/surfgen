@@ -587,11 +587,9 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
 ! calculate the scaled oop
   if(sctype<0)then
-    scale = scale+3
-    factor = factor**scale
-    denom = sum(w)**scale
-    qval = fval * factor / denom
-    bval = fbmat* factor / denom - qval*scale/sum(w)*&
+    denom = (factor/sum(w))**(scale+3)
+    qval = fval * denom
+    bval = fbmat* denom - qval*(scale+3)/sum(w)*&
               (dwdR(1,:)+dwdR(2,:)+dwdR(3,:)+dwdR(4,:)+dwdR(5,:)+dwdR(6,:))
   else
     bval = 0d0
