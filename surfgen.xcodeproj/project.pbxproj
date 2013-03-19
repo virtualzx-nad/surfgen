@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		220AAE5816F80E6A00956284 /* surfgen.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22535BCD16E67968003F3F34 /* surfgen.1 */; };
+		220AAE5916F80E6A00956284 /* coord.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22E02D7116EA83A4001D5AC1 /* coord.in.1 */; };
+		220AAE5A16F80E6A00956284 /* surfgen.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22E02D7216EA937A001D5AC1 /* surfgen.in.1 */; };
+		220AAE5B16F80E6A00956284 /* points.in.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 22EC242F16F3D80B00A8C67B /* points.in.1 */; };
 		226A267B16954893003C4445 /* combinatorial.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A22168AE2E000238D30 /* combinatorial.f90 */; };
 		226A267C16954893003C4445 /* diis.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A23168AE2E000238D30 /* diis.f90 */; };
 		226A267D16954893003C4445 /* hddata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22532A24168AE2E000238D30 /* hddata.f90 */; };
@@ -42,6 +46,10 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
+				220AAE5816F80E6A00956284 /* surfgen.1 in CopyFiles */,
+				220AAE5916F80E6A00956284 /* coord.in.1 in CopyFiles */,
+				220AAE5A16F80E6A00956284 /* surfgen.in.1 in CopyFiles */,
+				220AAE5B16F80E6A00956284 /* points.in.1 in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -152,9 +160,9 @@
 /* End PBXLegacyTarget section */
 
 /* Begin PBXNativeTarget section */
-		226A266D169547B4003C4445 /* surfgen-app */ = {
+		226A266D169547B4003C4445 /* Surfgen-OSX-ML.app */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 226A2678169547B4003C4445 /* Build configuration list for PBXNativeTarget "surfgen-app" */;
+			buildConfigurationList = 226A2678169547B4003C4445 /* Build configuration list for PBXNativeTarget "Surfgen-OSX-ML.app" */;
 			buildPhases = (
 				226A266A169547B4003C4445 /* Sources */,
 				226A266B169547B4003C4445 /* Frameworks */,
@@ -165,7 +173,7 @@
 			);
 			dependencies = (
 			);
-			name = "surfgen-app";
+			name = "Surfgen-OSX-ML.app";
 			productName = "surfgen-app";
 			productReference = 226A266E169547B4003C4445 /* surfgen-app */;
 			productType = "com.apple.product-type.tool";
@@ -192,7 +200,7 @@
 			projectRoot = "";
 			targets = (
 				22532A1B168AE2A700238D30 /* surfgen */,
-				226A266D169547B4003C4445 /* surfgen-app */,
+				226A266D169547B4003C4445 /* Surfgen-OSX-ML.app */,
 			);
 		};
 /* End PBXProject section */
@@ -310,6 +318,8 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 2.0.0;
+				EXECUTABLE_EXTENSION = "";
+				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
 				OTHER_LDFLAGS = (
 					"-L/usr/local/lib",
@@ -317,7 +327,7 @@
 					"-framework",
 					vecLib,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Surfgen-OSX-ML";
 				VERSION_INFO_SUFFIX = global.debug;
 				XZHU_BUILD_SETTING = "-g -Warray-temporaries -Wall -Wextra -fbounds-check -fbacktrace ";
 			};
@@ -329,6 +339,8 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 2.0.0;
+				EXECUTABLE_EXTENSION = "";
+				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
 				OTHER_LDFLAGS = (
 					"-L/usr/local/lib",
@@ -336,7 +348,7 @@
 					"-framework",
 					vecLib,
 				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Surfgen-OSX-ML";
 				VERSION_INFO_SUFFIX = global.release;
 				XZHU_BUILD_SETTING = "-O3 -g";
 			};
@@ -363,7 +375,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		226A2678169547B4003C4445 /* Build configuration list for PBXNativeTarget "surfgen-app" */ = {
+		226A2678169547B4003C4445 /* Build configuration list for PBXNativeTarget "Surfgen-OSX-ML.app" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				226A2676169547B4003C4445 /* Debug */,

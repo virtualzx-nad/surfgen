@@ -30,7 +30,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "226A266D169547B4003C4445"
                BuildableName = "surfgen-app"
-               BlueprintName = "surfgen-app"
+               BlueprintName = "Surfgen-OSX-ML.app"
                ReferencedContainer = "container:surfgen.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
