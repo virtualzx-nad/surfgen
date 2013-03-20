@@ -22,6 +22,7 @@ SGENVER := 2.0.0
 UNAME := $(shell uname -a)
 OS    := $(word 1,$(UNAME))
 OSV   := $(word 3,$(UNAME))
+ARC   := $(shell uname -m)
 $(info Operating system: $(OS))
 $(info OS Version: $(OSV))
 
@@ -42,7 +43,7 @@ else       #find default compilers
 endif
 
 # set up product name
-EXEC  := surfgen-$(SGENVER)-$(OS)-$(OSV)-$(word 1, $(COMPILER))
+EXEC  := surfgen-$(SGENVER)-$(OS)-$(OSV)-$(ARC)-$(word 1, $(COMPILER))
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
@@ -97,11 +98,19 @@ endif
 
 # set default compiler flags
 ifneq ($(findstring ifort,$(COMPILER)),)
-  CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -xHost -no-opt-matmul -i8
+  ifdef NO_I8
+    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp
+  else
+    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -xHost -no-opt-matmul -i8
+  endif
   LKOPT    := -auto -lpthread -parallel
 else
  ifneq ($(findstring gfortran,$(COMPILER)),)
-  CPOPT    := -fopenmp -O3 -m64
+  ifndef NO_I8
+    CPOPT    := -fopenmp -O3 
+  else
+    CPOPT    := -fopenmp -O3 -m64
+  endif
   LKOPT    :=
  else
   CPOPT    := 

@@ -74,6 +74,7 @@
 		22535BCD16E67968003F3F34 /* surfgen.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.1; path = man/man1/surfgen.1; sourceTree = "<group>"; };
 		226A266E169547B4003C4445 /* surfgen-app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "surfgen-app"; path = "Surfgen-OSX-ML"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2289FF8D16F99A9B009D4934 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		2299C4D916FA0E230027C5A9 /* bin */ = {isa = PBXFileReference; lastKnownFileType = folder; path = bin; sourceTree = "<group>"; };
 		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
 		22E02D7116EA83A4001D5AC1 /* coord.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = coord.in.1; path = man/man1/coord.in.1; sourceTree = "<group>"; };
 		22E02D7216EA937A001D5AC1 /* surfgen.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.in.1; path = man/man1/surfgen.in.1; sourceTree = "<group>"; };
@@ -115,6 +116,7 @@
 		22532A14168AE2A700238D30 = {
 			isa = PBXGroup;
 			children = (
+				2299C4D916FA0E230027C5A9 /* bin */,
 				22535BCE16E6796E003F3F34 /* Man Pages */,
 				22532A21168AE2CE00238D30 /* Makefile */,
 				22489C7616F9001600F2007F /* Source Code */,
