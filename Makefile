@@ -46,14 +46,16 @@ EXEC  := surfgen-$(SGENVER)-$(OS)-$(OSV)-$(word 1, $(COMPILER))
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
-  ifneq ($(findstring gfortran,$(COMPILER)),)
+  ifndef DEBUGFLAG
+   ifneq ($(findstring gfortran,$(COMPILER)),)
     DEBUGFLAG = -g -fbounds-check -fbacktrace -Wall -Wextra
-  else
+   else
     ifneq ($(findstring ifort,$(COMPILER)),)
         DEBUGFLAG = -g -check all -traceback
     else
         DEBUGFLAG = -g
     endif
+   endif
   endif
 else
   DEBUGFLAG := 
@@ -83,8 +85,13 @@ ifndef LIBS
      Use variable LIBS or BLAS_LIB to define these libraries.)
 endif
 
-RM := rm -rf
-AR := ar -rv
+ifndef RM
+    RM := rm -rf
+endif
+
+ifndef AR
+    AR := ar -rv
+endif
 
 # set default compiler flags
 ifneq ($(findstring ifort,$(COMPILER)),)
@@ -124,14 +131,14 @@ lib  :  $(OBJSL)
 
 #
 clean:
-	-$(RM) $(SDIR)/$(OBJS) $(SDIR)/*.mod
+	-$(CDS) $(RM) $(OBJS) *.mod
 	-@echo 'Finished cleaning'
 
 #
 %.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FCFLAGS)
+	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS)
 	@echo 'Finished building: $<'
 	@echo ' '
 
