@@ -4,4 +4,6 @@
 profile
 DerivedData/
 build/
+surfgen.xcodeproj/project.xcworkspace/xcuserdata/
+surfgen.xcodeproj/xcuserdata/
 *.xcuserstate

@@ -77,8 +77,10 @@ ifndef LIBS
         $(info Found mkl in LD_LIBRARY_PATH. Using dynamic link to MKL.)
         LIBS := -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lpthread -lm
      endif #ifneq mkl,LD_...
-  endif
- endif
+  endif #OS==Darwin
+ else
+    LIBS := $(BLAS_LIB)
+ endif #BLAS_LIB
 endif #ifndef $LIBS
 ifndef LIBS
   $(info Warning:  Lapack library link line options not determined. \
