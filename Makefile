@@ -111,8 +111,8 @@ endif
 #we cheat and use the compiler to invoke the linker
 all  :  $(OBJS)    
 	@echo 'MESSAGE : $(Msg), Debug flag=$(DEBUGFLAG)'
-    @echo 'Executable name: $(EXEC)'
-    @echo 'Executable saved to: $(BDIR)'
+	@echo 'Executable name: $(EXEC)'
+	@echo 'Executable saved to: $(BDIR)'
 	@echo 'BLAS/LAPACK LIB:  $(LIBS)'
 	@echo 'Compiler options: $(CPOPT)'
 	@echo 'Linking options:  $(LKOPT)'
