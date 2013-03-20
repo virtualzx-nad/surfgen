@@ -172,7 +172,7 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 
 ! bval     Derivative of a unscaled coordinate with respect to cartesian 
 !            coordinates of the four reference atoms.
-  DOUBLE PRECISION     ::  bval(12)
+  DOUBLE PRECISION     ::  bval(12), w(3), dwdR(3,12), dw(12),ss,fs,s(3)
 
 ! intialize bmat
   bmat = 0d0
@@ -224,8 +224,28 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case(-2)  !special oop angles
         bmat(i,:) = dble(0)
-        call oop3(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
+        if(CoordSet(m)%Scaling>0)then
+            call  oop(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,5d-1)
+            ! scaling with exponentials
+            dwdR = 0d0
+            do j=2,4
+                call calcwij(coordset(m)%scaling,CoordSet(m)%coord(1,n), &
+                     CoordSet(m)%coord(j,n),coordset(m)%coef,cgeom,w(j-1),dw)
+                if(abs(w(j-1))<1D-30) w(j-1)=sign(1D-30,w(j-1))
+                dwdR(j-1,1:3) = dw(1:3)
+                dwdR(j-1,j*3-2:j*3) = dw(4:6)
+            end do
+            s(1) = w(2)*w(3)
+            s(2) = w(3)*w(1)
+            s(3) = w(1)*w(2)
+            ss = sum(s)
+            fs = w(1)*s(1)/ss
+            bval=bval*fs+igeom(i)*(s(1)**2*dwdR(1,:)+s(2)**2*dwdR(2,:)+s(3)**2*dwdR(3,:))/ss**2
+            igeom(i)=igeom(i)*fs
+        else
+            call oop3(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
                 coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
+        end if
         do j=1,4
           offs = 3*(CoordSet(m)%coord(j,n)-1)
           bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
@@ -706,6 +726,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   if(sctype.ne.0)then
     do i=2,4
      call calcwij(abs(sctype),atms(1),atms(i),coef,cgeom,w2(i-1),dw)
+     if(abs(w2(i-1))<1D-50) w2(i-1)=sign(1D-50,w2(i-1))
      dwdR2(i-1,1:3)= dw(1:3)
      dwdR2(i-1,i*3-2:i*3)= dw(4:6)
     end do

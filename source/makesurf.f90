@@ -3023,13 +3023,21 @@ SUBROUTINE readdisps()
   if(printlvl>0)print 1000,"Generating displacement Wilson's B-Matrices"
   if(printlvl>0.and.useIntGrad)print 1000,'Local internal coordinates will be constructed from B-matrices'
   do l = 1,npoints
+    if(printlvl>0)print *,""
+    if(printlvl>0)print *,"      Constructing Wilson B matrix at point ",l," :"
     call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%bmat)
+    if(printlvl>0)then
+        print *,"  Internal Coordinates"
+        print "(15F8.3)",dispgeoms(l)%igeom
+    end if
+    if(printlvl>3)then
+        print *,"  Wilson B Matrix in nascent coordinate system"
+        do j=1,ncoord
+            print "(15F8.3)",dispgeoms(l)%bmat(j,:)
+        end do
+    end if
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)
-    if(printlvl>0)then
-      print *,"  Internal Coordinates"
-      print "(15F8.3)",dispgeoms(l)%igeom
-    end if
     if(printlvl>1)then
        print *,"  Wilson B Matrix in fitting coordinate system"
        do j=1,ncoord

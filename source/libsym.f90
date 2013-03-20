@@ -295,7 +295,7 @@ CONTAINS
            end if
            do k=1,CoordSet(m)%ncoord
            ! find the permuted pair in the coordinate list
-             if(count(newCoord(1:2).eq.CoordSet(m)%coord(:,k)).eq.2)then
+             if(count(newCoord(1:2).eq.CoordSet(m)%coord(1:2,k)).eq.2)then
                coordPerm(i,j) = CoordSet(m)%icoord(k)
                sgnCPerm(i,j)  = 1
                exit

@@ -254,16 +254,16 @@ SUBROUTINE readCoords()
             select case (CoordSet(i)%Type)
                 case (0) ! stre
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,2I3,6x)",advance="no") &
-                        k,i,"stretch",CoordSet(i)%Scaling,CoordSet(i)%atom(1:2)
+                        k,i,"stretch",CoordSet(i)%Scaling,CoordSet(i)%coord(1:2,j)
                 case (1) ! bend
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,3I3,3x)",advance="no") &
-                        k,i,"bending",CoordSet(i)%Scaling,CoordSet(i)%atom(1:3)
+                        k,i,"bending",CoordSet(i)%Scaling,CoordSet(i)%coord(1:3,j)
                 case (-1) ! oop tetr
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
-                        k,i,"TetrOOP",CoordSet(i)%Scaling,CoordSet(i)%atom(1:4)
+                        k,i,"TetrOOP",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)
                 case (-2) ! oop umbr
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
-                        k,i,"UmbrOOP",CoordSet(i)%Scaling,CoordSet(i)%atom(1:4)
+                        k,i,"UmbrOOP",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)
                 case default
                     stop "UNSUPPORTED COORDINATE TYPE"
             end select
