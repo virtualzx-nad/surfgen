@@ -198,9 +198,9 @@ CONTAINS
       if(printlvl>0)print *,"    G and H vectors are switched."  
       print *,"curr E^2:", errcurr,", after switch:",errrot
       if(beta>0)then 
-          beta=beta-pi/2
+          beta=beta-pi/4
       else
-          beta=beta+pi/2
+          beta=beta+pi/4
       end if
     end if
   END FUNCTION getBeta
@@ -627,14 +627,6 @@ CONTAINS
     g=(pt%grads(:pt%nvibs,i,i)-pt%grads(:pt%nvibs,j,j))/2
     h=pt%grads(:pt%nvibs,i,j)
     CALL orthgh(pt%nvibs,g,h,beta)
-    if(dot_product(h,h)>dot_product(g,g))then
-      if(printlvl>0)print *,"    G and H vectors are switched."
-      if(beta>0)then
-          beta=beta-pi/4
-      else
-          beta=beta+pi/4
-      end if
-    end if
   END FUNCTION getBeta
 END SUBROUTINE 
 
