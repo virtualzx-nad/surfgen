@@ -373,7 +373,7 @@ SUBROUTINE initialize(jobtype)
   use CNPI
   IMPLICIT NONE
   INTEGER,INTENT(IN)                          :: jobtype
-  integer :: i
+  integer :: i,J
   double precision  :: eguess(nGroups)
 
   LOGICAL removed
@@ -418,7 +418,6 @@ SUBROUTINE initialize(jobtype)
     call readHd(inputfl)
   end if!(inputfl/='')
   call printTitle(jobtype)
-  
   if(printlvl>0)print *,"Exiting Initialize()"
 end SUBROUTINE initialize
 

@@ -1557,75 +1557,95 @@ SUBROUTINE genBasis(gradNorm)
     call system_clock(COUNT=count1)
     if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
 
-! construct overlap between primitive basis
-! dmat is the dot product (overlap) matrix of primitive basis matrices on the space spanned by the aforementioned
-!   surface quantities.   dmat=pbasw^T.pbasw
-    allocate(dmat(npb(k),npb(k)))
-    if(printlvl>1)write(*,"(A)",advance='no'),"   Constructing and diagonalizing intermediate basis overlap matrix..."
-    CALL DSYRK('U','T',npb(k),npoints*(nvibs+1)*ll*rr,dble(1),pbasw,&
-         npoints*(nvibs+1)*ll*rr,dble(0),dmat,npb(k))
-    deallocate(pbasw)
+    if(TBas>0)then  ! construct primitive basis
+    ! construct overlap between primitive basis
+    ! dmat is the dot product (overlap) matrix of primitive basis matrices on the space spanned by the aforementioned
+    !   surface quantities.   dmat=pbasw^T.pbasw
+        allocate(dmat(npb(k),npb(k)))
+        if(printlvl>1)write(*,"(A)",advance='no'),"   Constructing and diagonalizing intermediate basis overlap matrix..."
+        CALL DSYRK('U','T',npb(k),npoints*(nvibs+1)*ll*rr,dble(1),pbasw,&
+             npoints*(nvibs+1)*ll*rr,dble(0),dmat,npb(k))
+        deallocate(pbasw)
 
-    ! diagonalize overlap matrix to obtain orthogonal basis
-    allocate(WORK(1))
-    allocate(IWORK(1))
-    allocate(ISUP(2*npb(k)))
-    allocate(evec(npb(k),npb(k)))
-    allocate(eval(npb(k)))
-    CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0d0,0d0,0,0,TBas/100,n1,eval,&
-          evec,npb(k),ISUP,WORK,int(-1),IWORK,int(-1),INFO)
-    IF(INFO/=0)stop "genBasis:  DSYEVR workspace query failed."
-    n1 = int(WORK(1))
-    n2 = int(IWORK(1))
-    deallocate(WORK)
-    deallocate(IWORK)
-    allocate(WORK(n1))
-    allocate(IWORK(n2))
-    CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0.,0.,0,0,0d0,p,eval,&
-          evec,npb(k),ISUP,WORK,n1,IWORK,n2,INFO)
-    if(INFO/=0)stop "genBasis:  DSYEVR FAILED."
-    
-    deallocate(WORK)
-    deallocate(IWORK)
-    deallocate(ISUP)
-    deallocate(dmat)
-    call system_clock(COUNT=count2)
-    if(printlvl>1)print 1001, " finished in",dble(count2-count1)/count_rate," s"
-! construct transformations to the new basis 
-! count number of eigenvalues larger than threshold and invert the square roots of the valid ones
-! ZBas is forward transformation and ZBasI is backwards transformation
-    nb= 0 
-    do i=npb(k),1,-1
-      if(eval(i)<TBas)exit
-      nb=nb+1
-      eval(i)=sqrt(eval(i))  
-    end do
-    nBas(k) = nb
-    if(printlvl>0)print "(2(A,I6))"," Size of intermediate basis for block ",k," : ",nb
-    if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
-! form the transformation matrix.Z=U.L^-1/2
-    allocate(ZBas(k)%List(npb(k),nb))
-    allocate(ZBasI(k)%List(nb,npb(k)))
-    do i=npb(k),npb(k)-nb+1,-1
-      ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)/eval(i)
-      ZBasI(k)%List(npb(k)-i+1,:)=evec(:,i)*eval(i)
-    end do
-    deallocate(evec)
-    deallocate(eval)
+        ! diagonalize overlap matrix to obtain orthogonal basis
+        allocate(WORK(1))
+        allocate(IWORK(1))
+        allocate(ISUP(2*npb(k)))
+        allocate(evec(npb(k),npb(k)))
+        allocate(eval(npb(k)))
+        CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0d0,0d0,0,0,TBas/100,n1,eval,&
+              evec,npb(k),ISUP,WORK,int(-1),IWORK,int(-1),INFO)
+        IF(INFO/=0)stop "genBasis:  DSYEVR workspace query failed."
+        n1 = int(WORK(1))
+        n2 = int(IWORK(1))
+        deallocate(WORK)
+        deallocate(IWORK)
+        allocate(WORK(n1))
+        allocate(IWORK(n2))
+        CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0.,0.,0,0,0d0,p,eval,&
+              evec,npb(k),ISUP,WORK,n1,IWORK,n2,INFO)
+        if(INFO/=0)stop "genBasis:  DSYEVR FAILED."
+        
+        deallocate(WORK)
+        deallocate(IWORK)
+        deallocate(ISUP)
+        deallocate(dmat)
+        call system_clock(COUNT=count2)
+        if(printlvl>1)print 1001, " finished in",dble(count2-count1)/count_rate," s"
+    ! construct transformations to the new basis 
+    ! count number of eigenvalues larger than threshold and invert the square roots of the valid ones
+    ! ZBas is forward transformation and ZBasI is backwards transformation
+        nb= 0 
+        do i=npb(k),1,-1
+          if(eval(i)<TBas)exit
+          nb=nb+1
+          eval(i)=sqrt(eval(i))  
+        end do
+        nBas(k) = nb
+        if(printlvl>0)print "(2(A,I6))"," Size of intermediate basis for block ",k," : ",nb
+        if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
+    ! form the transformation matrix.Z=U.L^-1/2
+        allocate(ZBas(k)%List(npb(k),nb))
+        allocate(ZBasI(k)%List(nb,npb(k)))
+        do i=npb(k),npb(k)-nb+1,-1
+          ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)/eval(i)
+          ZBasI(k)%List(npb(k)-i+1,:)=evec(:,i)*eval(i)
+        end do
+        deallocate(evec)
+        deallocate(eval)
 
-! get the values and gradients in the transformed basis
-    if(printlvl>1)write(*,"(A)",advance='no'),"   Generating values and gradients in transformed basis..." 
-    pv1 = npoints*(1+nvibs)*ll*rr
-! generate new coefficient matrix in the basis.  WMat = pbas.ZBas
-    allocate(WMat(k)%List(pv1,nb))
-    call DGEMM('N','N',pv1,nb,npb(k),1d0,pbas,pv1,ZBas(k)%List,npb(k),0d0,WMat(k)%List,pv1)  
-    deallocate(pbas)
-    call system_clock(COUNT=count1)
-    if(printlvl>1)print 1001, " finished in",dble(count1-count2)/count_rate," s"
+    ! get the values and gradients in the transformed basis
+        if(printlvl>1)write(*,"(A)",advance='no'),"   Generating values and gradients in transformed basis..." 
+        pv1 = npoints*(1+nvibs)*ll*rr
+    ! generate new coefficient matrix in the basis.  WMat = pbas.ZBas
+        allocate(WMat(k)%List(pv1,nb))
+        call DGEMM('N','N',pv1,nb,npb(k),1d0,pbas,pv1,ZBas(k)%List,npb(k),0d0,WMat(k)%List,pv1)  
+        deallocate(pbas)
+        call system_clock(COUNT=count1)
+        if(printlvl>1)print 1001, " finished in",dble(count1-count2)/count_rate," s"
+!-----------------------------------------------------------------
+    else  ! TBas<=0, use the raw basis itself
+        if(printlvl>1)print *,"  TBas<=0, skipping null space removal. Using intermediate basis in fit."
+        nBas(k) = npb(k)
+        allocate(ZBas(k)%List(npb(k),npb(k)))
+        allocate(ZBasI(k)%List(npb(k),npb(k)))
+        Zbas(k)%List=0d0
+        ZBasI(k)%List=0D0
+        do i=1,npb(k)
+            ZBas(k)%List(i,i) =  1D0
+            ZBasI(k)%List(i,i)=  1D0
+        end do
+        pv1 = npoints*(1+nvibs)*ll*rr
+        ! generate new coefficient matrix in the basis.  WMat = pbas
+        allocate(WMat(k)%List(pv1,npb(k)))
+        WMat(k)%List=pbas
+        deallocate(pbasw)
+        deallocate(pbas)
+    end if!(TBas>0)
 
 ! verify if the resulting basis yield a orthogonal coefficient matrix
 !    if(printlvl>2)then
-!      count2 = count1
+!      count2 = count
 !      print *,"    Verifying the overlap matrix in new basis."
 !      allocate(dmat(nb,nb))
 !      CALL DSYRK('U','T',nb,pv1,dble(1),WMat(k)%List,pv1,dble(0),dmat,nb)
@@ -1655,7 +1675,7 @@ SUBROUTINE genBasis(gradNorm)
 !      end do
 !      print "(2(A,F9.4))","       Diagonal elements     : min=",dmin," max=",dmax
 !      print "(2(A,F9.4,A,I5,A,I5,A))","       Off-diagonal elements : min=",omin,"@(",I,',',J,"),",&
-!                                                               " max=",omax,"@(",P,',',Q,")"
+!                                                              " max=",omax,"@(",P,',',Q,")"
 !      deallocate(dmat)
 !      call system_clock(COUNT=count1)
 !      if(printlvl>1)print 1001, "     verification finished in",dble(count1-count2)/count_rate," s"

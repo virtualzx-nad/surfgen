@@ -114,7 +114,7 @@ MODULE HdDATA
   ! Map that defines basis matrices from polynomial terms defined in termList
   type(TMaptabEnt),DIMENSION(:,:),allocatable,private  :: maptab
   ! diabatic Hamiltonian, as an expansion of basis matrices defined in maptab
-  type(TDList),dimension(:,:),allocatable,private      :: Hd
+  type(TDList),dimension(:,:),allocatable      :: Hd
   ! linearized Hd, with symmetry coefficients and expansion coefficients expanded and collected
   ! for raw terms to yield a contracted vector form.   dhdl provides the corresponding vector for
   ! each of the gradients in internal coordinates
@@ -723,6 +723,7 @@ CONTAINS
    if(comment/='COEFFICIENTS')then
      stop 'readHd: coefficients block expected'
    end if!(comment/='CONSTANT COEFFICIENTS')
+   ! clean hd
    do i = 0,order_in
      do j=1,nblks
        if(maptab(i,j)%nBasis>0)then
@@ -748,6 +749,13 @@ CONTAINS
        end if!(maptab(i,j)%nBasis>0)
      end do !j=1,nblks
    enddo !i=1,order
+
+PRINT *,"READHD:NRM OF BLOCKS:"
+DO I=1,ORDER
+DO J=1,NBLKS
+PRINT *,"HD(",I,",",J,"):",sqrt(sum(hd(i,j)%List**2))
+END DO
+END DO
    close(SURFIN)
    print *,'  Hd Data Imported.'
    call LinearizeHd
