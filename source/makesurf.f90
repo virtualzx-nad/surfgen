@@ -1608,8 +1608,8 @@ SUBROUTINE genBasis(gradNorm)
         allocate(ZBas(k)%List(npb(k),nb))
         allocate(ZBasI(k)%List(nb,npb(k)))
         do i=npb(k),npb(k)-nb+1,-1
-          ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)/eval(i)
-          ZBasI(k)%List(npb(k)-i+1,:)=evec(:,i)*eval(i)
+          ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)
+          ZBasI(k)%List(npb(k)-i+1,:)=evec(:,i)
         end do
         deallocate(evec)
         deallocate(eval)
