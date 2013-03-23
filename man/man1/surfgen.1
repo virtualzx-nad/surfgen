@@ -198,43 +198,74 @@ files.  For a detailed description of the format of this file, see
 .Xr connect.in 1
 ./"  -->>  Ab initio data -->>
 .It Em Ab initio Data
-Ab initio data input files for surface fitting program.  In each input file, one specific 
-type of ab initio data for all data points are appended together.   For gradients and 
-derivative couplings, components must be given in Cartesian coordinates.   Use
+Ab initio data input files for surface fitting program.  All data points are 
+arranged in to data groups.  Each group of points has a number of input files.
+In each input file, one specific type of ab initio data for all data points are 
+appended together.   For gradients and derivative couplings, components must be 
+given in Cartesian coordinates.   
+.br
+All the search paths are given in SearchPaths input option in 
+.Pa surfgen.in .  
+The program will search each of the search paths for a set of input files.  
+.Sy Note that you will have to include '.' in the search paths list to let the program search it.
+The default SearchPath has only current directory.
+The naming pattern for each input file can be changed through changing the corresponding
+options in 
+.Pa surfgen.in
+.br
+For gradients and couplings, these naming patterns use character '$' as a wildcard
+character which stand for state index.  For example, gradient pattern
+.Em grd$
+would result in a file name which is characters grd appended by the state index.
+.br
+Use
 .Ar COLUMBUS 
-input/output format for all data files.   A list of input files include
+input/output format for all data files.   A list of default input file names include
 ./" {   >>>>> beginning of ab initio data files list >>>>>
 .Bl -tag -compact -width  "energy.all "
+.It Pa note
+A note to remind yourself what these data are.   The first line of it will also
+be written to standard output when reading displacement data.  Change the naming
+pattern by setting noteptn option.
 .It Pa geom.all 
-Cartesian geometry file for all data points.  
+Cartesian geometry file for all data points.  Change the naming pattern by setting
+option
+.Em gmfptn .
+.br
 .Ar COLUMBUS
 format is used, where each line contains atom name (character*3),  nuclear charge (f),
 cartesian coordinates (3f) and atomic weight (f).   Only the coordinate information is
 used in the fitting process.  Data for different geometries are appended together.
 .It Pa energy.all
-Energy information file.  All energies are given in hartree.  Each line much contain 
-the energies of all the states for one data point, given in floating point or scientific
-format.  The number of states is specified in 
+Energy information file.  All energies are given in hartree.  If the file does not
+contain energies of all the states, use the following syntax in the first line:
+.br
+STATES 2  4
+.br
+In this example, each line of the energy file contains 4 energy data, from states
+2, 3 and 4.
+When this is omitted, the program will assume all
+.Va nstates
+energies are present each line.
+The energies are given in floating point or scientific format.  
+The number of states is specified in
 .Ar surfgen.in .
 The number and ordering of data points must be consistent with
 .Ar geom.all .
 Data for all points and states must be present.  If an energy data is absent, put in 
 any number (for example, .0) then specify it to be ignored in 
 .Ar points.in .
-.It Pa cartgrd.drt1.state?.all
+.It Pa cartgrd.drt1.state$.all
 Adiabatic energy gradient data for one particular electronic state.  Each line contains
 three floating point or scientific numbers specifying the component of the energy gradient
 vector on one atom.  The data for all atoms and geometries are appended with the same order
 as in 
 .Ar geom.all .
-Data for all atoms must be present.  One input file has to be given for each state.  If 
-a gradient data is absent, put in any number (for example, .0) then specify it to be 
-excluded in 
-.Ar points.in .
-Empty lines are ignored.
-.It Pa cartgrd.nad.drt1.state?.drt2.state?.all
-.It Pa cartgrd_total.drt1.state?.drt2.state?.all
-Derivative coupling data of all data points between two specific states.  The format is 
+Data for all atoms must be present.  Empty lines are ignored.
+To change the naming pattern, use option 
+.Em grdfptn .
+.It Pa cartgrd.nad.drt1.state$.drt2.state$.all
+Derivative coupling data of all data points between two specific states.  The format is
 identical with energy gradient input files.  One file has to be given for each pair of 
 states.   The "_total" files contain the actually derivative coupling data, which 
 approach infinity at conical intersections, while the data in ".nad" files are obtained by
@@ -242,16 +273,9 @@ multiplying the derivative couplings by energy difference, i.e. the matrix eleme
 derivative of the Hamiltonian operator, which does not experience singularity.  These
 files are consistent with 
 .Ar COLUMBUS
-output with 
-.Em nadcalc=3
-and 
-.Em nadcalc=1 .
-If 
-.Em usefij=0
-in 
-.Ar surfgen.in ,
-".nad" files are used.  Otherwise "_total" files are used.  
-.El 
+output . To change the naming pattern, use cpfptn option in 
+.Pa surfgen.in
+.El
 ./" }     <<<<< end of ab initio data files list <<<<<
 .El                      \" Ends the list
 .\" .Sh DIAGNOSTICS       \" May not be needed

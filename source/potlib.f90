@@ -845,6 +845,7 @@ SUBROUTINE loadRefGeoms()
   allocate(rgeom(nrpts,ncoord))
   PRINT *,"   Loading ",nrpts," geometries from file ",trim(adjustl(gflname))
   call readColGeom(gflname,nrpts,natoms,atoms,anums,cgeom,masses)
+  print *,"   ",nrpts," geometries loaded."
   PRINT *,"   Converting to internal coordinates"
   do i=1,nrpts
     call buildWBMat(cgeom(:,i),igeom,bmat,.false.)

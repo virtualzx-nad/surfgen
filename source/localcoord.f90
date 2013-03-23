@@ -93,9 +93,11 @@
           ptdata%grads(:,n1,n2)=ptdata%grads(:,n1,n2)*ptdata%scale
           PRINT "(12F9.4)",ptdata%grads(:,n1,n2)
         end if
-        if(printlvl>1.and.nrmerr>1D-10.or.printlvl>2)print 1000,"residule norm of external gradients for block",&
+        if(nrmerr*0d0 .eq. 0d0 .and. nrmerr.eq.nrmerr)then
+            if(printlvl>1.and.nrmerr>1D-10.or.printlvl>2)print 1000,"residual norm of external gradients for block",&
                      n1,n2,dnrm2(3*natoms-ptdata%nvibs,grad(ptdata%nvibs+1:),1)
-        if(nrmerr>1D-5)print "(4X,12F9.4)",grad(ptdata%nvibs+1:)
+            if(nrmerr>1D-5)print "(4X,12F9.4)",grad(ptdata%nvibs+1:)
+        end if
       end do
     end do ! n1=1,nstates
     if(ptdata%nvibs<3*natoms-6.or.printlvl>1)then

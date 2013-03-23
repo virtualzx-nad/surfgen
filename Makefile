@@ -16,7 +16,7 @@ OBJSL   = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             localcoord.o io.o potlib.o minmex.o
 
 # Set surfgen vesion
-SGENVER := 2.0.0
+SGENVER := 2.1.0
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -106,7 +106,7 @@ ifneq ($(findstring ifort,$(COMPILER)),)
   LKOPT    := -auto -lpthread -parallel
 else
  ifneq ($(findstring gfortran,$(COMPILER)),)
-  ifndef NO_I8
+  ifneq (,$(filter $(NO_I8),YES yes))
     CPOPT    := -fopenmp -O3 
   else
     CPOPT    := -fopenmp -O3 -m64

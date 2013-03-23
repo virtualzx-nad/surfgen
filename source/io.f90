@@ -373,7 +373,7 @@ SUBROUTINE initialize(jobtype)
   use CNPI
   IMPLICIT NONE
   INTEGER,INTENT(IN)                          :: jobtype
-  integer :: i,J
+  integer :: i
   double precision  :: eguess(nGroups)
 
   LOGICAL removed
@@ -508,7 +508,8 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   use hddata, only:  getFLUnit
   IMPLICIT NONE
   CHARACTER(72),INTENT(IN)                              :: gfile
-  INTEGER,INTENT(IN)                                    :: na,ngeoms
+  INTEGER,INTENT(IN)                                    :: na
+  INTEGER,INTENT(INOUT)                                 :: ngeoms
   CHARACTER(3),dimension(na),INTENT(INOUT)              :: atoms
   DOUBLE PRECISION,dimension(na),INTENT(INOUT)          :: anums,masses
   DOUBLE PRECISION,dimension(3*na,ngeoms),INTENT(INOUT) :: cgeom
@@ -518,12 +519,17 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   open(unit=GUNIT,file=trim(adjustl(gfile)),access='sequential',form='formatted',&
       status='old',action='read',position='rewind',iostat=ios)
   if(ios/=0)then
-    print *,"gfile = [", trim(adjustl(gfile)),"]"
-    stop"readColGeom: cannot open file for read"
+    print *,"Failed to open file [", trim(adjustl(gfile)),"]"
+    ngeoms = 0
+    return
   end if
   do i = 1,ngeoms
    do j = 1,na
-    read(GUNIT,*)atoms(j),anums(j),(cgeom(3*(j-1)+k,i),k=1,3),masses(j)
+    read(GUNIT,*,iostat=ios)atoms(j),anums(j),(cgeom(3*(j-1)+k,i),k=1,3),masses(j)
+    if(ios/=0)then
+        ngeoms=i-1
+        return
+    end if
    enddo
   enddo
   close(GUNIT)
@@ -555,24 +561,51 @@ SUBROUTINE writeColGeom(gfile,na,atoms,anums,cgeom,masses)
 1000 format(1x,a3,2x,f4.0,1x,3(f13.8,1x),2x,f12.8)
 END SUBROUTINE writeColGeom
 
-!
-!
-!
-!
-SUBROUTINE readEner(efile,ngeoms,ne,eners)
+! efile     pathname of geometry file to be read in
+! ngeoms    on input: maximum number of data entries that will be read in
+!           on output: number of data entries that are read in from file
+! nstates   total number of energies (states) per data. could be overriden with
+!           state bounds stored inside the file.
+! eners     energies read from the file
+! st1       lower bound of energy data state index.  retrieved from file, with 
+!           0 as the default when file does not specify states.
+! st2       upper bound of energy data state index.  retrieved from file. the
+!           default is nstates
+SUBROUTINE readEner(efile,ngeoms,nstates,eners,st1,st2)
   use hddata, only: getFLUnit
   IMPLICIT NONE
   CHARACTER(72),INTENT(IN)                              :: efile
-  INTEGER,INTENT(IN)                                    :: ngeoms,ne
-  DOUBLE PRECISION,dimension(ne,ngeoms),INTENT(INOUT)   :: eners
-  INTEGER                                               :: i,j,EUNIT,ios
+  INTEGER,INTENT(IN)                                    :: nstates
+  INTEGER,INTENT(INOUT)                                 :: ngeoms
+  INTEGER,INTENT(OUT)                                   :: st1,st2
+  DOUBLE PRECISION,dimension(nstates,ngeoms),INTENT(INOUT)   :: eners
+  INTEGER                                               :: i,j,EUNIT,ios, ne
+  CHARACTER(6)  :: card
 
   EUNIT=getFLUnit()
   open(unit=EUNIT,file=trim(adjustl(efile)),access='sequential',form='formatted',&
     position='rewind',action='read',status='old',iostat=ios)
-  if(ios/=0)stop'readEner: cannot open file for read'
+  if(ios/=0)then
+     print *,'WARNING: readEner: cannot open file for read'
+     ngeoms=0
+  end if
+  read(EUNIT,"(6A)",advance='no')card
+  if(card=='STATES')then
+    read(EUNIT,*)st1,st2
+    if(st1<1)st1=1
+    if(st2>nstates)st2=nstates
+  else
+    rewind(EUNIT)
+    st1 = 1
+    st2 = nstates
+  end if
+  ne = st2-st1+1
   do i = 1,ngeoms
-   read(EUNIT,*)(eners(j,i),j=1,ne)
+    read(EUNIT,*,IOSTAT=ios)(eners(j,i),j=st1,st2)
+    if(ios/=0)then
+        ngeoms = i-1
+        return
+    end if
   enddo
   close(EUNIT)
 END SUBROUTINE readEner
@@ -584,17 +617,25 @@ SUBROUTINE readGrads(gfile,ngrads,na,cgrads)
   use hddata, only: getFLUnit
   IMPLICIT NONE
   CHARACTER(72),INTENT(IN)                              :: gfile
-  INTEGER,INTENT(IN)                                    :: ngrads,na
+  INTEGER,INTENT(INOUT)                                 :: ngrads
+  INTEGER,INTENT(IN)                                    :: na
   DOUBLE PRECISION,dimension(3*na,ngrads),INTENT(INOUT) :: cgrads
   INTEGER                                               :: i,j,k,GUNIT,ios
   GUNIT=getFLUnit()
   open(unit=GUNIT,file=trim(adjustl(gfile)),access='sequential',form='formatted',&
    action='read',position='rewind',status='old',iostat=ios)
-  if(ios/=0)stop'readGrads:  cannot open file for read'
+  if(ios/=0)then
+    ngrads = 0
+    return
+  end if
   do i = 1,ngrads
 !   read(GUNIT,*)scr
    do j = 1,na
-    read(GUNIT,*)(cgrads(3*(j-1)+k,i),k=1,3)
+    read(GUNIT,*,IOSTAT=ios)(cgrads(3*(j-1)+k,i),k=1,3)
+    if(ios/=0)then
+        ngrads=i-1
+        return
+    end if
    enddo
   enddo
   close(GUNIT)
@@ -627,29 +668,34 @@ SUBROUTINE readHessian(gfile,nrc,hess)
   return
 1000 format(10(F10.6))
 end SUBROUTINE readHessian
+
 !
 !
 !
 !
-FUNCTION filename(s1,s2,suffix,usefij)
+FUNCTION filename(s1,s2,grdptn,cpptn)
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: s1,s2
-  LOGICAL ,INTENT(IN)         :: usefij
-  CHARACTER(10),INTENT(IN)    :: suffix
+  CHARACTER(72),INTENT(IN)    :: grdptn,cpptn
   CHARACTER(72)               :: filename
   CHARACTER(1)                :: st1,st2
+  integer :: i
 
   write(st1,'(i1)')s1
   write(st2,'(i1)')s2
 
   if(s1.eq.s2)then
-   filename = 'cartgrd.drt1.state'//st1//trim(adjustl(suffix))
+    filename=grdptn
+    i=index(filename,'$')
+    if(i>0)filename(i:i) = st1
+    if(i==0)filename=''
   else
-   if(usefij)then
-     filEname = 'cartgrd_total.drt1.state'//st1//'.drt1.state'//st2//trim(adjustl(suffix))
-   else
-     filename = 'cartgrd.nad.drt1.state'//st1//'.drt1.state'//st2//trim(adjustl(suffix))
-   end if
+    filename=cpptn
+    i=index(filename,'$')
+    if(i>0)filename(i:i) = st1
+    i=index(filename,'$')
+    if(i>0)filename(i:i) = st2
+    if(i==0)filename=''
   endif
 
   filename = trim(adjustl(filename))

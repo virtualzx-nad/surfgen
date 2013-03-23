@@ -72,7 +72,8 @@
 		22489C8416F9008100F2007F /* surfgen.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = surfgen.f90; path = source/surfgen.f90; sourceTree = "<group>"; };
 		22532A21168AE2CE00238D30 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		22535BCD16E67968003F3F34 /* surfgen.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.1; path = man/man1/surfgen.1; sourceTree = "<group>"; };
-		226A266E169547B4003C4445 /* surfgen-app */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "surfgen-app"; path = "Surfgen-OSX-ML"; sourceTree = BUILT_PRODUCTS_DIR; };
+		226A224B16FC2D630010C951 /* HISTORY.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = HISTORY.md; sourceTree = "<group>"; };
+		226A266E169547B4003C4445 /* Surfgen-OSX-ML */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Surfgen-OSX-ML"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2289FF8D16F99A9B009D4934 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		2299C4D916FA0E230027C5A9 /* bin */ = {isa = PBXFileReference; lastKnownFileType = folder; path = bin; sourceTree = "<group>"; };
 		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
@@ -119,6 +120,7 @@
 				2299C4D916FA0E230027C5A9 /* bin */,
 				22535BCE16E6796E003F3F34 /* Man Pages */,
 				22532A21168AE2CE00238D30 /* Makefile */,
+				226A224B16FC2D630010C951 /* HISTORY.md */,
 				22489C7616F9001600F2007F /* Source Code */,
 				226A266F169547B4003C4445 /* Products */,
 				22BF126E169A66DD00566C40 /* test */,
@@ -140,7 +142,7 @@
 		226A266F169547B4003C4445 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				226A266E169547B4003C4445 /* surfgen-app */,
+				226A266E169547B4003C4445 /* Surfgen-OSX-ML */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -179,7 +181,7 @@
 			);
 			name = "Surfgen-OSX-ML.app";
 			productName = "surfgen-app";
-			productReference = 226A266E169547B4003C4445 /* surfgen-app */;
+			productReference = 226A266E169547B4003C4445 /* Surfgen-OSX-ML */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -244,7 +246,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2.0.0;
+				CURRENT_PROJECT_VERSION = 2.1.0;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -258,7 +260,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -277,7 +279,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2.0.0;
+				CURRENT_PROJECT_VERSION = 2.1.0;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -285,7 +287,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
 				SDKROOT = macosx;
 				VERSION_INFO_SUFFIX = global.release;
@@ -321,7 +323,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 2.0.0;
+				CURRENT_PROJECT_VERSION = 2.1.0;
 				EXECUTABLE_EXTENSION = "";
 				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
@@ -342,7 +344,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 2.0.0;
+				CURRENT_PROJECT_VERSION = 2.1.0;
 				EXECUTABLE_EXTENSION = "";
 				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;

@@ -127,13 +127,80 @@ constant (but not identical) energies will be used to initialize Hd.
 .Ss MAKESURF
 This namelist contains parameters that control the surface fitting procedure.
 These are only used for
-.Em jobtype=-1 .
+.Em jobtype=1 .
+.Pp
+.Sy Input File Specifications
+These options tell the program where to look for 
+.Em ab initio 
+data.  The data should be divided into groups of data points, and the information
+of each group is stored in a separate directory.  The program will search for data
+in each of these directories to determine which piece of data is available, and 
+append all available data to fitting set.  This is a new functionality in 2.1 and
+is intended to allow the program to use results from calculations where not all
+data are obtained.  For example, calculation of only energy, a fewer number of 
+states, or where states are well separated and couplings are not calculated.  
+It is also intended to make data storage more managable and transparent by grouping
+different data in separate directories.
+.br
+The name of input files can be specified for each directory.  The filenames of 
+gradients and coupling data are expected to contain one and two wildcard characters
+'$' which acts as a placeholder for the indices of states.
+.Bl -tag -width VariableNm -compact
+.It SearchPath
+.Sy CHARACTER(72),dimension(100) ['.',99*'']
+Paths of directories where the program should look for sets of input file.  
+Each path should contain all the input information of a group of points.
+Including geometries, energies, and optionally energy gradients and couplings.
+'.' has to be included for the program to search the current path.
+.It noteptn
+.Sy CHARACTER(72),dimension(100) [100*'note']
+Specifies the filename of the optional file where a brief note is kept to explain
+where the geometries in the current path are and what data are available.  The
+first line of this file will also be printed to standard output when the program
+reads this directory. No wildcard allowed.  Optional.
+.It gmfptn
+.Sy CHARACTER(72),dimension(100) [100*'geom.all']
+Name of geometry input file.   No wildcard characters allowed.  Required.
+.It enfptn
+.Sy CHARACTER(72),dimension(100) [100*'energy.all']
+Name of energy input file.  No wildcard characters allowed. Required.  If the file
+does not contain all the state, please add in the first line of the file
+.br
+STATES 
+.Va st1 st2
+.br
+where 
+.Va st1
+and 
+.Va st2
+are the lowest and highest state of which the energy is included in this file.
+For example, if the directory contains data from hessian calculation on state 3,
+then the line should be
+.br
+STATES 3 3
+.It grdfptn
+.Sy CHARACTER(72),dimension(100) [100*'cartgrd.drt1.state$.all']
+Pattern for energy gradient input file.  Has 1 wildcard character which holds the
+slot for the index of the state of which the gradients are calculated.  Optional.
+The program will search all the states that has an energy data in energy input file.
+.It cpfptn
+.Sy CHARACTER(72),dimension(100) [100*'cartgrd.drt1.state$.drt1.state$.all']
+Pattern for derivative coupling input file.  Has 2 wildcard characters which holds the
+slot for the indices of the pair of states between which the couplings are calculated.  
+Optional.
+The program will search all the pairs of states that both has an energy data in energy input file.
+.El
 .Pp
 .Sy Data Selection and Weighing
 .Bl -tag -width VariableNm -compact
 .It npoints 
 .Sy INTEGER [0]
-Number of points to be fit.
+Number of points to be fit.  Note that if the program cannot find the specified 
+number of points, the variable will be adjusted to the actual number of data points
+read from files.  
+If there are more data than specified, the program will only use the first
+.Va npoints
+data points.
 .It eshift
 .Sy DOUBLE PRECISION [.0]
 A uniform shift applied to all 
@@ -147,12 +214,7 @@ The threshold below which gradients will be considered vanished and treated as e
 Specifies if the derivative couplings instead of derivative coupling times
 energy differences will be used as coupling input.  Derivative couplings approach
 infinity at intersections while coupling times energy difference remain well 
-behaved everywhere.  The program expect either input file name to follow 
-.Ar COLUMBUS
-file name convention, with derivative coupling file named as
-.Pa cartgrd_total.drt1.stateX.drt1.stateY 
-and coupling times energy difference as
-.Pa cartgrd.nad.drt1.stateX.drt1.stateY
+behaved everywhere.  
 .It w_energy
 .Sy DOUBLE PRECISION [1.]
 Weight factor for energy equations.  This factor is multiplied with point weights

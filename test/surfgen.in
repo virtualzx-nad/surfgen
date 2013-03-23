@@ -61,6 +61,7 @@ nrmediff2  = 2d2
 ediffcutoff2=1d2   
 ndstart    = 200
 ndiis      = 35 
+cpfptn(1)  = 'cartgrd_total.drt1.state$.drt1.state$.all'
 /
 &MINMEX
 nmin       = 2,

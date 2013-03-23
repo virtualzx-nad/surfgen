@@ -1,19 +1,19 @@
 ! Partition states at a certain geometry into groups that are energetically close.
 ! Group states into minimal sets so that the energy difference between any two states
 ! from different groups is greater than de. Input energies are supposed to be sorted.
-SUBROUTINE genEnerGroups(pt,de,nstates_data)
+SUBROUTINE genEnerGroups(pt,de,nstates)
   use progdata, only: abpoint
   IMPLICIT NONE
   type(abpoint),INTENT(INOUT)              :: pt
   DOUBLE PRECISION,INTENT(IN)              :: de
-  INTEGER,INTENT(IN)                       :: nstates_data
+  INTEGER,INTENT(IN)                       :: nstates
 
   integer                           :: i,ngrp,cnt
-  integer,dimension(nstates_data,2) :: deg_table
+  integer,dimension(nstates,2) :: deg_table
 
   ngrp=0
   cnt=1
-  do i=2,nstates_data
+  do i=2,nstates
     if(pt%energy(i)-pt%energy(i-1)>de)then
       if(cnt>1)then
         ngrp=ngrp+1
@@ -27,7 +27,7 @@ SUBROUTINE genEnerGroups(pt,de,nstates_data)
   if(cnt>1)then
     ngrp=ngrp+1
     deg_table(ngrp,2)=cnt
-    deg_table(ngrp,1)=nstates_data-cnt+1
+    deg_table(ngrp,1)=nstates-cnt+1
   end if
 
   if(allocated(pt%deg_groups))deallocate(pt%deg_groups)
@@ -52,234 +52,6 @@ PRINT *,"DENORM VERY SMALL.  NO ROTATION IS PERFORMED"
       beta=atan(num/denom)/4
   end if
 END SUBROUTINE orthgh
-
-!------------------------------------------------------------------------------
-!Rotate degenerate states so that g and h vectors between any two degenerate
-!states are orthogonalized.  Each time a rotation is made, the subroutine will
-!compare g and h with those from Hd to detect g-h swappings.
-!pt     : ab initio data of the point to perform transformation 
-!dhmat  : derivatives of Hd at the point
-!maxiter: maximum number of jacobi rotations
-!toler  : convergence tolerance for rotation angle beta
-![method]
-! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
-! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
-! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE makeXCoords(pt,dhmat,maxiter,toler,nstates_data)
-  USE hddata, only: nstates
-  USE progdata, only: abpoint,printlvl
-  IMPLICIT NONE
-  TYPE(abpoint),INTENT(INOUT)                                     :: pt
-  DOUBLE PRECISION,DIMENSION(pt%nvibs,nstates,nstates),INTENT(IN) :: dhmat
-  INTEGER,INTENT(IN)                                              :: maxiter,nstates_data
-  DOUBLE PRECISION,INTENT(IN)                                     :: toler
-
-  integer           ::  igrp,i,j,iter,ldeg,udeg
-  integer           ::  mi,mj  !location of maximum rotation
-  double precision, dimension(nstates,nstates)         :: jacobi
-  double precision, dimension(nstates,nstates)         :: beta,&      !desired rotation angles
-                                                          gnorm,hnorm !norm of g and h from Hd
-  double precision, dimension(pt%nvibs,nstates,nstates):: gHd,hHd     !g and h vectors from Hd
-  double precision           :: max_b,t
-
-  beta=dble(0)  
-  if(pt%ndeggrp>0.and.printlvl>0)print *,"     transforming ab initio data for point ",pt%id
-  if(printlvl>2.and. pt%ndeggrp>0)then
-    print *,"      gradients before transformation" 
-    do i=1,nstates_data
-      do j=1,i
-        print 1002,i,j
-        print 1003,pt%grads(:pt%nvibs,i,j)
-      end do
-    end do!i=1,nstates_data
-  end if!(printlvl>2)
-  do igrp=1,pt%ndeggrp
-    max_b=-1
-    ldeg=pt%deg_groups(igrp,1)
-    udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
-    iter=0
-    !build normalized g and h vectors from Hd and compute rotation angles the first time
-    do i=ldeg,udeg 
-      do j=ldeg,i-1
-        gHd(:,i,j)=(dhmat(:,i,i)-dhmat(:,j,j))/2
-        gnorm(i,j)=sqrt(dot_product(gHd(:,i,j),gHd(:,i,j)))
-        hHd(:,i,j)=dhmat(:,i,j)
-        hnorm(i,j)=sqrt(dot_product(hHd(:,i,j),hHd(:,i,j)))
-        beta(i,j)=getBeta(i,j)
-        if(abs(beta(i,j))>max_b)then
-          max_b=abs(beta(i,j))
-          mi=i
-          mj=j
-        end if!(abs(beta(i,j))>max_b)
-      end do!j=ldeg,i-1
-    end do!i=ldeg,udeg
-    if(printlvl>2)print *,"      max(|beta|)=",max_b
-    do while(iter<maxiter.and.max_b>toler)
-      iter=iter+1
-      t=beta(mi,mj)
-      jacobi=dble(0)  !construct Givens rotation matrix
-      do i=1,nstates
-        jacobi(i,i)=dble(1)
-      end do
-      jacobi(mi,mi)=cos(t)
-      jacobi(mj,mj)=jacobi(mi,mi)
-      jacobi(mi,mj)=sin(t)
-      jacobi(mj,mi)=-jacobi(mi,mj)
-      do i=1,pt%nvibs
-        pt%grads(i,:,:)=matmul(matmul(transpose(jacobi),pt%grads(i,:,:)),jacobi)
-      end do
-      !update rotation angles
-      do i=mj+1,udeg 
-        beta(i,mj)=getBeta(i,mj)
-      end do
-      do j=ldeg,mj-1
-        beta(mi,j)=getBeta(mi,j)
-      end do
-      do j=mj+1,mi-1
-        beta(mi,j)=getBeta(mi,j)
-      end do
-      max_b=-1
-      do i=ldeg,udeg
-        do j=ldeg,i-1
-          if(abs(beta(i,j))>max_b)then
-            max_b=abs(beta(i,j))
-            mi=i
-            mj=j
-          end if!(abs(beta(i,j))>max_b)
-        end do!j=ldeg,i-1
-      end do!i=ldeg,udeg      
-      if(printlvl>2)print *,"      max(|beta|)=",max_b
-    end do!while(iter<maxiter.and.max_b>toler)do
-    if(printlvl>1.and.iter>0)then
-        if(max_b<toler)then
-          print 1001,iter
-        else
-          print 1000,iter,max_b
-        end if!(max_b<toler)
-        print *,"      gradients after transformation" 
-        do i=1,nstates_data
-          do j=1,i
-            write (*,1002) i,j
-            write (*,1003)pt%grads(:,i,j)
-          end do
-        end do!i=1,nstates_data
-    end if!(printlvl>0)
-  end do!igrp=1,pt%ndeggrp
-1000 format(7X,"no convergence after ",I4," iterations, max residue angle=",F8.2)
-1001 format(7X,"convergence after ",I4," iterations")
-1002 format(14X,'states(',I2,',',I2,'):')
-1003 format(12X,3E16.7)
-CONTAINS
-  FUNCTION getBeta(i,j) RESULT(beta)
-    USE progdata, only : abpoint
-    IMPLICIT NONE
-    INTEGER,INTENT(IN)         :: i,j
-    DOUBLE PRECISION           :: beta
-
-    double precision, dimension(pt%nvibs)                :: g,h
-    double precision                  :: pi
-    double precision  ::  errcurr, errrot
-
-    pi=atan(dble(1))*4
-    g=(pt%grads(:pt%nvibs,i,i)-pt%grads(:pt%nvibs,j,j))/2
-    h=pt%grads(:pt%nvibs,i,j)
-    if(printlvl>2)then
-      print *,"G vector before orthgh:  "
-      print "(6F12.8)",g
-      print *,"H vector before orthgh:  "
-      print "(6F12.8)",h
-    end if
-    CALL orthgh(pt%nvibs,g,h,beta)
-    errcurr = min(dot_product(g-gHd(:,i,j),g-gHd(:,i,j)),dot_product(g+gHd(:,i,j),g+gHd(:,i,j))) + & 
-              min(dot_product(h-hHd(:,i,j),h-hHd(:,i,j)),dot_product(h+hHd(:,i,j),h+hHd(:,i,j)))     
-    errrot  = min(dot_product(h-gHd(:,i,j),h-gHd(:,i,j)),dot_product(h+gHd(:,i,j),h+gHd(:,i,j))) + & 
-              min(dot_product(g-hHd(:,i,j),g-hHd(:,i,j)),dot_product(g+hHd(:,i,j),g+hHd(:,i,j)))     
-    if(errcurr-errrot>1D-7.and.errcurr>errrot*1.01D0)then
-      if(printlvl>0)print *,"    G and H vectors are switched."  
-      print *,"curr E^2:", errcurr,", after switch:",errrot
-      if(beta>0)then 
-          beta=beta-pi/4
-      else
-          beta=beta+pi/4
-      end if
-    end if
-  END FUNCTION getBeta
-END SUBROUTINE 
-
-!---------------------------------------------------------------------
-! Remove translational-rotational components from a cartesian gradient
-! The origin is translated the to the geometric center of the molecule,
-! defined by \Sigma[R]=0, where translational and rotational components
-! are orthogonal.  Translation vectors along each axis and rotation ones
-! around each axis are generated and removed by Schdmit orthogonalization
-!---------------------------------------------------------------------
-! cgrads   (input/output) DOUBLE PRECISION,dimension(3*natoms)
-!          Cartesian gradients.  On exit, translational and rotational
-!          components will be removed
-! cgeom    (input) DOUBLE PRECISION,dimension(3*natoms)
-!          Cartesian geometry of all the atoms.
-SUBROUTINE removeTransRot(cgrads,cgeom)
-  use progdata, only: natoms,printlvl
-  IMPLICIT NONE
-  double precision, dimension(3*natoms),intent(inout)  :: cgrads
-  double precision, dimension(3*natoms),intent(in)     :: cgeom
-  double precision, dimension(3,natoms)  :: gradls,geomls
-  double precision, dimension(3,3,natoms):: vecBasis
-  double precision, dimension(3)         :: center,trans,rotn
-  double precision                       :: norm
-  !vecBasis is the list of basis for rotational components
-  integer :: i
-  if(printlvl>1)print 1002,"Removing Translational-Rotational Components"
-  if(printlvl>2)then
-    print 1001,"before removal" 
-    print 1000,cgrads
-  end if!(printlvl>2)
-  gradls= reshape(cgrads,(/3,natoms/))
-  geomls= reshape(cgeom,(/3,natoms/))
-  do i=1,3
-    center(i)=sum(geomls(i,1:natoms))/natoms
-    trans(i) =sum(gradls(i,1:natoms))/natoms
-  end do
-  !shift center and remove translational components
-  do i=1,natoms
-    geomls(:,i)=geomls(:,i)-center
-    gradls(:,i)=gradls(:,i)-trans
-  end do
-  if(printlvl>1.or.printlvl>0.and.sqrt(sum(trans*trans))>0.05)then
-    print 1001,"translational component"
-    print 1000,trans 
-  end if
-  !construct vector basis:  v_i(j)=cross_product(e_i,geom(j)), where i is the
-  !index for x,y,z and j is the index for atoms.
-  do i=1,natoms
-    vecBasis(1,:,i)=(/ dble(0)    , geomls(3,i),-geomls(2,i)/)
-    vecBasis(2,:,i)=(/-geomls(3,i), dble(0)    , geomls(1,i)/)
-    vecBasis(3,:,i)=(/ geomls(2,i),-geomls(1,i), dble(0)    /)
-  end do
-  !normalize rotational basis, then remove each component
-  do i=1,3
-    norm=sqrt(sum(vecBasis(i,:,:)*vecBasis(i,:,:)))
-    if(norm<1D-18)then
-      vecBasis(i,:,:)=0.
-    else
-      vecBasis(i,:,:)=vecBasis(i,:,:)/norm
-    end if
-    rotn(i)=sum(vecBasis(i,:,:)*gradls)
-    gradls=gradls-rotn(i)*vecBasis(i,:,:)
-  end do
-  if(printlvl>1.or. printlvl>0.and. sqrt(sum(rotn*rotn))>0.05)then 
-    print 1001,"rotational components"
-    print 1000,rotn
-  end if!printlvl>1
-  cgrads= reshape(gradls,(/3*natoms/))
-  if(printlvl>2)then
-    print 1001,"after removal" 
-    print 1000,cgrads
-  end if!(printlvl>2)
-1000 format(12X,3E16.7)
-1001 format(10X,A)
-1002 format(8X,A)
-END SUBROUTINE
 
 !---------------------------------------------------------------------
 ! Chop() sets the value of the variable to 0 if it is smaller
@@ -514,32 +286,41 @@ END SUBROUTINE getCartHd
 !pt     : ab initio data of the point to perform transformation 
 !maxiter: maximum number of jacobi rotations
 !toler  : convergence tolerance for rotation angle beta
+!hasGrad: specifies if gradient/couple data is available for a block
 ![method]
 ! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
 ! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
 ! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE OrthGH_ab(pt,maxiter,toler)
+SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
   USE hddata, only: nstates
   USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
-  TYPE(abpoint),INTENT(INOUT)                                     :: pt
-  INTEGER,INTENT(IN)                                              :: maxiter
-  DOUBLE PRECISION,INTENT(IN)                                     :: toler
+  TYPE(abpoint),INTENT(INOUT)                           :: pt
+  INTEGER,INTENT(IN)                                    :: maxiter
+  LOGICAL,DIMENSION(nstates,nstates),INTENT(in)         :: hasGrad
+  DOUBLE PRECISION,INTENT(IN)                           :: toler
 
   integer           ::  igrp,i,j,iter,ldeg,udeg
   integer           ::  mi,mj  !location of maximum rotation
   double precision, dimension(nstates,nstates)         :: jacobi
-  double precision, dimension(nstates,nstates)         :: beta        !desired rotation angles
+  double precision, dimension(nstates,nstates)         :: beta   !required rotation 
   double precision           :: max_b,t
-  
+  ! allowedRot stores the infomation whether rotation between two specific states 
+  ! will not cause a gradient data to mix into a gradient that has not data
+  LOGICAL,dimension(nstates,nstates)  :: allowedRot
+
   beta=dble(0)  
-  if(pt%ndeggrp>0.and.printlvl>0)print *,"     transforming ab initio data for point ",pt%id
+  if(pt%ndeggrp>0.and.printlvl>0)print *,"     Transforming ab initio data for point ",pt%id
   if(printlvl>2.and. pt%ndeggrp>0)then
-    print *,"      gradients before transformation" 
+    print *,"      Gradients before transformation" 
     do i=1,nstates
       do j=1,i
         print 1002,i,j
-        print 1003,pt%grads(:pt%nvibs,i,j)
+        if(hasGrad(i,j))then
+            print 1003,pt%grads(:pt%nvibs,i,j)
+        else
+            print "(10X,A)","Data not available"
+        end if
       end do
     end do!i=1,nstates
   end if!(printlvl>2)
@@ -548,9 +329,28 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler)
     ldeg=pt%deg_groups(igrp,1)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
     iter=0
+    ! check if rotations among these states are allowed.
+    allowedRot(ldeg:udeg,ldeg:udeg)=.false.
+    do i=ldeg,udeg
+        do j=ldeg,i-1
+          ! both gradients and coupling between then has to be present for them to be rotatable
+          if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
+            ! the available gradients list has to be identical for them
+            if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
+                allowedRot(i,j)=.true.
+                allowedRot(j,i)=.true.
+            end if
+          end if!hasGrad ii, ij, jj
+        end do!j
+    end do!i=ldeg,udeg
+    if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
+        print *,"     Missing data forbit any state rotations.  Skipping transformation of degenerate group."
+        cycle
+    end if
     !build normalized g and h vectors from Hd and compute rotation angles the first time
     do i=ldeg,udeg 
       do j=ldeg,i-1
+        if(.not.allowedRot(i,j))cycle
         beta(i,j) = getBeta(i,j)
         if(abs(beta(i,j))>max_b)then
           max_b=abs(beta(i,j))
@@ -575,18 +375,19 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler)
         pt%grads(i,:,:)=matmul(matmul(transpose(jacobi),pt%grads(i,:,:)),jacobi)
       end do
       !update rotation angles
-      do i=mj+1,udeg 
-        beta(i,mj)=getBeta(i,mj)
+      do i=mj+1,udeg
+        if(allowedRot(i,mj))beta(i,mj)=getBeta(i,mj)
       end do
       do j=ldeg,mj-1
-        beta(mi,j)=getBeta(mi,j)
+        if(allowedRot(mi,j))beta(mi,j)=getBeta(mi,j)
       end do
       do j=mj+1,mi-1
-        beta(mi,j)=getBeta(mi,j)
+        if(allowedRot(mi,j))beta(mi,j)=getBeta(mi,j)
       end do
       max_b=-1
       do i=ldeg,udeg
         do j=ldeg,i-1
+          if(.not.allowedRot(i,j))cycle
           if(abs(beta(i,j))>max_b)then
             max_b=abs(beta(i,j))
             mi=i
@@ -602,11 +403,15 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler)
         else
           print 1000,iter,max_b
         end if!(max_b<toler)
-        print *,"      gradients after transformation" 
+        print *,"      Gradients after transformation" 
         do i=1,nstates
           do j=1,i
             write (*,1002) i,j
-            write (*,1003)pt%grads(:pt%nvibs,i,j)
+            if(hasGrad(i,j))then
+                print 1003,pt%grads(:pt%nvibs,i,j)
+            else
+                print "(10X,A)","Data not available"
+            end if
           end do
         end do!i=1,nstates
     end if!(printlvl>0)
@@ -643,13 +448,14 @@ END SUBROUTINE
 ! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
 ! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
 ! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler)
+SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
   USE hddata, only: nstates
   USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
   TYPE(abpoint),INTENT(IN)                                        :: pt
   INTEGER,INTENT(IN)                                              :: maxiter
   DOUBLE PRECISION,INTENT(IN)                                     :: toler
+  LOGICAL,DIMENSION(nstates,nstates),INTENT(in)         :: hasGrad
   DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates),INTENT(IN) :: dhmat
   DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT)       :: ckl
 
@@ -673,7 +479,11 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler)
     do i=1,nstates
       do j=1,i
         print 1002,i,j
-        print 1003,pt%grads(:pt%nvibs,i,j)
+        if(hasGrad(i,j))then
+            print 1003,pt%grads(:pt%nvibs,i,j)
+        else
+            print "(10X,A)","Data not available"
+        end if
       end do
     end do!i=1,nstates
     print *,"      gradients before transformation" 
@@ -782,10 +592,14 @@ CONTAINS
     CALL orthgh(pt%nvibs,g,h,beta)
     errg = min(dot_product(g-gAb(:,i,j),g-gAb(:,i,j)),dot_product(g+gAb(:,i,j),g+gAb(:,i,j)))
     errh = min(dot_product(h-hAb(:,i,j),h-hAb(:,i,j)),dot_product(h+hAb(:,i,j),h+hAb(:,i,j)))
-    errcurr = errg+errh
+    errcurr=0
+    if(hasGrad(i,j)) errcurr=errh
+    if(hasGrad(i,i).and.hasGrad(j,j)) errcurr=errcurr+errg
+    errrot =0
     errg = min(dot_product(g-hAb(:,i,j),g-hAb(:,i,j)),dot_product(g+hAb(:,i,j),g+hAb(:,i,j)))
     errh = min(dot_product(h-gAb(:,i,j),h-gAb(:,i,j)),dot_product(h+gAb(:,i,j),h+gAb(:,i,j)))
-    errrot  = errg+errh
+    if(hasGrad(i,j)) errrot=errg
+    if(hasGrad(i,i).and.hasGrad(j,j)) errrot=errrot+errh
     if(errrot<errcurr)then
       if(printlvl>0)print *,"    G and H vectors are switched."
       if(beta>0)then

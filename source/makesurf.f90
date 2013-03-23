@@ -14,7 +14,30 @@ MODULE makesurfdata
    type(tblk),dimension(:),allocatable         :: List
    INTEGER                                     :: length
   END TYPE
+!
+!Input File Options
+!
+!    The user can provide a series of search paths, and the program will look for
+!  energy, gradient and coupling input in each of these search paths, if it exists.
+!    If a file is missing in that directory, these data will be marked as nonexist
+!  and will not be included in the fit set.
+!    This feature is added so that you don't have to make up data then specify the
+!  piece of data to be nonexist in points.in.   You may also opt to change the file
+!  name patterns for each input file but normally you don't have to.   
+!    Note that these file name patterns have special characters such as $ denoting
+!  index of an involved state.
+!    Also note that there is an optional note file that will be read-in and its 
+!  content will be included in output files as comments.
+  INTEGER,parameter                            :: MaxSearchPaths=100 ! Maximum number of search pathes that can be provided by user
+  INTEGER                                      :: NSearchPaths
+  CHARACTER(1000),dimension(MaxSearchPaths)    :: SPNotes
+  CHARACTER(72),dimension(MaxSearchPaths)      :: SearchPath    ! The program will look for input files in these directories
+  LOGICAL,dimension(:,:),allocatable           :: hasEner       ! specifies the presence of data at each point
+  LOGICAL,dimension(:,:,:),allocatable         :: hasGrad       ! specifies the presence of data at each point
+  
+  CHARACTER(72),dimension(MaxSearchPaths)      :: notefptn,gmfptn,enfptn,grdfptn,cpfptn  ! naming pattern of input files.
 
+! General options
   DOUBLE PRECISION                             :: eshift    ! uniform shift on ab initio energies
   DOUBLE PRECISION                             :: deg_cap   ! threshold below which intersection adapted coordinates will be used
   INTEGER                                      :: maxiter
@@ -178,9 +201,9 @@ MODULE makesurfdata
       if(ptWeights(i)>1D-8)then
         do s1=1,nstates
           do s2=1,s1
-            incgrad(i,s1,s2)=.true.
+            incgrad(i,s1,s2)=hasGrad(i,s1,s2)
           end do
-          incener(i,s1,s1)=.true.
+          incener(i,s1,s1)=hasEner(i,s1)
           if(i==enfDiab)incener(i,:,:)=.true.
         end do!s1=1,nstates
       end if
@@ -199,13 +222,24 @@ MODULE makesurfdata
     do i=1,exactEner%length
      do s1=exactEner%List(i)%i,exactEner%List(i)%j
        do s2=exactEner%List(i)%i,exactEner%List(i)%j
-          e_exact(exactEner%List(i)%point,s1,s2)=.true.
+          if(hasEner(exactEner%List(i)%point,s1).and.hasEner(exactEner%List(i)%point,s2))then
+            e_exact(exactEner%List(i)%point,s1,s2)=.true.
+          else
+            print "(A,I6,2(A,I3),A)","WARNING : Cannot enforce exact energy at point ",&
+                exactEner%List(i)%point,", block(",s1,",",s2,"). Ab initio data not present."
+          end if
        end do
      end do
     end do
     do i=1,exactGrad%length
-      g_exact(exactGrad%List(i)%point,exactGrad%List(i)%i,exactGrad%List(i)%j)=.true.
-      g_exact(exactGrad%List(i)%point,exactGrad%List(i)%j,exactGrad%List(i)%i)=.true.
+      if(hasGrad(exactGrad%List(i)%point,exactGrad%List(i)%i,exactGrad%List(i)%j))then
+        g_exact(exactGrad%List(i)%point,exactGrad%List(i)%i,exactGrad%List(i)%j)=.true.
+        g_exact(exactGrad%List(i)%point,exactGrad%List(i)%j,exactGrad%List(i)%i)=.true.
+      else
+        print "(A,I6,2(A,I3),A)","WARNING : Cannot enforce exact gradients at point ",&
+            exactGrad%List(i)%point,", block(",exactGrad%List(i)%i,",",&
+            exactGrad%List(i)%j,"). Ab initio data not present."
+      end if
     end do
 
   END SUBROUTINE getPtList
@@ -417,7 +451,7 @@ MODULE makesurfdata
     IMPLICIT NONE
 
     INTERFACE
-      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList)
+      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad)
         use hddata, only: nstates
         IMPLICIT NONE
         INTEGER,intent(IN)                                        :: nvibs
@@ -425,6 +459,7 @@ MODULE makesurfdata
         double precision,dimension(nvibs,nstates,nstates),intent(in)              :: abgrad
         double precision,dimension(nvibs),intent(in)              :: scale
         DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
+        LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
         integer,dimension(2**nstates,nstates),INTENT(IN)          :: phaseList
       END SUBROUTINE
     END INTERFACE
@@ -486,7 +521,7 @@ MODULE makesurfdata
       else
         call genEnerGroups(fitpt,deg_cap,nstates)
       end if!(i==enfDiab)
-      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,sqrt(gcutoff)/10)
+      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
       do k=1,dispgeoms(i)%nvibs
         fitpt%grads(k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
       end do!k=1,dispgeoms(i)%nvibs
@@ -510,7 +545,7 @@ MODULE makesurfdata
         call genEnerGroups(fitpt,gorder/AU2CM1,nstates)
         call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad)
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
-                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList)
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
         fitG(i,:,:,:)=fitpt%grads
       end if !folPrev
@@ -1938,7 +1973,7 @@ SUBROUTINE makesurf()
     if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
     do i=1,npoints
       CALL EvaluateHd3(asol2,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
-      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,sqrt(gcutoff)/10)
+      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
       do k=1,dispgeoms(i)%nvibs
         fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
       end do!k=1,dispgeoms(i)%nvibs
@@ -2411,43 +2446,53 @@ SUBROUTINE makesurf()
   write(OUTFILE,1014)
   !Write ab initio and fit gradients at all input geommetries for all blocks
   do i = 1,nstates
-    write(OUTFILE,1016)i
-    do l = 1,npoints
-     do m = 1,nvibs
-      gradtable(l,2*m-1) = dispgeoms(l)%grads(m,i,i)
-      gradtable(l,2*m)   = fitG(l,m,i,i)-dispgeoms(l)%grads(m,i,i)
-      if(m<=dispgeoms(l)%nvibs)errGrad(l,i,i)=errGrad(l,i,i)+gradtable(l,2*m)**2!*dispgeoms(l)%scale(m)
-     enddo !m=1,dispgeoms(i)%nvibs
-     errGrad(l,i,i)=sqrt(errGrad(l,i,i))
-    enddo!l=1,npoints
-    call printMatrix(OUTFILE,rlabs,clabs,int(8 ),npoints,2*nvibs,gradtable,int(13),int(8))
+    if(any(hasGrad(:,i,i)))then
+      write(OUTFILE,1016)i
+      k=0
+      do l = 1,npoints
+        if(.not.hasGrad(l,i,i))cycle
+        k=k+1
+        do m = 1,nvibs
+          gradtable(k,2*m-1) = dispgeoms(l)%grads(m,i,i)
+          gradtable(k,2*m)   = fitG(l,m,i,i)-dispgeoms(l)%grads(m,i,i)
+          if(m<=dispgeoms(l)%nvibs)errGrad(l,i,i)=errGrad(l,i,i)+gradtable(k,2*m)**2!*dispgeoms(l)%scale(m)
+        enddo !m=1,dispgeoms(i)%nvibs
+        errGrad(l,i,i)=sqrt(errGrad(l,i,i))
+      enddo!l=1,npoints
+      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
+    end if!any(hasGrad)
   enddo!i=1,nstates
 
   do i = 1,nstates
    do j = 1,i-1
-    write(OUTFILE,1015)j,i
-    do l = 1,npoints
-     do m = 1,nvibs
-      gradtable(l,2*m-1) = dispgeoms(l)%grads(m,i,j)
-      gradtable(l,2*m)   = fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j)
-      if(m<=dispgeoms(l)%nvibs)then
-          errGrad(l,i,j)=errGrad(l,i,j)+((&
+    if(any(hasGrad(:,i,j)))then
+      write(OUTFILE,1015)j,i
+      k=0
+      do l = 1,npoints
+        if(.not.hasGrad(l,i,j))cycle
+        k=k+1
+        do m = 1,nvibs
+          gradtable(k,2*m-1) = dispgeoms(l)%grads(m,i,j)
+          gradtable(k,2*m)   = fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j)
+          if(m<=dispgeoms(l)%nvibs)then
+            errGrad(l,i,j)=errGrad(l,i,j)+((&
                       fitG(l,m,i,j)/abs(fitE(l,j)-fitE(l,i))- &
                       dispgeoms(l)%grads(m,i,j)/abs(dispgeoms(l)%energy(j)-dispgeoms(l)%energy(i))   &
                       )  )**2!*dispgeoms(l)%scale(m)
-          errGradh(l,i,j)=errGradh(l,i,j)+&
+            errGradh(l,i,j)=errGradh(l,i,j)+&
                  (fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j))**2!*dispgeoms(l)%scale(m)
-          errGradh(l,j,i)=errGradh(l,j,i)+&
+            errGradh(l,j,i)=errGradh(l,j,i)+&
                  (fitG(l,m,i,i)-fitG(l,m,j,j)-&
                  dispgeoms(l)%grads(m,i,i)+dispgeoms(l)%grads(m,j,j))**2!*dispgeoms(l)%scale(m)
-      end if
-     enddo !m=1,dispgeoms(i)%nvibs
-     errGrad(l,i,j)=sqrt(errGrad(l,i,j))
-     errGrad(l,j,i)=errGrad(l,i,j)
-     errGradh(l,i,j)=sqrt(errGradh(l,i,j))
-     errGradh(l,j,i)=sqrt(errGradh(l,j,i))/2
-    enddo!l=1,npoints
-    call printMatrix(OUTFILE,rlabs,clabs,int(8 ),npoints,2*nvibs,gradtable,int(13),int(8))
+          end if!(m<=dispgeoms(l)%nvibs)
+        enddo !m=1,dispgeoms(i)%nvibs
+        errGrad(l,i,j)=sqrt(errGrad(l,i,j))
+        errGrad(l,j,i)=errGrad(l,i,j)
+        errGradh(l,i,j)=sqrt(errGradh(l,i,j))
+        errGradh(l,j,i)=sqrt(errGradh(l,j,i))/2
+      enddo!l=1,npoints
+      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
+    end if!any(hasGrad(i,j))
    enddo!j=1,i-1
   enddo!i=1,nstates
   !------------------------------------------------------------------
@@ -2510,18 +2555,25 @@ SUBROUTINE makesurf()
   open(unit=uerrfl,file='error.log',access='sequential',form='formatted',&
      status='replace',action='write',position='rewind',iostat=ios)
   if(ios/=0)print *,"FAILED TO CREATE FILE error.log"
-  write(c1,'(i2)')nstates
   write(c2,'(i4)')ncoord
   do i=1,npoints
-    write(uerrfl,"("//trim(c1)//"E15.7)")    &
-            fitE(i,1:nstates)-(dispgeoms(i)%energy(1:nstates))
+    do j=1,nstates
+      if(hasEner(i,j))then
+        write(uerrfl,"(E15.7)",advance='no')  fitE(i,j)-(dispgeoms(i)%energy(j))
+      else
+        write(uerrfl,"(E15.7)",advance='no')  0d0
+      end if
+    end do!j
+    write(uerrfl,*) ""
     do j=1,nstates
       errgrd = dble(0)
-      call ginv(ncoord,dispgeoms(i)%nvibs,dispgeoms(i)%bmat,ncoord,binv,1D-2)
-      do k=1,dispgeoms(i)%nvibs
-        if(dispgeoms(i)%scale(k)>1D-1)&
-            errgrd=errgrd+binv(:,k)*(fitG(i,k,j,j)-dispgeoms(i)%grads(k,j,j))
-      end do    
+      if(hasGrad(i,j,j))then
+        call ginv(ncoord,dispgeoms(i)%nvibs,dispgeoms(i)%bmat,ncoord,binv,1D-2)
+        do k=1,dispgeoms(i)%nvibs
+            if(dispgeoms(i)%scale(k)>1D-1)&
+                errgrd=errgrd+binv(:,k)*(fitG(i,k,j,j)-dispgeoms(i)%grads(k,j,j))
+        end do
+      end if!hasGrad
       write(uerrfl,"("//trim(c2)//"E15.7)") errgrd
     end do
   end do 
@@ -2596,17 +2648,18 @@ end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
-  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList)
+  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad)
     use hddata, only: nstates
     IMPLICIT NONE
     INTEGER,intent(IN)                                        :: nvibs
-    DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)           :: fitgrad
-    double precision,dimension(nvibs,nstates,nstates),intent(in)              :: abgrad
+    DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)  :: fitgrad
+    double precision,dimension(nvibs,nstates,nstates),intent(in)     :: abgrad
     double precision,dimension(nvibs),intent(in)              :: scale
+    LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
     DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
     integer,dimension(2**(nstates-1),nstates),INTENT(IN)      :: phaseList
 
-    INTEGER                                                   :: j,k,l,minID
+    INTEGER                                                   :: j,k,l,m,minID
     integer,dimension(nstates,nstates)                        :: phaseMat
     double precision,dimension(nstates,nstates)               :: diff
     double precision                                          :: errNorm,minerr
@@ -2619,8 +2672,10 @@ end SUBROUTINE printSurfHeader
       do k=1,nvibs
         diff=phaseMat*fitgrad(k,:,:)-abgrad(k,:,:)
         do l=2,nstates
-          errNorm=errNorm+dot_product(diff(l,1:l-1),diff(l,1:l-1))*scale(k)
-        end do
+          do m=1,l-1
+            if(hasGrad(l,m))  errNorm = errNorm+ diff(l,m)**2 *scale(k)
+          end do!m
+        end do!l
       end do !k=1,nvibs
       if(minID==0.or.errNorm<minerr)then
         minID=j
@@ -2642,7 +2697,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   use combinatorial
   use hddata,only: nstates
   use progdata, only: abpoint,printlvl
-  use makesurfdata, only: incgrad,incener,e_exact,g_exact
+  use makesurfdata, only: incgrad,incener,e_exact,g_exact,hasEner,hasGrad
   IMPLICIT NONE
   type(abpoint),INTENT(IN)                                   :: abpt
   type(abpoint),INTENT(INOUT)                                :: fitpt
@@ -2663,17 +2718,22 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     ldeg=fitpt%deg_groups(i,1)
     ndeg=fitpt%deg_groups(i,2)
     udeg=ldeg+ndeg-1
-    shift = -(fitpt%energy(ldeg)+fitpt%energy(udeg)-abpt%energy(ldeg)-abpt%energy(udeg))/2
+    if(hasEner(ptid,ldeg).and.hasEner(ptid,udeg))then
+        shift = -(fitpt%energy(ldeg)+fitpt%energy(udeg)-abpt%energy(ldeg)-abpt%energy(udeg))/2
+    else
+        shift = 0d0
+    end if
     do pmt=1,factl(ndeg)
       err=dble(0)
       do j=ldeg,udeg
         m=pmtList(pmt,j-ldeg+1)+ldeg-1
-        if(incgrad(ptid,j,j).or.g_exact(ptid,j,j))then
+        if(hasGrad(ptid,j,j).and.(incgrad(ptid,j,j).or.g_exact(ptid,j,j)))then
           diff=fitpt%grads(:abpt%nvibs,m,m)-abpt%grads(:abpt%nvibs,j,j)
           err=err+dot_product(diff,diff*abpt%scale(:abpt%nvibs))*w_grd
         end if
-        if(incener(ptid,j,j).or.e_exact(ptid,j,j))  err=err+ (fitpt%energy(m)-abpt%energy(j)+shift)**2 *w_en
-      end do
+        if(hasEner(ptid,j).and.(incener(ptid,j,j).or.e_exact(ptid,j,j)))  &
+                    err=err+ (fitpt%energy(m)-abpt%energy(j)+shift)**2 *w_en
+      end do!j=ldeg,udeg
       if(pmt==1)then
         min_err=err
         best_p=pmt
@@ -2714,13 +2774,13 @@ SUBROUTINE readMakesurf(INPUTFL)
   USE makesurfdata
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
-  NAMELIST /MAKESURF/       npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,       &
-                            flheader,ndiis,ndstart,enfDiab,followPrev,  &
-                            w_energy,w_grad,w_fij,ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,     &
-                            useIntGrad,intGradT,intGradS,gScaleMode,energyT,highEScale,maxd,scaleEx,    &
-                            dijscale,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening,     &
-                            linNegSteps, gscaler,ckl_output,ckl_input,    &
-                            TBas,ecutoff,egcutoff,maxRot,dijscale2, usefij, deg_cap, eshift
+  integer :: i
+  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
+                      flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
+                      ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
+                      energyT,highEScale,maxd,scaleEx,linNegSteps, gscaler,ckl_output,ckl_input,maxRot,  &
+                      dijscale,dijscale2,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening, &
+                      searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn
   npoints   = 0
   gscaler   = 1d-5
   maxiter   = 3
@@ -2755,28 +2815,48 @@ SUBROUTINE readMakesurf(INPUTFL)
   toler     = 1D-3
   gorder    = 1D-3
   gcutoff   = 1D-14
-  exactTol  = 1D-12
-  LSETol    = 1D-7
-  flattening= 1D-8
-  outputfl  = ''
-  flheader  = '----'
-  ndiis     = 10
-  ndstart   = 10
-  enfDiab   = 0
-  w_energy  = dble(1)
-  w_grad    = dble(1)
-  w_fij     = dble(1)
-  nrmediff    = 2.D4
-  ediffcutoff = 20.
-  nrmediff2   = 100.
-  ediffcutoff2= 1.
-  rmsexcl     = 0
+  exactTol      = 1D-12
+  LSETol        = 1D-7
+  flattening    = 1D-8
+  outputfl      = ''
+  flheader      = '----'
+  ndiis         = 10
+  ndstart       = 10
+  enfDiab       = 0
+  w_energy      = dble(1)
+  w_grad        = dble(1)
+  w_fij         = dble(1)
+  nrmediff      = 2.D4
+  ediffcutoff   = 20.
+  nrmediff2     = 100.
+  ediffcutoff2  = 1.
+  rmsexcl       = 0
+  SearchPath    = ''
+  SearchPath(1) ='.'
+  notefptn      ='note'
+  enfptn        ='energy.all'
+  gmfptn        ='geom.all'
+  grdfptn       ='cartgrd.drt1.state$.all'
+  cpfptn        ='cartgrd.nad.drt1.state$.drt2.state$.all'
   read(unit=INPUTFL,NML=MAKESURF)
   if(useIntGrad)then
     nvibs=3*natoms-6
   else
     nvibs=3*natoms
   end if!useIntGrad
+
+  ! get the number of search paths
+  NSearchPaths=MaxSearchPaths
+  do i=1,MaxSearchPaths
+    SearchPath(i)=adjustl(SearchPath(i))
+    if(trim(SearchPath(i))=='')then
+        NSearchPaths=i-1
+        exit
+    end if
+  end do
+  if(NSearchPaths==0) STOP "Empty search path list.  No data to fit."
+
+  ! round up inappropriate option values and do unit changes
   if(linNegSteps<0) linNegSteps=0
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
@@ -2974,6 +3054,20 @@ SUBROUTINE printDisps(type,npts)
             2x,'-----------------------------------------------------',/)
 end SUBROUTINE printDisps
 !------------------------------------------------------------------------------
+! This function gets the number of state index place holders ('$') in an input
+! filename pattern.
+INTEGER FUNCTION PatternNInd(pattern)
+    IMPLICIT NONE
+    CHARACTER(72),intent(IN) :: pattern
+    integer :: i, nind
+
+    nind = 0
+    do i=1,len_trim(pattern)
+        if(pattern(i:i)=='$')nind=nind+1
+    end do!i
+    PatternNInd=nind
+END FUNCTION PatternNInd
+!------------------------------------------------------------------------------
 !Read in geometry and ab initio data for a set of points which will be used
 !in the Hd fitting procedure.
 !
@@ -2982,14 +3076,22 @@ SUBROUTINE readdisps()
   use progdata,only:natoms,printlvl
   use makesurfdata
   IMPLICIT NONE
-  INTEGER                                      :: j,k,l
+  INTEGER                                      :: i,j,k,l,ios
   DOUBLE PRECISION,dimension(3*natoms,npoints) :: cgrads,cgeoms
   DOUBLE PRECISION,dimension(nstates,npoints)  :: eners
   character(72)                                :: filename,infile
-  character(10)                                :: suffix
   character(3),dimension(natoms)               :: atoms
   double precision,dimension(natoms)           :: anums,masses
+  integer,external  :: PatternNInd
+! ptinfile : number of points in a geometry input file.
+! npts     : number of points that were already included and have proper data
+! nnew     : number of new geometries added
+! lb, ub   : energies for states between lb and ub are given in energy file
+  integer  :: ptinfile, npts, nnew,lb,ub
+  double precision  :: NaN
 
+  NaN = 0d0
+  NaN = NaN/NaN
   if(printlvl>0)print '(7X,A,I5,A)','Reading',npoints,' displacements'
   if(allocated(dispgeoms))deallocate(dispgeoms)
   allocate(dispgeoms(npoints))
@@ -2998,48 +3100,128 @@ SUBROUTINE readdisps()
      allocate(dispgeoms(j)%igeom(ncoord))
      allocate(dispgeoms(j)%energy(nstates))
      allocate(dispgeoms(j)%grads(3*natoms,nstates,nstates))
+     dispgeoms(j)%grads=NaN
      allocate(dispgeoms(j)%bmat(ncoord,3*natoms))
      allocate(dispgeoms(j)%lmat(3*natoms,3*natoms))
      allocate(dispgeoms(j)%scale(3*natoms))
      allocate(dispgeoms(j)%eval(3*natoms))
   enddo
+  allocate(hasEner(npoints,nstates))
+  allocate(hasGrad(npoints,nstates,nstates))
 
-  if(printlvl>0)print 1000,'Reading geom.all'
-  infile = 'geom.all'
-  call readColGeom(infile,npoints,natoms,atoms,anums,cgeoms,masses)
-  if(printlvl>0.and.useIntGrad)print 1000,'local internal coordinates will be constructed.'
-  do j = 1,npoints
-   dispgeoms(j)%id = j
-   dispgeoms(j)%cgeom(1:3*natoms) = cgeoms(1:3*natoms,j)
-  enddo
+  hasEner = .false.
+  hasGrad = .false.
+  SPNotes = ''
+  npts    = 0
+  do i=1,NSearchPaths
+    if(printlvl>0)print *,'Searching input file in path <',trim(SearchPath(i)),'>'
+    ! read note for the search path
+    if(trim(notefptn(i))/='')then
+        infile = trim(SearchPath(i))//'/'//trim(adjustl(notefptn(i)))
+        open(unit=7423,file=trim(infile),access='sequential',form='formatted',&
+                status='old',action='read',position='rewind',iostat=ios)
+        if(ios==0)then
+            read(unit=7423,fmt=*,IOSTAT=ios)SPNotes(i)
+            if(ios==0.and.printlvl>0)print*,"  ",SPNotes(i)
+        end if
+        close(unit=7423)
+    end if
 
-  if(printlvl>0)print 1000,'Reading energy.all'
-  infile = 'energy.all'
-  call readEner(infile,npoints,nstates,eners)
-  do j = 1,npoints
-   dispgeoms(j)%energy = eners(:,j)+eshift
-   call genEnerGroups(dispgeoms(j),deg_cap,nstates)
-  enddo
+    ! read geometries
+    if(PatternNInd(gmfptn(i))>0.or.len_trim(gmfptn(i))==0)then
+        print *,"invalid geometry file naming pattern.  skipping directory..."
+        cycle
+    end if
+    infile = trim(SearchPath(i))//'/'//trim(adjustl(gmfptn(i)))
+    if(printlvl>0)print 1000,'  - Reading geometry input <'//trim(infile)//'>'
+    ptinfile=npoints
+    call readColGeom(infile,ptinfile,natoms,atoms,anums,cgeoms,masses)
+    if(ptinfile+npts>npoints)then
+        print *,"WARNING: Amount of data in input file exceeded point count. Data truncated."
+        ptinfile=npoints-npts
+    end if
+    ! we do not yet increase the number of total points <npts> because we still
+    ! need the old total as offset for other data inputs
+    do j = 1,ptinfile
+        dispgeoms(j+npts)%id = j+npts
+        dispgeoms(j+npts)%cgeom(1:3*natoms) = cgeoms(1:3*natoms,j)
+    enddo!j=1,ptinfile
+    nnew = ptinfile
 
-  if(printlvl>0)print 1000,'Reading gradients and couplings'
-  do j = 1,nstates
-   do k = 1,j
-    suffix='.all'
-    infile = filename(k,j,suffix,usefij)
-    if(printlvl>0) print 1000,"loading COLUMBUS gradients from "//trim(adjustl(infile))
-    call readGrads(infile,npoints,natoms,cgrads)
-    do l = 1,npoints
-      if(j/=k.and.usefij)then
-        dispgeoms(l)%grads(:,j,k)=cgrads(:,l)*(eners(j,l)-eners(k,l))
-      else
-        dispgeoms(l)%grads(:,j,k)=cgrads(:,l)
-      end if
-  !    call removeTransRot(dispgeoms(l)%grads(:,j,k),dispgeoms(l)%cgeom)
-      if(j/=k)dispgeoms(l)%grads(:,k,j)=dispgeoms(l)%grads(:,j,k)
-    enddo
-   enddo
-  enddo
+    ! read energy data
+    infile = trim(SearchPath(i))//'/'//trim(adjustl(enfptn(i)))
+    if(printlvl>0.and.len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
+        print 1000,'  - Reading energy input <'//trim(infile)//'>'
+        ptinfile=npoints
+        call readEner(infile,ptinfile,nstates,eners,lb,ub)  !k and l specify range of data
+        if(ptinfile>nnew)then
+            print *,"WARNING : energy file contains more entries than geometry file! Data truncated."
+            ptinfile=nnew
+        elseif (ptinfile<nnew)then
+            print *,"WARNING : energy file contains less entries than geometry file! "
+        end if
+        if(ptinfile==0)then
+            print *,"WARNING : Cannot find any energy data in current search path. Skipping..."
+            cycle
+        end if
+        do j = 1,ptinfile
+            dispgeoms(j+npts)%energy(lb:ub) = eners(lb:ub,j)+eshift
+            ! put in dummy energies for non-present data just for grouping purpose
+            do k=lb-1,1,-1
+               eners(k,j)=eners(k+1,j)-100
+            end do
+            do k=ub+1,nstates
+                eners(k,j)=eners(k-1,j)+100
+            end do
+            call genEnerGroups(dispgeoms(j+npts),deg_cap,nstates)
+            hasEner(j+npts,lb:ub)=.true.
+        enddo
+    else !invalid energy file name
+        print 1000,"  - Skipping energy file input! Filename not present or invalid."
+    end if! valid energy file name
 
+    ! read in gradients and couplings data
+    if(printlvl>0)print 1000,'Reading gradients and couplings'
+    do j = lb,ub
+      do k = lb,ub
+        infile = trim(SearchPath(i))//'/'//filename(j,k,grdfptn,cpfptn)
+        if(printlvl>1) print 1000,"  - Searching for gradients in <"//trim(infile)//">"
+        ptinfile=npoints
+        call readGrads(infile,ptinfile,natoms,cgrads)
+        if(ptinfile==0)then
+            if(printlvl>1)print *,"    Gradient data not found."
+            cycle
+        endif!
+        if(ptinfile>nnew)then
+            print *,"WARNING : gradient file contains more entries than geometry file! Data truncated."
+            ptinfile=nnew
+        elseif (ptinfile<nnew)then
+            print *,"WARNING : gradient file contains less entries than geometry file! "
+        end if
+        if(printlvl>0)print "(A,I6,3A)","  - ",ptinfile, " gradient data found in file <",trim(infile),">"
+        do l = 1,ptinfile
+          if(j/=k.and.usefij)then
+            dispgeoms(l+npts)%grads(:,j,k)=cgrads(:,l)*(eners(j,l)-eners(k,l))
+          else
+            dispgeoms(l+npts)%grads(:,j,k)=cgrads(:,l)
+          end if
+        !    call removeTransRot(dispgeoms(l)%grads(:,j,k),dispgeoms(l)%cgeom)
+          if(j/=k)dispgeoms(l)%grads(:,k,j)=dispgeoms(l)%grads(:,j,k)
+          hasGrad(l+npts,j,k)=.true.
+          hasGrad(l+npts,k,j)=.true.
+        enddo!l
+      enddo!k
+    enddo!j
+    npts=npts+nnew
+    if(npts>npoints)stop "readdisps BUG: Shouldn't get here"
+    if(npts==npoints)exit
+  end do !i=1,NSearchPaths
+  if(npts<npoints)then
+    print *,"WARNING : Found less data points than specified.  Adjusting npoints to ",npts
+    npoints=npts
+  end if
+
+  ! process the data that have been read in
   if(printlvl>0)print 1000,"Generating displacement Wilson's B-Matrices"
   if(printlvl>0.and.useIntGrad)print 1000,'Local internal coordinates will be constructed from B-matrices'
   do l = 1,npoints
@@ -3063,22 +3245,27 @@ SUBROUTINE readdisps()
        do j=1,ncoord
          print "(15F8.3)",dispgeoms(l)%bmat(j,:)
        end do
+       print *,"  Energy gradients in fitting coordinate system:"
        do j=1,nstates
-         print *,"  Gradients for state",j," in fitting coordinate system"
+         if(.not.hasGrad(l,j,j))cycle
+         write(unit=*,fmt="(A,I3,A)",advance='no')"   state ",j," : "
          print "(15F8.3)",dispgeoms(l)%grads(:,j,j)
        end do
+       print *,"  Derivative couplings in fitting coordinate system:"
        do j=1,nstates-1
          do k=j+1,nstates
-           print *,"  Couplings for block",j,k," in fitting coordinate system"
+           if(.not.hasGrad(l,j,k))cycle
+           write(unit=*,fmt="(A,I3,A)",advance='no')"   state ",j," : "
            print "(15F8.3)",dispgeoms(l)%grads(:,j,k)
-         end do
-       end do
-    end if
-  end do
+         end do!k
+       end do!j
+    end if!printlvl>1
+  end do!l
 
  ! generate intersection adapated coordinates
+  if(printlvl>0) print *,"Transforming degenerate points to intersection adapted coordinates:"    
   do l=1,npoints
-   call OrthGH_ab(dispgeoms(l),100,sqrt(gcutoff)/10)
+   call OrthGH_ab(dispgeoms(l),100,gcutoff,hasGrad(l,:,:))
   end do
 
   call printDisps(int(1),npoints)
