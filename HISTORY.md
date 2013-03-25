@@ -1,3 +1,11 @@
+## 2.1.1 (2013-03-25)
+
+* Updated makefile and project settings to allow compilation of evaluation libraries.
+* Removed deprecated options disscprate and disscpmidpt.  Since we use OOP angles
+with correct assyptotic behavior now, coupling scaling is no longer needed.
+* Binaries are libraries are for the moment not supplied with the repository.  
+You will have to build it yourself.
+
 ## 2.1.0 (2013-03-22)
 
 * SearchPaths feature: the program to search a number of directories for

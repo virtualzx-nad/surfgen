@@ -4,6 +4,11 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>libsurfgen.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
 		<key>surfgen-app.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
@@ -23,6 +28,11 @@
 			<true/>
 		</dict>
 		<key>226A266D169547B4003C4445</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>229BE1CE16FE032B00AB38FE</key>
 		<dict>
 			<key>primary</key>
 			<true/>

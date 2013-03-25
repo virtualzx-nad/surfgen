@@ -1,9 +1,6 @@
 ! POTLIB interface for surfgen
 ! Module stores variables related to pot() calls
 MODULE potdata
-! when >0, derivative couplings will be scaled by lowest interpiece 
-! distance.  at r = CpDissMidPt, the scaling factor will be  1/2
-     double precision  ::  CpDissMidPt,CpDissRate
 ! dcoordls    INTEGER,dimension(NRij)
 !             Specifies the set of curvilinear coordinates that will
 !             be used to calculate the distance factor.   Must contain
@@ -570,28 +567,6 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end if!timeeval
 
 
-  if(cpDissMidPt>0)then   ! scaling the couplings if dissociated
-    k=0
-    do i=1,natoms
-      w1ijlist(i,i)=1d10
-      do j=i+1,natoms
-        k=k+1
-        w1ijlist(i,j) = rijlist(k)
-        w1ijlist(j,i) = rijlist(k)
-      end do
-    end do
-    do i=1,natoms
-      minwlist(i) = minval(w1ijlist(i,:)) 
-    end do
-    dw = 1/(  exp(cpdissrate*( maxval(minwlist)-cpdissmidpt )+1)  )
-    do i=1,nstates-1
-      do j=i+1,nstates 
-        cgrads(1:3*natoms,i,j)=cgrads(1:3*natoms,i,j)*dw
-        cgrads(1:3*natoms,j,i)=cgrads(1:3*natoms,j,i)*dw
-      end do
-    end do
-  end if
-  
 ! CHECK COM GRADIENTS
  do i=1,nstates
    comP = cgrads(1:3,i,i)+cgrads(4:6,i,i)+cgrads(7:9,i,i)+cgrads(10:12,i,i)
@@ -741,13 +716,11 @@ SUBROUTINE readginput(jtype)
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
-                            mindcutoff, atomlabels,cpdissmidpt,dcoordls,errflname, &
-                            timeeval,B_r1,B_r2,B_h,parsing,cpdissrate,eshift
+                            mindcutoff, atomlabels,dcoordls,errflname, &
+                            timeeval,B_r1,B_r2,B_h,parsing,eshift
 
   atomlabels(1) = 'N'
   atomlabels(2) = 'H'
-  cpdissmidpt   = -1d0
-  cpdissrate    =  1.5d0
 
   do i=1,NRij
     dcoordls(i) = i
@@ -803,7 +776,6 @@ SUBROUTINE readginput(jtype)
 
   if(jobtype.ne.0)print *,"WARNING:  Calling prepot() with jobtype.ne.0" 
   print *,"   Reading POTLIB related parameters"
-  cpdissrate
   molden_p     = 100
   m_start      = 100
   B_r1    = 1D0
@@ -817,8 +789,6 @@ SUBROUTINE readginput(jtype)
   nrpts        = 20
   timeeval     = .false.
   mindcutoff   = 1D-5
-  cpdissmidpt  = 5D0
-  cpdissrate   = 1d0
   read(unit=INPUTFILE,NML=POTLIB)
   print 1000,m_start,molden_p
   close(unit=INPUTFILE) 

@@ -13,10 +13,10 @@ OBJS    = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
 
 # Objects needed for runtime interface library
 OBJSL   = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
-            localcoord.o io.o potlib.o minmex.o
+            io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.1.0
+SGENVER := 2.1.1
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -44,6 +44,7 @@ endif
 
 # set up product name
 EXEC  := surfgen-$(SGENVER)-$(OS)-$(OSV)-$(ARC)-$(word 1, $(COMPILER))
+LIBF  := libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
@@ -88,9 +89,7 @@ ifndef LIBS
      Use variable LIBS or BLAS_LIB to define these libraries.)
 endif
 
-ifndef RM
     RM := rm -rf
-endif
 
 ifndef AR
     AR := ar -rv
@@ -118,27 +117,42 @@ else
  endif
 endif
 
+# build everything
+all  :  surfgen lib
+	@echo 'Finished building surfgen.'
+
 #target for standalone fitting and analysis program
-#we cheat and use the compiler to invoke the linker
-all  :  $(OBJS)    
-	@echo 'MESSAGE : $(Msg), Debug flag=$(DEBUGFLAG)'
-	@echo 'Executable name: $(EXEC)'
-	@echo 'Executable saved to: $(BDIR)'
-	@echo 'BLAS/LAPACK LIB:  $(LIBS)'
-	@echo 'Compiler options: $(CPOPT)'
-	@echo 'Linking options:  $(LKOPT)'
-	@echo 'Building target:  $@'
+surfgen  :  $(OBJS)
+	@echo ' '
+	@echo '-----------------------------------------'
+	@echo '   SURFGEN FITTING PROGRAM '
+	@echo 'Program Version:     $(SGENVER)'
+	@echo 'Executable Name:     $(EXEC)'
+	@echo 'Executable Saved to: $(BDIR)'
+	@echo 'BLAS/LAPACK LIB:     $(LIBS)'
+	@echo 'Debug Flag:          $(DEBUGFLAG)'
+	@echo 'Compiler options:    $(CPOPT)'
+	@echo 'Linking options:     $(LKOPT)'
+	@echo '-----------------------------------------'
+	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'
 	$(CDS) $(COMPILER) -o $(BDIR)/$(EXEC) $(OBJS) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
-	@echo ' '
+	@echo '-----------------------------------------'
 
 #target for runtime interface library
 lib  :  $(OBJSL)
-	@echo 'Building target: $@'
-	@echo 'Archiving the object into library libsurfgen.a'
-	$(CDS) $(AR) $(LDIR)/libsurfgen.a $(OBJSL)
 	@echo ' '
+	@echo '-----------------------------------------'
+	@echo '  SURFGEN EVALUATION LIBRARY'
+	@echo 'Program Version:     $(SGENVER)'
+	@echo 'Archiver (AR):       $(AR)'
+	@echo 'Library File Name:   $(LIBF)'
+	@echo '-----------------------------------------'
+	@echo 'Building target: $@'
+	@echo 'Archiving the object into library '
+	$(CDS) $(AR) $(LDIR)/$(LIBF) $(OBJSL)
+	@echo '-----------------------------------------'
 
 #
 clean:
