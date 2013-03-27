@@ -1,10 +1,8 @@
 &COMMENTS
 jobtypes: 
-1 = read reference, make surface, write surface to disk
-2 = read reference, read surface, find extrema
-3 = read reference, read surface, reshape surface
-4 = read reference, read surface, output surface in new coordinate system
-5 = read reference, load geometry information
+-1 = give symmetry operations 
+ 0 = do nothing 
+ 1 = perform fit 
 
 Irreducible representation matrices are given in irrep.in
 states are partitioned into groups that each n-state group carries an n-dimensional irrep.  

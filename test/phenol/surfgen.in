@@ -1,0 +1,99 @@
+&GENERAL
+printlvl   = 3,
+jobtype    = 1, 
+natoms     = 13,
+atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
+order      = 3,
+ngrp       = 3,
+groupsym   = 1,2,1,2
+groupprty  = 1,1,-1,-1
+inputfl    = ''
+cntfl      = 'connect.in'
+/
+&MAKESURF
+eshift     =  305.71135743d0
+usefij     = .true.
+deg_cap    = 1D-5
+dijscale   = 1d0
+energyT    = 5.5D4,6D4,7.0D4,1D5,1D6,1D7
+highEScale = 5D-1,2D-1,5D-2,1D-2,1D-3,1D-4
+useIntGrad = .true.
+maxd       = 1D1
+intGradT   = 1D-2
+intGradS   = 1D-1
+TBas       = 1d-10
+rmsexcl    = -2
+npoints    = 2553 
+SearchPath = 'data/s0_min_disp-0.01','data/s0_sad_disp-0.01','data/s1_min_disp-0.01'
+             'data/path_tmp',
+             'data/s1_sad_hess-0.001','data/mex12_searchpath1','data/mex01_disp-0.01',
+             'data/s1-diss_min_hessian-0.001',
+             'data/s0-diss_min_disp-0.01'
+gmfptn  = 10*'geom'
+enfptn  = 10*'energy.all'
+grdfptn  = 10*'cartgrd.drt1.state$.sp'
+cpfptn  = 10*'cartgrd.nad.drt1.state$.drt1.state$.sp'
+dfstart    = 0
+gcutoff    = 1D-7
+maxiter    = 10,
+toler      = 1D-7
+LSETol     = 1.0D-7
+flattening = 1.0D-8 
+exactTol   = 1.0D-9 
+gorder     = 5000.
+outputfl   = 'hd.data'
+flheader   = 'coefficient file of phenol 3 state Hd made with surfgen'
+w_energy   = 1D0
+w_grad     = 1D-1
+w_fij      = 1D-1
+nrmediff   = 1D3
+ediffcutoff= 1D2
+nrmediff2  = 2d2
+ediffcutoff2=1d2   
+ndstart    = 200
+ndiis      = 35 
+/
+&MINMEX
+nmin       = 2,
+nmex       = 0,
+minguess   = 0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+            -0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+mexguess   = 0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,
+optiter    = 1000,
+opttoler   = 1E-8,
+surface    = 1,1
+ci         = 1,2,0, 1,2,3
+usehessian = 1,1,
+hessupdate = 25,
+/
+&RESHAPE
+nmin       = 2,
+nept       = 0,
+cmethod    = 1,
+fixiter    = 25,
+conlist    = 3,1,1, 3,2,2, 3,3,3, 3,4,4, 3,5,5, 3,6,6, 3,7,7, 3,8,8, 3,9,9, 3,10,10, 3,11,11, 3,12,12, 3,13,13, 3,14,14, 3,15,15,
+             3,16,16, 3,17,17, 3,18,18
+minguess   = 0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+            -0.22,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.
+optiter    = 2000,
+opttoler   = 1E-7,
+surface    = 1,1
+usehessian = 1,1
+hessupdate = 25,
+makemap    = 1,1
+modeweight = 1.,1.,1.,1.,1.,0.05,0.05,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,0.05,
+             1.,1.,1.,1.,1.,0.05,0.05,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,0.05,
+funcweight = 0.01,0.05,0.89,0.05,0.0,
+/
+&TRANSFORM
+mkadiabat  = 1,
+nbasis     = 2,
+/
+&LOADGEOM
+isloop     = .true.
+loopst     = 1
+ngeoms     = 20
+geomfl     = 'geom'
+calchess   = .false.
+outputdir  = 'path4'
+/
