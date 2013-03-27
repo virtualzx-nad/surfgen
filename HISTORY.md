@@ -1,3 +1,9 @@
+## 2.1.2 (2013-03-27)
+
+* Fixed `Makefile` to properly create `bin` and `lib` directories and prevent unnecessary building
+* Fixed up messy output search code in `makesurf.f90`
+* Fixed minor output formatting problems that cause warnings in newer versions of `ifort`
+
 ## 2.1.1 (2013-03-25)
 
 * Updated makefile and project settings to allow compilation of evaluation libraries.

@@ -1373,7 +1373,7 @@ MODULE makesurfdata
     dp   = dp-pgrad
     nrmPG = dnrm2(ncons,pgrad,int(1))
     nrmEx = dnrm2(ncons,dp,int(1))
-    if(printlvl>1)print "(3(A,E12.5))","  Norm of gradients:",nrmG,", Overlapping component:",nrmEx,", Orthogonal component:",nrmPG
+    if(printlvl>1)print "(3(A,E11.4))","  Norm of gradients:",nrmG,", Overlapping component:",nrmEx,", Orthogonal component:",nrmPG
   END SUBROUTINE GradProj
 
 !----------------------------------------------------------------------------------------
@@ -1872,6 +1872,10 @@ SUBROUTINE makesurf()
   double precision,dimension(0:maxiter,npoints)   ::   theta  ! rotation angle
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision,dimension(npoints)   ::   theta2
+  double precision  :: NaN
+
+  NaN  = 0
+  NaN  = NaN/NaN
 
 !   call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
 !   stop                                     !  only use these for new coordinates
@@ -2506,8 +2510,13 @@ SUBROUTINE makesurf()
   enddo!i=1,nstates
   do j = 1,npoints
    do k = 1,nstates
-    enertable(j,2*k-1) = (dispgeoms(j)%energy(k))*AU2CM1
-    enertable(j,2*k)   = fitE(j,k)*AU2CM1 - enertable(j,2*k-1)
+    if(hasEner(j,k))then
+        enertable(j,2*k-1) = (dispgeoms(j)%energy(k))*AU2CM1
+        enertable(j,2*k)   = fitE(j,k)*AU2CM1 - enertable(j,2*k-1)
+    else
+        enertable(j,2*k-1) = NaN
+        enertable(j,2*k)   = NaN
+    end if
    enddo!k=1,nstates
   enddo!j=1,npoints
   call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,2*nstates,enertable,int(19),int(9))
@@ -2518,7 +2527,7 @@ SUBROUTINE makesurf()
   print trim(fmt)," PT ","  WT  ",(("   ErrG  ",k=1,j),j=1,nstates),&
                            ((" Ab Grd  ",k=1,j),j=1,nstates)
   fmt=""
-  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(X,E12.5))")'),(nstates+1)*nstates
+  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(X,E11.4))")'),(nstates+1)*nstates
   do i=1,npoints
     do k=1,nstates
       dener(k,k)=1D0
@@ -2534,7 +2543,7 @@ SUBROUTINE makesurf()
   print *,""
   print *,"Gradients and their errors of hij instead of fij(g:err,ab,fit;h:err,ab,fit)"
   fmt=""
-  write(fmt,'("(I5,2X,",I2,"(X,E12.5))")'),(nstates-1)*nstates*3
+  write(fmt,'("(I5,2X,",I2,"(X,E11.4))")'),(nstates-1)*nstates*3
   do i=1,npoints
     print trim(fmt),i,( (errGradh(i,j,k),k=1,j-1) ,j=1,nstates),&
        ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,k),int(1)), &
@@ -2641,8 +2650,8 @@ SUBROUTINE printSurfHeader(cons,eqs,nexact)
 1002 format(2x,'Number of Coefficients: ',i5)
 1003 format(2x,'Number of Least Squares Equations:    ',i5)
 1004 format(2x,'Maximum Number of iterations:       ',i10)
-1005 format(2x,'Coefficient convergence tolerance:  ',f10.8)
-1006 format(2x,'Threshold for gradient values:      ',f10.8)
+1005 format(2x,'Coefficient convergence tolerance:  ',f12.8)
+1006 format(2x,'Threshold for gradient values:      ',f12.8)
 1007 format(2x,'Number of Exact Equations:    ',i5,/)
 end SUBROUTINE printSurfHeader
 
@@ -2764,7 +2773,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     fitpt%grads(:abpt%nvibs,:,:)=gradnew
   end do !i=1,fitpt%ndeggrp
 1000 format(6X,"Point ",I4," States ",I2," to ",I2,&
-          " ordered by gradients. Error:",E11.5,"->",E11.5)
+          " ordered by gradients. Error:",E11.4,"->",E11.4)
 END SUBROUTINE
 
 ! read input parameters for makesurf
@@ -3092,7 +3101,7 @@ SUBROUTINE readdisps()
 
   NaN = 0d0
   NaN = NaN/NaN
-  if(printlvl>0)print '(7X,A,I5,A)','Reading',npoints,' displacements'
+  if(printlvl>0)print '(4X,A,I5,A)','Reading',npoints,' displacements'
   if(allocated(dispgeoms))deallocate(dispgeoms)
   allocate(dispgeoms(npoints))
   do j = 1,npoints
@@ -3121,8 +3130,8 @@ SUBROUTINE readdisps()
         open(unit=7423,file=trim(infile),access='sequential',form='formatted',&
                 status='old',action='read',position='rewind',iostat=ios)
         if(ios==0)then
-            read(unit=7423,fmt=*,IOSTAT=ios)SPNotes(i)
-            if(ios==0.and.printlvl>0)print*,"  ",SPNotes(i)
+            read(unit=7423,fmt="(A)",IOSTAT=ios)SPNotes(i)
+            if(ios==0.and.printlvl>0)print "(4X,A)",trim(SPNotes(i))
         end if
         close(unit=7423)
     end if
@@ -3133,9 +3142,10 @@ SUBROUTINE readdisps()
         cycle
     end if
     infile = trim(SearchPath(i))//'/'//trim(adjustl(gmfptn(i)))
-    if(printlvl>0)print 1000,'  - Reading geometry input <'//trim(infile)//'>'
+    if(printlvl>0)print 1001,'- Reading geometry input <'//trim(infile)//'>'
     ptinfile=npoints
     call readColGeom(infile,ptinfile,natoms,atoms,anums,cgeoms,masses)
+    if(printlvl>0)print 1002,"found ",ptinfile, " geometries."
     if(ptinfile+npts>npoints)then
         print *,"WARNING: Amount of data in input file exceeded point count. Data truncated."
         ptinfile=npoints-npts
@@ -3151,7 +3161,7 @@ SUBROUTINE readdisps()
     ! read energy data
     infile = trim(SearchPath(i))//'/'//trim(adjustl(enfptn(i)))
     if(printlvl>0.and.len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
-        print 1000,'  - Reading energy input <'//trim(infile)//'>'
+        print 1001,'- Reading energy input <'//trim(infile)//'>'
         ptinfile=npoints
         call readEner(infile,ptinfile,nstates,eners,lb,ub)  !k and l specify range of data
         if(ptinfile>nnew)then
@@ -3164,6 +3174,7 @@ SUBROUTINE readdisps()
             print *,"WARNING : Cannot find any energy data in current search path. Skipping..."
             cycle
         end if
+        if(printlvl>0)print 1002,"found ",ptinfile," energy data entries."
         do j = 1,ptinfile
             dispgeoms(j+npts)%energy(lb:ub) = eners(lb:ub,j)+eshift
             ! put in dummy energies for non-present data just for grouping purpose
@@ -3177,19 +3188,19 @@ SUBROUTINE readdisps()
             hasEner(j+npts,lb:ub)=.true.
         enddo
     else !invalid energy file name
-        print 1000,"  - Skipping energy file input! Filename not present or invalid."
+        print 1001,"- Skipping energy file input! Filename not present or invalid."
     end if! valid energy file name
 
     ! read in gradients and couplings data
-    if(printlvl>0)print 1000,'Reading gradients and couplings'
+    if(printlvl>0)print 1001,'- Reading gradients and couplings'
     do j = lb,ub
       do k = lb,ub
         infile = trim(SearchPath(i))//'/'//filename(j,k,grdfptn,cpfptn)
-        if(printlvl>1) print 1000,"  - Searching for gradients in <"//trim(infile)//">"
+        if(printlvl>1) print 1000,"Searching for gradients in <"//trim(infile)//">..."
         ptinfile=npoints
         call readGrads(infile,ptinfile,natoms,cgrads)
         if(ptinfile==0)then
-            if(printlvl>1)print *,"    Gradient data not found."
+            if(printlvl>1)print 1000,"  gradient data not found."
             cycle
         endif!
         if(ptinfile>nnew)then
@@ -3198,7 +3209,7 @@ SUBROUTINE readdisps()
         elseif (ptinfile<nnew)then
             print *,"WARNING : gradient file contains less entries than geometry file! "
         end if
-        if(printlvl>0)print "(A,I6,3A)","  - ",ptinfile, " gradient data found in file <",trim(infile),">"
+        if(printlvl>0)print 1002,"found ",ptinfile, " gradient data entries." 
         do l = 1,ptinfile
           if(j/=k.and.usefij)then
             dispgeoms(l+npts)%grads(:,j,k)=cgrads(:,l)*(eners(j,l)-eners(k,l))
@@ -3206,7 +3217,7 @@ SUBROUTINE readdisps()
             dispgeoms(l+npts)%grads(:,j,k)=cgrads(:,l)
           end if
         !    call removeTransRot(dispgeoms(l)%grads(:,j,k),dispgeoms(l)%cgeom)
-          if(j/=k)dispgeoms(l)%grads(:,k,j)=dispgeoms(l)%grads(:,j,k)
+          if(j/=k)dispgeoms(l+npts)%grads(:,k,j)=dispgeoms(l+npts)%grads(:,j,k)
           hasGrad(l+npts,j,k)=.true.
           hasGrad(l+npts,k,j)=.true.
         enddo!l
@@ -3274,5 +3285,7 @@ SUBROUTINE readdisps()
   allocate(ptWeights(npoints))
   call readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO,ptWeights)
 
-1000 format(9X,A)
+1000 format(7X,A)
+1001 format(4X,A)
+1002 format(10X,A,I6,A)
 end SUBROUTINE readdisps

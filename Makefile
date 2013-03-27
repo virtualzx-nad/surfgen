@@ -8,15 +8,15 @@
 #      rules that comes with the repository.
 
 # Objects needed for standalone fitting program
-OBJS    = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
+OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
             libsym.o libinternal.o localcoord.o makesurf.o minmex.o io.o surfgen.o 
 
 # Objects needed for runtime interface library
-OBJSL   = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
+OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.1.1
+SGENVER := 2.1.2
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -27,11 +27,16 @@ $(info Operating system: $(OS))
 $(info OS Version: $(OSV))
 
 # Set up directories
+bindir:= bin
+libdir:= lib
 JDIR  := $(shell pwd)
-BDIR  := $(JDIR)/bin
-LDIR  := $(JDIR)/lib
+BDIR  := $(JDIR)/$(bindir)
+LDIR  := $(JDIR)/$(libdir)
 SDIR  := $(JDIR)/source
 CDS   := cd $(SDIR);
+
+OBJS  := $(addprefix $(SDIR)/,$(OBJSf))
+OBJSL := $(addprefix $(SDIR)/,$(OBJSLf))
 
 # Set compiler
 CPLIST := g95 pgf90 /usr/bin/gfortran gfortran 
@@ -43,8 +48,8 @@ else       #find default compilers
 endif
 
 # set up product name
-EXEC  := surfgen-$(SGENVER)-$(OS)-$(OSV)-$(ARC)-$(word 1, $(COMPILER))
-LIBF  := libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
+EXEC  := $(BDIR)/surfgen-$(SGENVER)-$(OS)-$(OSV)-$(ARC)-$(word 1, $(COMPILER))
+LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
@@ -92,7 +97,7 @@ endif
     RM := rm -rf
 
 ifndef AR
-    AR := ar -rv
+    AR := ar
 endif
 
 # set default compiler flags
@@ -118,11 +123,11 @@ else
 endif
 
 # build everything
-all  :  surfgen lib
+all  :  surfgen libs
 	@echo 'Finished building surfgen.'
 
 #target for standalone fitting and analysis program
-surfgen  :  $(OBJS)
+surfgen  :  $(OBJS) | $(BDIR)
 	@echo ' '
 	@echo '-----------------------------------------'
 	@echo '   SURFGEN FITTING PROGRAM '
@@ -136,12 +141,12 @@ surfgen  :  $(OBJS)
 	@echo '-----------------------------------------'
 	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'
-	$(CDS) $(COMPILER) -o $(BDIR)/$(EXEC) $(OBJS) $(LIBS) $(LKOPT) $(LDFLAGS)
+	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
 
 #target for runtime interface library
-lib  :  $(OBJSL)
+libs  :  $(OBJSL) | $(LDIR)
 	@echo ' '
 	@echo '-----------------------------------------'
 	@echo '  SURFGEN EVALUATION LIBRARY'
@@ -151,21 +156,22 @@ lib  :  $(OBJSL)
 	@echo '-----------------------------------------'
 	@echo 'Building target: $@'
 	@echo 'Archiving the object into library '
-	$(CDS) $(AR) $(LDIR)/$(LIBF) $(OBJSL)
+	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)
 	@echo '-----------------------------------------'
 
 #
 clean:
-	-$(CDS) $(RM) $(OBJS) *.mod
-	-@echo 'Finished cleaning'
+	-$(RM) $(OBJS) $(SDIR)/*.mod $(SDIR)/potlib.o 
+	@echo 'Finished cleaning'
 
 #
-%.o : $(SDIR)/%.f90
+$(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
 	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS)
 	@echo 'Finished building: $<'
 	@echo ' '
 
-
-
+$(BDIR) $(LDIR) :
+	@echo 'Creating directory $@'
+	@mkdir -p $@

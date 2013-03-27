@@ -107,5 +107,5 @@
               print *,"      Local coordinate system has reduced dimensionalities."
       print *,"      nvibs = ",ptdata%nvibs
     end if
-  1000 format(8x,A,I3,",",I3," : ",E10.4)
+  1000 format(8x,A,I3,",",I3," : ",E11.4)
   END SUBROUTINE makeLocalIntCoord
