@@ -1,0 +1,12 @@
+Points  1  - 6   are the c1 minimum
+Points  7  - 24  are displacements of 0.1   on the 9 internal around c1
+Points 25  - 44  are displacements of 0.001 on the 9 internal around c1
+Points 45  - 48  are inv_loop geometries
+Points 49  - 66  are displacements of 0.001 on the 9 internal around inv
+Points 67  - 84  are displacements of 0.01  on the 9 internal around c1
+Points 85  - 91  are points along a path from c1 to inv
+Points 92  - 112 are 12mexa loop geometries
+Points 113 - 124 are points along a path from c1 to 12mexa
+Points 125 - 142 are displacements of 0.01 on the 9 internal around 12mexa
+Points 143 - 157 are displacements of 0.05 on 8 internal coordinates around c1
+Points 158 -     are points along path from cmin to rot
