@@ -266,7 +266,7 @@ CONTAINS
      m=coordmap(j,1) !index of the coordinate set of the current coord
      select case(CoordSet(m)%Type)  !it is an OOP coord
 ! Rij, bond-bending and linear bendings are symmetric
-       case (0,1)
+       case (0,1,-3)
          coordPerm(0,j)=1
 ! Out-of-plane angle and torsion angles are antisymmetric
        case (-1,2,-2)
@@ -316,6 +316,16 @@ CONTAINS
                exit
              end if ! count(...)==4
             end do ! k
+
+       ! 4 center dot product
+         case (-3)
+           call reorderDot4(pmtList(i,CoordSet(m)%coord(:,n)),newCoord,sgnCPerm(i,j))
+           do k=1,CoordSet(m)%ncoord
+             if(all(newCoord.eq.CoordSet(m)%coord(:,k)))then
+               coordPerm(i,j) = CoordSet(m)%icoord(k)
+               exit
+             end if ! count(...)==4
+           end do ! k
 
        ! bond angle
          case (1)

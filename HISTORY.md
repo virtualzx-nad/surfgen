@@ -1,3 +1,11 @@
+## 2.1.3 (2013-03-29)
+
+* New coordinate 4-center dot product added to describe angular motions that are anti-symmetry with respect to 
+atom permutations but symmetry with respect to inversion.
+* Changed out-of-plane coordinate(type=-1,mode=0) to take a second parameter which scales the coordinate linearly.
+* Fixed genEnerGroup problem where states with no input data are being classified as degenerate.
+* Test jobs for phenol and hydroxymethyl added.
+
 ## 2.1.2 (2013-03-27)
 
 * Fixed `Makefile` to properly create `bin` and `lib` directories and prevent unnecessary building

@@ -511,16 +511,6 @@ MODULE makesurfdata
 
         stop 'error solving eigenvalue equations'
       end if
-      fitpt%energy=fitE(i,:)      
-      if(i==enfDiab)then
-        ckl(i,:,:)=dble(0)
-        do k=1,nstates
-          ckl(i,k,k)=dble(1)
-        end do
-        fitpt%ndeggrp = 0
-      else
-        call genEnerGroups(fitpt,deg_cap,nstates)
-      end if!(i==enfDiab)
       call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
       do k=1,dispgeoms(i)%nvibs
         fitpt%grads(k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
@@ -535,14 +525,14 @@ MODULE makesurfdata
       end do!k=1,enfGO%Length
       if(folPrev)then
 ! determine ordering and phase by consistency with previous iteration
-        call folPrevCkl(ckl(i,:,:),CklPrev,pmtList,factl(nstates),nstates,i)
+        call folPrevCkl(ckl(i,:,:),cklPrev,pmtList,factl(nstates),nstates,i)
         do k=1,dispgeoms(i)%nvibs
           fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
         end do!k=1,dispgeoms(i)%nvibs
         fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
       else
 ! determine ordering and phase by comparing with ab initio data
-        call genEnerGroups(fitpt,gorder/AU2CM1,nstates)
+        call genEnerGroups(fitpt,gorder/AU2CM1,1,nstates)
         call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad)
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
                  dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
@@ -558,7 +548,7 @@ MODULE makesurfdata
     end do!i=1,npoints
     deallocate(fitpt%energy)
     deallocate(fitpt%grads)
-    deallocate(fitpt%deg_groups)
+    if(allocated(fitpt%deg_groups)) deallocate(fitpt%deg_groups)
   END SUBROUTINE
 !-----------------------------------------------------------------------------------
 ! determine ordering and phase of Ckl by comparing with previous ckl
@@ -818,7 +808,7 @@ MODULE makesurfdata
        if(ptWeights(j)>rmsexclthreshold)then
        do k = 1,nstates
          do l=k,nstates
-           if(l>k.and.(incgrad(j,k,l).or.incgrad(j,l,k)))then
+           if(hasGrad(j,k,l).and.l>k.and.(incgrad(j,k,l).or.incgrad(j,l,k)))then
              de1 = max(abs(dispgeoms(j)%energy(k)-dispgeoms(j)%energy(l)),1D-7 )
              de2 = max(abs(fitE(j,k)-fitE(j,l)),1D-7 )
              inc_cp=inc_cp+1
@@ -832,7 +822,7 @@ MODULE makesurfdata
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
            end if! coupling included
-           if(g_exact(j,k,l))then
+           if(g_exact(j,k,l).and.hasGrad(j,k,l))then
              dgrd    =  dot_product(  &
                    dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l), &
                  ( dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*dispgeoms(j)%scale(1:nvpt)  )
@@ -840,30 +830,34 @@ MODULE makesurfdata
              NEx_grd=NEx_grd+1
            end if
          end do!l
-         if(e_exact(j,k,k))then
+         if(e_exact(j,k,k).and.hasEner(j,k))then
            dE_exact= dE_exact + (dispgeoms(j)%energy(k)-fitE(j,k))**2
            NEx_e = NEx_e+1
          end if!e_exact(j,k,k)
          if(dispgeoms(j)%energy(k)<energyT(1))then
-           nrmener = nrmener +    (dispgeoms(j)%energy(k)-fitE(j,k))**2
-           avgener = avgener + abs(dispgeoms(j)%energy(k)-fitE(j,k))
-           inc_e=inc_e+1
-           dgrd    =  dot_product(  &
-                dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k), &
-              ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
-           gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
-           dgrd = dgrd / gnrm 
-           if((dgrd>5D-2.or.gnrm*dgrd>1D-5.and.gnrm<1D-4).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
+           if(hasEner(j,k))then
+             nrmener = nrmener +    (dispgeoms(j)%energy(k)-fitE(j,k))**2
+             avgener = avgener + abs(dispgeoms(j)%energy(k)-fitE(j,k))
+             inc_e=inc_e+1
+           end if
+           if(hasGrad(j,k,k))then
+             dgrd    =  dot_product(  &
+                        dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k), &
+                        ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
+             gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
+             dgrd = dgrd / gnrm 
+             if((dgrd>5D-2.or.gnrm*dgrd>1D-4.and.gnrm<1D-4).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
                        "Large gradient error at point ",j," : ",dgrd*100,"% out of ", gnrm
-           if(gnrm>1D-4) then
-             nrmgrad = nrmgrad + dgrd
-             avggrad = avggrad + sqrt(dgrd)
-             incdata = incdata + 1
-           else
-              if(printlvl>4)print "(5x,A,I5,A,E14.4,A,E14.4)",&
+             if(gnrm>1D-4) then
+                nrmgrad = nrmgrad + dgrd
+                avggrad = avggrad + sqrt(dgrd)
+                incdata = incdata + 1
+             else
+                if(printlvl>4)print "(5x,A,I5,A,E14.4,A,E14.4)",&
                        "Small gradients excluded at point ",j,".  Norm of grad =",gnrm,",Norm of error = ",dgrd*gnrm
-           end if ! (gnrm>1D-4)
-         end if
+             end if ! (gnrm>1D-4)
+           end if!hasGrad
+         end if!dispgeoms(j)%energy(k)<energyT(1)
        enddo
      end if
     end do
@@ -1877,8 +1871,8 @@ SUBROUTINE makesurf()
   NaN  = 0
   NaN  = NaN/NaN
 
-!   call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
-!   stop                                     !  only use these for new coordinates
+  !call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
+  !stop                                     !  only use these for new coordinates
 
   if(printlvl>0)print *,"Entering makesurf"
   call getPtList()
@@ -3022,6 +3016,7 @@ SUBROUTINE printDisps(type,npts)
   CHARACTER(4)                    :: str
   CHARACTER(16),dimension(ncoord) :: rlabs
   CHARACTER(16),dimension(npts)   :: clabs
+  DOUBLE PRECISION :: NaN, enbuffer(nstates)
 
   if(type/=0)then
    write(OUTFILE,1008)
@@ -3048,10 +3043,16 @@ SUBROUTINE printDisps(type,npts)
   enddo
   call printMatrix(OUTFILE,rlabs,clabs,npr,ncoord,npts,disps,int(11),int(6))
 
-  write(OUTFILE,'(/,2x,"Ab initio Energies")')
+  write(OUTFILE,'(/,2x,"Ab Initio Energies")')
   write(str,'(i4)') nstates
+  NaN = 0
+  NaN = NaN/NaN
   do j=1,npts
-    write(OUTFILE,'(6x,i5,'//trim(str)//'F14.2)')j,dispgeoms(j)%energy*AU2CM1
+    enbuffer = dispgeoms(j)%energy*AU2CM1
+    do k=1,nstates
+      if(.not. hasEner(j,k))enbuffer(k)=NaN
+    end do
+    write(OUTFILE,'(6x,i5,'//trim(str)//'F14.2)')j,enbuffer
   end do  
   return
 
@@ -3176,7 +3177,6 @@ SUBROUTINE readdisps()
         end if
         if(printlvl>0)print 1002,"found ",ptinfile," energy data entries."
         do j = 1,ptinfile
-            dispgeoms(j+npts)%energy(lb:ub) = eners(lb:ub,j)+eshift
             ! put in dummy energies for non-present data just for grouping purpose
             do k=lb-1,1,-1
                eners(k,j)=eners(k+1,j)-100
@@ -3184,7 +3184,8 @@ SUBROUTINE readdisps()
             do k=ub+1,nstates
                 eners(k,j)=eners(k-1,j)+100
             end do
-            call genEnerGroups(dispgeoms(j+npts),deg_cap,nstates)
+            dispgeoms(j+npts)%energy(lb:ub) = eners(lb:ub,j)+eshift
+            call genEnerGroups(dispgeoms(j+npts),deg_cap,lb,ub)
             hasEner(j+npts,lb:ub)=.true.
         enddo
     else !invalid energy file name
@@ -3251,11 +3252,13 @@ SUBROUTINE readdisps()
     end if
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)
-    if(printlvl>1)then
+    if(printlvl>3)then
        print *,"  Wilson B Matrix in fitting coordinate system"
        do j=1,ncoord
          print "(15F8.3)",dispgeoms(l)%bmat(j,:)
        end do
+    end if
+    if(printlvl>1)then
        print *,"  Energy gradients in fitting coordinate system:"
        do j=1,nstates
          if(.not.hasGrad(l,j,j))cycle

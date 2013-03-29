@@ -45,6 +45,18 @@ SUBROUTINE ginv(m,n,bmat,ldb,invB,tol)
 END SUBROUTINE ginv
 
 !***********************************************************************
+! swaps the index of two atoms and change the parity
+SUBROUTINE swapInd(i1,i2,parity)
+  IMPLICIT NONE
+  INTEGER, INTENT(INOUT) :: i1,i2,parity
+  integer tmp
+  tmp = i1
+  i1  = i2
+  i2  = tmp
+  parity  = - parity
+END SUBROUTINE swapInd
+
+!***********************************************************************
 !reorder tetrahedron oop atoms to canonical order and returns the parity of perm
 !this subroutine is used for tetrahedron coordinates where any permutations of 
 !the 4 atoms yield the same coordinate, up to a sign.
@@ -53,17 +65,12 @@ SUBROUTINE reorderOOP(oldOOP,newOOP,parity)
   INTEGER,DIMENSION(4),INTENT(IN)   ::  oldOOP
   INTEGER,DIMENSION(4),INTENT(OUT)  ::  newOOP
   INTEGER,INTENT(OUT)               ::  parity
-  integer          ::  loc, tmp, i
+  integer          ::  loc, i
   parity=1
   newOOP=oldOOP
   do i=4,2,-1
     loc   = maxloc(newOOP(1:i),1)
-    if(loc/=i)then
-      tmp   = newOOP(loc)
-      newOOP(loc)  =newOOP(i)
-      newOOP(i)  = tmp
-      parity  = -parity
-    end if
+    if(loc/=i) call swapInd(newOOP(loc),newOOP(i),parity)
   end do
 END SUBROUTINE reorderOOP
 
@@ -76,17 +83,12 @@ SUBROUTINE reorderOOP2(oldOOP,newOOP,parity)
   INTEGER,DIMENSION(4),INTENT(IN)   ::  oldOOP
   INTEGER,DIMENSION(4),INTENT(OUT)  ::  newOOP
   INTEGER,INTENT(OUT)               ::  parity
-  integer          ::  loc, tmp, i
+  integer          ::  loc, i
   parity=1
   newOOP=oldOOP
   do i=4,3,-1
     loc   = maxloc(newOOP(2:i),1)+1
-    if(loc/=i)then
-        tmp   = newOOP(loc)
-        newOOP(loc)  =newOOP(i)
-        newOOP(i)  = tmp
-        parity  = -parity
-    end if
+    if(loc/=i) call swapInd(newOOP(loc),newOOP(i),parity)
   end do
 END SUBROUTINE reorderOOP2
 
@@ -110,7 +112,25 @@ SUBROUTINE reorderTORS(oldTOR,newTOR,parity)
   end if
 END SUBROUTINE reorderTORS
 
+!***********************************************************************
+! reorder atom reference in 4center dot product to dictionary order
+! and returns the parity of the permutations
+! Dictionary order would be a1<a2, a3<a4, and a1<a3
+SUBROUTINE reorderDot4(oldDot4,newDot4,parity)
+  IMPLICIT NONE
+  INTEGER,DIMENSION(4),INTENT(IN)  :: oldDot4
+  INTEGER,DIMENSION(4),INTENT(OUT) :: newDot4
+  INTEGER,INTENT(OUT)              :: parity
 
+  parity = 1
+  newDot4=oldDot4
+  if(newDot4(1)>newDot4(2))call swapInd(newDot4(1),newDot4(2),parity)
+  if(newDot4(3)>newDot4(4))call swapInd(newDot4(3),newDot4(4),parity)
+  if(newDot4(1)>newDot4(3))then
+        call swapInd(newDot4(1),newDot4(3),parity)
+        call swapInd(newDot4(2),newDot4(4),parity)
+  end if
+END SUBROUTINE reorderDot4
 !
 ! Transform a gradient in cartesian coordinates to one in internal
 ! coordinates
@@ -204,9 +224,10 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
           case(0)  ! Reciprocal scaling   Det/(Product[rij])^a
             bmat(i,:) = dble(0)
             call  oop(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,coordset(m)%coef(1))
+            igeom(i) = igeom(i)*coordset(m)%coef(2)
             do j=1,4
               offs = 3*(CoordSet(m)%coord(j,n)-1)
-              bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+              bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)*coordset(m)%coef(2)
             end do!j=1,4
             
           case default  ! Exponential scaling using one of the linear scaling types.
@@ -249,6 +270,18 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
         do j=1,4
           offs = 3*(CoordSet(m)%coord(j,n)-1)
           bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+        end do!j=1,4
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     Four-center dot-product coordinate
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+     case (-3) ! (a1-a2).(a3-a4)/norm(a1-a2)/norm(a3-a4) *scaling
+        call dot4(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
+                Coordset(m)%coef,CoordSet(m)%Scaling)
+        bmat(i,:) = 0d0
+        do j=1,4
+            offs = 3*(CoordSet(m)%coord(j,n)-1)
+            bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
         end do!j=1,4
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -879,3 +912,83 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
         bval = (  dp  -  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
   end select!case(sctype)
 END SUBROUTINE BEND
+
+!*******************************************************************************
+! 4 center dot product with scalings 
+! f = (a1-a2).(a3-a4) / norm(a1-a2) /norm(a3-a4)
+! scalings : =0 no scaling
+!            >0 multiply the product of 4 scaled distances d13,d14,d23,d24
+!            <0 multiply the harmonic mean of 4 scaled distances d13,d14,d23,d24
+!*******************************************************************************
+SUBROUTINE dot4(natoms,atms,cgeom,fval,bval,coef,scal)
+  IMPLICIT NONE
+  INTEGER,INTENT(IN)                              :: natoms,scal
+  INTEGER,DIMENSION(4),INTENT(IN)                 :: atms
+  DOUBLE PRECISION,DIMENSION(3,natoms),INTENT(IN) :: cgeom
+  DOUBLE PRECISION,INTENT(OUT)                    :: fval
+  DOUBLE PRECISION,DIMENSION(2),INTENT(IN)        :: coef
+  DOUBLE PRECISION,DIMENSION(12),INTENT(OUT)       :: bval
+
+  double precision  :: f, r12,r34  ! unscaled dot prod and the two distances 
+  double precision,dimension(12) ::b, w12,w34 ! gradients of f, r12 and r34
+  double precision,dimension(3)  ::d12, d34  !d12=a1-a2, d34=d3-d4
+  double precision  :: w(4) , dwdR(12,4)  , prod
+  integer           :: i,j,k
+
+  d12 = cgeom(:,atms(1))-cgeom(:,atms(2))
+  d34 = cgeom(:,atms(3))-cgeom(:,atms(4))
+
+  f = dot_product(d12,d34)
+  b(1:3)   = d34
+  b(4:6)   =-d34
+  b(7:9)   = d12
+  b(10:12) =-d12
+
+  w12 = 0d0
+  call calcwij(0,atms(1),atms(2),coef,cgeom,r12,w12)
+  if(abs(r12)<1D-30) r12=sign(1D-30,r12)
+  f = f/r12
+  b = b/r12 -f/r12*w12
+  
+  w34 = 0d0
+  call calcwij(0,atms(3),atms(4),coef,cgeom,r34,w34)
+  if(abs(r34)<1D-30) r34=sign(1D-30,r34)
+  f = f/r34
+  b = b/r34
+  b(7:12) = b(7:12) - f/r34*w34(1:6)
+
+  k=1
+  dwdR = 0d0
+  if(scal/=0)then
+    do i=1,2
+      do j=3,4
+        call calcwij(abs(scal),atms(i),atms(j),coef,cgeom,w(k),w12)
+        if(abs(w(k))<1d-30)w(k)=sign(1D-30,w(k))
+        dwdR(i*3-2:i*3,k) = w12(1:3) 
+        dwdR(j*3-2:j*3,k) = w12(4:6) 
+        k=k+1
+      end do!j
+    end do!i
+  end if
+
+  ! perform scaling
+  !  0   : unscaled
+  ! >0   : scaling using products of scaled dists 
+  ! <0   : scaling using harmonic mean of scaled dists
+  select case(scal)
+      case(0)
+        fval = f
+        bval = b
+      case(1:)
+        prod = product(w)
+        fval = f*prod
+        bval = b*prod +  fval*  &
+                (dwdR(:,1)/w(1)+dwdR(:,2)/w(2)+dwdR(:,3)/w(3)+dwdR(:,4)/w(4))
+      case(:-1)
+        prod = 1/sum(1/w)
+        fval = 4*f*prod
+        bval = 4*b*prod + fval*prod*&
+                (dwdR(:,1)/w(1)**2+dwdR(:,2)/w(2)**2+dwdR(:,3)/w(3)**2+dwdR(:,4)/w(4)**2)
+      case default
+  end select! case(scal)
+END SUBROUTINE

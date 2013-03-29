@@ -1,5 +1,5 @@
 &GENERAL
-printlvl   = 3,
+printlvl   = 5,
 jobtype    = 1, 
 natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
@@ -13,31 +13,36 @@ cntfl      = 'connect.in'
 &MAKESURF
 eshift     =  305.71135743d0
 usefij     = .true.
-deg_cap    = 1D-5
+deg_cap    = 1D-3
 dijscale   = 1d0
 energyT    = 5.5D4,6D4,7.0D4,1D5,1D6,1D7
 highEScale = 5D-1,2D-1,5D-2,1D-2,1D-3,1D-4
 useIntGrad = .true.
-maxd       = 1D1
+maxd       = 1D3 
+dfstart    = 1
 intGradT   = 1D-2
 intGradS   = 1D-1
 TBas       = 1d-10
+ckl_input  = ''
+ckl_output = 'ckl.out'
 rmsexcl    = -2
 npoints    = 2553 
-SearchPath = 'data/s0_min_disp-0.01','data/s0_sad_disp-0.01','data/s1_min_disp-0.01'
+SearchPath = 'data/s0_min_disp-0.01','data/LIC_s0_min2sad','data/s0_sad_disp-0.01',
+             'data/s1_min_disp-0.01',
              'data/path_tmp',
-             'data/s1_sad_hess-0.001','data/mex12_searchpath1','data/mex01_disp-0.01',
+             'data/s1_sad_hess-0.001','data/mex01_disp-0.01',
              'data/s1-diss_min_hessian-0.001',
              'data/s0-diss_min_disp-0.01'
-gmfptn  = 10*'geom'
-enfptn  = 10*'energy.all'
-grdfptn  = 10*'cartgrd.drt1.state$.sp'
-cpfptn  = 10*'cartgrd.nad.drt1.state$.drt1.state$.sp'
+gmfptn  = 20*'geom'
+enfptn  = 20*'energy.all'
+grdfptn = 20*'cartgrd.drt1.state$.sp'
+cpfptn  = 20*'cartgrd.nad.drt1.state$.drt1.state$.sp'
 dfstart    = 0
 gcutoff    = 1D-7
 maxiter    = 10,
+followPrev = .true.
 toler      = 1D-7
-LSETol     = 1.0D-7
+LSETol     = 1.0D-8 
 flattening = 1.0D-8 
 exactTol   = 1.0D-9 
 gorder     = 5000.

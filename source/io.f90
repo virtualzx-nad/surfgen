@@ -56,8 +56,8 @@ SUBROUTINE readCoords()
     else
         nCoordCond=nCoordCond+1
     end if!(CoordSet(i)%Order==0.or.CoordSet(i)%Order>order)
-    if(printlvl>0)Print '(5x,"set ",I4," type=",I4 ," scaling=",I4," max order=",I4)',&
-            i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order
+    if(printlvl>0)Print '(5x,"set ",I4," type=",I4 ," scaling=",I4," max order=",I4," note:",A)',&
+            i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order,comment
 
     select case(CoordSet(i)%Type)
 
@@ -154,6 +154,53 @@ SUBROUTINE readCoords()
         allocate(CoordSet(i)%Coef(2))
         read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
         if(ios/=0)stop "Error reading coord set definitions."
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!           4 center Dot product coordinates and their scalings 
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+      case(-3)  ! (A1-A2).(A3-A4)/Norm[A1-A2]/Norm[A3-A4]
+
+! atoms 1 and 2 are permutable while atoms 3 and 4 are also permutable
+! first to check if definition is valid
+        do j=1,3
+          do l=j+1,4
+                if(CoordSet(i)%atom(j).eq.CoordSet(i)%atom(l)) stop &
+                        "Error: atoms with same index in 4-center dot product definition"
+          end do!l
+        end do!j
+        
+        allocate(tmpCoord(4,nPmt))
+! generate coordinate list by going through all permutations
+        do l=1,nPmt
+          rawCoord = pmtList(l,CoordSet(i)%atom)
+          call reorderDot4(rawCoord,ordOOP,prty)
+          ! look up the reordered coordinate in the temporary coordinate list
+          found = .false.
+          do j=1,CoordSet(i)%ncoord
+            if(all(tmpCoord(:,j).eq.ordOOP))then
+                found =.true.
+                exit
+            end if
+          end do!j
+          if(.not.found)then
+              CoordSet(i)%ncoord = CoordSet(i)%ncoord + 1
+              tmpCoord(:,CoordSet(i)%ncoord) = ordOOP
+          end if
+        end do!l
+! move the coordinate definitions from temporary array to storage structures
+        if(allocated(CoordSet(i)%coord))deallocate(CoordSet(i)%coord)
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
+        deallocate(tmpCoord)
+! load scaling factors
+        allocate(CoordSet(i)%Coef(2))
+        if(CoordSet(i)%Scaling/=0)then
+          read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
+          if(ios/=0)stop "Error reading coord set definitions."
+        else
+          CoordSet(i)%Coef =0d0
+        end if
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !           Bond angle coordinates and their periodic scalings
@@ -264,6 +311,9 @@ SUBROUTINE readCoords()
                 case (-2) ! oop umbr
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
                         k,i,"UmbrOOP",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)
+                case (-3) ! 4 centered dot product
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
+                        k,i,"4c-dotp",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)
                 case default
                     stop "UNSUPPORTED COORDINATE TYPE"
             end select

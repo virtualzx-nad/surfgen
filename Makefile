@@ -16,7 +16,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.1.2
+SGENVER := 2.1.3
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -125,10 +125,10 @@ endif
 # build everything
 all  :  surfgen libs
 	@echo 'Finished building surfgen.'
+	@echo ''
 
 #target for standalone fitting and analysis program
 surfgen  :  $(OBJS) | $(BDIR)
-	@echo ' '
 	@echo '-----------------------------------------'
 	@echo '   SURFGEN FITTING PROGRAM '
 	@echo 'Program Version:     $(SGENVER)'
@@ -144,10 +144,11 @@ surfgen  :  $(OBJS) | $(BDIR)
 	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
+	@echo ''
+	@echo ''
 
 #target for runtime interface library
 libs  :  $(OBJSL) | $(LDIR)
-	@echo ' '
 	@echo '-----------------------------------------'
 	@echo '  SURFGEN EVALUATION LIBRARY'
 	@echo 'Program Version:     $(SGENVER)'
@@ -158,6 +159,8 @@ libs  :  $(OBJSL) | $(LDIR)
 	@echo 'Archiving the object into library '
 	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)
 	@echo '-----------------------------------------'
+	@echo ''
+	@echo ''
 
 #
 clean:

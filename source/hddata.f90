@@ -750,12 +750,6 @@ CONTAINS
      end do !j=1,nblks
    enddo !i=1,order
 
-PRINT *,"READHD:NRM OF BLOCKS:"
-DO I=1,ORDER
-DO J=1,NBLKS
-PRINT *,"HD(",I,",",J,"):",sqrt(sum(hd(i,j)%List**2))
-END DO
-END DO
    close(SURFIN)
    print *,'  Hd Data Imported.'
    call LinearizeHd

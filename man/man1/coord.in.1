@@ -129,6 +129,18 @@ but one other atom is special.
 The coordinate is defined from the scalar triple
 product of the three displacement vector launching from the special atom
 .Sy s=r1.(r2xr3) .
+.br
+When the distances are fixed and the scaling changes are not considered, the Tetrahedron
+and Umbrella OOP coordinates describes the sine of out-of-plane angle.
+.It -3
+Four-center dot-product coordinates.  This type of coordinate describes the component
+of angular motion that is symmetry with respect to inversion but anti-symmetric with
+respect to permutations.  The unscaled coordinate has the form
+.br
+.Sy s=r12.r34/Norm[r12]/Norm[r34]
+.br
+When the distances are fixed and changes due to scalings are ignored, this coordinates
+approximately describes the cosine of out-of-plane angle.
 .El
 .Pp
 .Sy Scaling Modes
@@ -217,7 +229,7 @@ Divide scalar triple product
 by powers of the product of all 
 .Em six 
 distances: 
-.Sy w=s/Product[ri]^C1
+.Sy w=C2*s/Product[ri]^C1
 .It mode>0
 Use the product of scaled distances(with the same mode) between each of the 6
 atom pairs to scale the scalar triple product
@@ -267,6 +279,33 @@ harmonic mean.
 .Em -mode
 is used as the scaling mode for the distances and the scaling parameters are given
 to them.
+.El
+.Pp
+.Em Scaling Modes for Four-center Dot-product Coordinates
+.Pp
+4-Center dot-product coordinates (
+.Em type=-3
+) are compensate coordinates of the umbrella and tetrahedron OOP coordinates. This
+coordinate is symmetric with respect to inversion and anti-symmetric with respect
+to pair-wise permutations.  This coordinate is roughly the cosine of the out-of-plane
+angle and is useful for describing angular motions that are symmetric with respect 
+to inversions.  For example, when a bond rotates out of a plane and approaches 90 
+degrees, the OOP coordinates reaches a maximum and their gradients vanishes.  The 
+coupling along the rotation of this bond cannot be described by OOP coordinates but
+can be well described by 4-center dot-products.  (added v2.1.3) 
+.Bl -tag -width xxxxxxx
+.It 0
+Unscaled
+.It >0 
+Use the product of the scaled distances of between the 4 atom pairs a1-a3, a2-a3, a1-a4 
+and a2-a4 as the scaling function.
+.It <0
+Use the 
+.Em harmonic mean 
+of the four scaled distances as the scaling function.
+.br
+.Em -mode
+is used as the scaling modes for these four distances.
 .El
 .\"
 .Ss Additional Order Conditions

@@ -1,19 +1,20 @@
 ! Partition states at a certain geometry into groups that are energetically close.
 ! Group states into minimal sets so that the energy difference between any two states
 ! from different groups is greater than de. Input energies are supposed to be sorted.
-SUBROUTINE genEnerGroups(pt,de,nstates)
+! Energy groups are only generated for the range state1 to state2
+SUBROUTINE genEnerGroups(pt,de,st1,st2)
   use progdata, only: abpoint
   IMPLICIT NONE
   type(abpoint),INTENT(INOUT)              :: pt
   DOUBLE PRECISION,INTENT(IN)              :: de
-  INTEGER,INTENT(IN)                       :: nstates
+  INTEGER,INTENT(IN)                       :: st1,st2
 
   integer                           :: i,ngrp,cnt
-  integer,dimension(nstates,2) :: deg_table
+  integer,dimension(st2,2) :: deg_table
 
   ngrp=0
   cnt=1
-  do i=2,nstates
+  do i=st1+1,st2
     if(pt%energy(i)-pt%energy(i-1)>de)then
       if(cnt>1)then
         ngrp=ngrp+1
@@ -27,7 +28,7 @@ SUBROUTINE genEnerGroups(pt,de,nstates)
   if(cnt>1)then
     ngrp=ngrp+1
     deg_table(ngrp,2)=cnt
-    deg_table(ngrp,1)=nstates-cnt+1
+    deg_table(ngrp,1)=st2-cnt+1
   end if
 
   if(allocated(pt%deg_groups))deallocate(pt%deg_groups)
@@ -344,7 +345,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
         end do!j
     end do!i=ldeg,udeg
     if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
-        print *,"     Missing data forbit any state rotations.  Skipping transformation of degenerate group."
+        print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
         cycle
     end if
     !build normalized g and h vectors from Hd and compute rotation angles the first time

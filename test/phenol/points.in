@@ -1,3 +1,12 @@
 POINT SPECIFIC OPTIONS
-KEY111112222233333
-wt   0    69  2000
+KEY111112222233333     ! comments
+wt   0   1    2000
+lg   1    1    1       ! s0min 
+ag  43    1    1       ! s0sad
+wt   1    1   34       !  1- 34 loop around s0min
+wt   0   35   42       ! 35- 42 path from s0min to s0sad
+wt   0   43   76       ! 42- 76 loop around s0sad
+wt   0   77   110      ! 77-110 loop around s1min
+wt   0   111  125      !111-131 path from s0min to dissociation
+wt   0   132  165      !132-165 s1 hessian
+wt   0   166  199      !166-199 mex01 loop
