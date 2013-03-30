@@ -57,7 +57,7 @@ SUBROUTINE readCoords()
         nCoordCond=nCoordCond+1
     end if!(CoordSet(i)%Order==0.or.CoordSet(i)%Order>order)
     if(printlvl>0)Print '(5x,"set ",I4," type=",I4 ," scaling=",I4," max order=",I4," note:",A)',&
-            i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order,comment
+            i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order,trim(comment)
 
     select case(CoordSet(i)%Type)
 

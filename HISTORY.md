@@ -1,3 +1,12 @@
+## 2.1.4
+
+* phenol input made runnable
+* total number of coefs before null space removal is now printed to the surfgen.out file
+* OS version dropped from executable name since they seem to be compatible
+* Large gradient error warnings are now more reasonable and will no long complain about errors that 
+are infinitesimal
+* minor fixes to output formatting
+
 ## 2.1.3 (2013-03-29)
 
 * New coordinate 4-center dot product added to describe angular motions that are anti-symmetry with respect to 

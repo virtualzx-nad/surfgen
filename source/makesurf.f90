@@ -846,15 +846,15 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if((dgrd>5D-2.or.gnrm*dgrd>1D-4.and.gnrm<1D-4).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
-                       "Large gradient error at point ",j," : ",dgrd*100,"% out of ", gnrm
+             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
+                       "Large gradient error at point ",j," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
              if(gnrm>1D-4) then
                 nrmgrad = nrmgrad + dgrd
                 avggrad = avggrad + sqrt(dgrd)
                 incdata = incdata + 1
              else
                 if(printlvl>4)print "(5x,A,I5,A,E14.4,A,E14.4)",&
-                       "Small gradients excluded at point ",j,".  Norm of grad =",gnrm,",Norm of error = ",dgrd*gnrm
+                       "Small gradients excluded at point ",j,".  Norm of grad =",sqrt(gnrm),",Norm of error = ",sqrt(dgrd*gnrm)
              end if ! (gnrm>1D-4)
            end if!hasGrad
          end if!dispgeoms(j)%energy(k)<energyT(1)
@@ -1921,7 +1921,7 @@ SUBROUTINE makesurf()
   deallocate(tmpExactEq)
   if(printlvl>0)print*,"    Number of Least Squares Equations:",neqs
   if(printlvl>0)print*,"    Number of Exact Equations:        ",nex
-  call printSurfHeader(ncons,neqs,nex)
+  call printSurfHeader(ncon_total,ncons,neqs,nex)
 ! allocate spaces for arrays and matrices 
   if((neqs+nex)<ncons.and.printlvl>0)print *,"    Warning: neqs<ncons, data set might be inadequate."
   print 1001,"    Memory required to store coefficient matrix:",(neqs+nex)*ncons*7.62939453125D-6," MB"
@@ -2618,14 +2618,15 @@ END SUBROUTINE makesurf
 !
 !
 !
-SUBROUTINE printSurfHeader(cons,eqs,nexact)
+SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
   use progdata, only: OUTFILE
   use makesurfdata,only: maxiter,toler,gcutoff
   IMPLICIT NONE
-  INTEGER,INTENT(IN)                  :: cons
+  INTEGER,INTENT(IN)                  :: totcons,cons
   INTEGER,INTENT(IN)                  :: eqs,nexact
 
   write(OUTFILE,1009)
+  write(OUTFILE,1001)totcons
   write(OUTFILE,1002)cons
   write(OUTFILE,1003)eqs
   write(OUTFILE,1007)nexact
@@ -2641,12 +2642,13 @@ SUBROUTINE printSurfHeader(cons,eqs,nexact)
             2x,'--------  Fitting Surface to Ab Initio Data  --------',/, &
             2x,'-----------------------------------------------------',/)
 1000 format(72a)
-1002 format(2x,'Number of Coefficients: ',i5)
-1003 format(2x,'Number of Least Squares Equations:    ',i5)
-1004 format(2x,'Maximum Number of iterations:       ',i10)
-1005 format(2x,'Coefficient convergence tolerance:  ',f12.8)
-1006 format(2x,'Threshold for gradient values:      ',f12.8)
-1007 format(2x,'Number of Exact Equations:    ',i5,/)
+1001 format(2x,'Number of Nascent Coefficients:                 ',i5)
+1002 format(2x,'Number of Coefficients after Nullspace Removal: ',i5)
+1003 format(2x,'Number of Least Squares Equations:              ',i5)
+1004 format(2x,'Maximum Number of iterations:                   ',i10)
+1005 format(2x,'Coefficient convergence tolerance:              ',f12.8)
+1006 format(2x,'Threshold for gradient values:                  ',f12.8)
+1007 format(2x,'Number of Exact Equations:                      ',i5,/)
 end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
@@ -3124,7 +3126,7 @@ SUBROUTINE readdisps()
   SPNotes = ''
   npts    = 0
   do i=1,NSearchPaths
-    if(printlvl>0)print *,'Searching input file in path <',trim(SearchPath(i)),'>'
+    if(printlvl>0)print "(A)",'  Searching input file in path <'//trim(SearchPath(i))//'>'
     ! read note for the search path
     if(trim(notefptn(i))/='')then
         infile = trim(SearchPath(i))//'/'//trim(adjustl(notefptn(i)))
@@ -3143,10 +3145,10 @@ SUBROUTINE readdisps()
         cycle
     end if
     infile = trim(SearchPath(i))//'/'//trim(adjustl(gmfptn(i)))
-    if(printlvl>0)print 1001,'- Reading geometry input <'//trim(infile)//'>'
+    if(printlvl>1)print 1001,'- Reading geometry input <'//trim(infile)//'>'
     ptinfile=npoints
     call readColGeom(infile,ptinfile,natoms,atoms,anums,cgeoms,masses)
-    if(printlvl>0)print 1002,"found ",ptinfile, " geometries."
+    if(printlvl>1)print 1002,"found ",ptinfile, " geometries."
     if(ptinfile+npts>npoints)then
         print *,"WARNING: Amount of data in input file exceeded point count. Data truncated."
         ptinfile=npoints-npts
@@ -3161,7 +3163,7 @@ SUBROUTINE readdisps()
 
     ! read energy data
     infile = trim(SearchPath(i))//'/'//trim(adjustl(enfptn(i)))
-    if(printlvl>0.and.len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
+    if(printlvl>1.and.len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
         print 1001,'- Reading energy input <'//trim(infile)//'>'
         ptinfile=npoints
         call readEner(infile,ptinfile,nstates,eners,lb,ub)  !k and l specify range of data
@@ -3169,13 +3171,13 @@ SUBROUTINE readdisps()
             print *,"WARNING : energy file contains more entries than geometry file! Data truncated."
             ptinfile=nnew
         elseif (ptinfile<nnew)then
-            print *,"WARNING : energy file contains less entries than geometry file! "
+            if(printlvl>1)print *,"WARNING : energy file contains less entries than geometry file! "
         end if
         if(ptinfile==0)then
             print *,"WARNING : Cannot find any energy data in current search path. Skipping..."
             cycle
         end if
-        if(printlvl>0)print 1002,"found ",ptinfile," energy data entries."
+        if(printlvl>3.or.(printlvl>1.and.ptinfile<nnew))print 1002,"found ",ptinfile," energy data entries."
         do j = 1,ptinfile
             ! put in dummy energies for non-present data just for grouping purpose
             do k=lb-1,1,-1
@@ -3189,19 +3191,19 @@ SUBROUTINE readdisps()
             hasEner(j+npts,lb:ub)=.true.
         enddo
     else !invalid energy file name
-        print 1001,"- Skipping energy file input! Filename not present or invalid."
+        if(printlvl>1)print 1001,"- Skipping energy file input! Filename not present or invalid."
     end if! valid energy file name
 
     ! read in gradients and couplings data
-    if(printlvl>0)print 1001,'- Reading gradients and couplings'
+    if(printlvl>1)print 1001,'- Reading gradients and couplings'
     do j = lb,ub
       do k = lb,ub
         infile = trim(SearchPath(i))//'/'//filename(j,k,grdfptn,cpfptn)
-        if(printlvl>1) print 1000,"Searching for gradients in <"//trim(infile)//">..."
+        if(printlvl>3) print 1000,"Searching for gradients in <"//trim(infile)//">..."
         ptinfile=npoints
         call readGrads(infile,ptinfile,natoms,cgrads)
         if(ptinfile==0)then
-            if(printlvl>1)print 1000,"  gradient data not found."
+            if(printlvl>3)print 1000,"  gradient data not found."
             cycle
         endif!
         if(ptinfile>nnew)then
@@ -3210,7 +3212,7 @@ SUBROUTINE readdisps()
         elseif (ptinfile<nnew)then
             print *,"WARNING : gradient file contains less entries than geometry file! "
         end if
-        if(printlvl>0)print 1002,"found ",ptinfile, " gradient data entries." 
+        if(printlvl>3.or.(printlvl>1.and.ptinfile<nnew))print 1002,"found ",ptinfile, " gradient data entries." 
         do l = 1,ptinfile
           if(j/=k.and.usefij)then
             dispgeoms(l+npts)%grads(:,j,k)=cgrads(:,l)*(eners(j,l)-eners(k,l))
@@ -3269,7 +3271,7 @@ SUBROUTINE readdisps()
        do j=1,nstates-1
          do k=j+1,nstates
            if(.not.hasGrad(l,j,k))cycle
-           write(unit=*,fmt="(A,I3,A)",advance='no')"   state ",j," : "
+           write(unit=*,fmt="(A,I2,A,I2,A)",advance='no')"   block(",j,",",k,") : "
            print "(15F8.3)",dispgeoms(l)%grads(:,j,k)
          end do!k
        end do!j

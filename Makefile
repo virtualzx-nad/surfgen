@@ -16,7 +16,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.1.3
+SGENVER := 2.1.4
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -48,7 +48,7 @@ else       #find default compilers
 endif
 
 # set up product name
-EXEC  := $(BDIR)/surfgen-$(SGENVER)-$(OS)-$(OSV)-$(ARC)-$(word 1, $(COMPILER))
+EXEC  := $(BDIR)/surfgen-$(SGENVER)-$(OS)-$(ARC)
 LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
 
 # set debugging flags
