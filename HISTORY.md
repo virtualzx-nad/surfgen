@@ -1,4 +1,12 @@
-## 2.1.4
+## 2.1.5 (2013-03-30)
+
+* Fixed a problem where the construction of intersection adapted coordinate at points with partially avaiable 
+data will cause all ab initio data to be corrupted.
+* Fixed an error in the print out where the state label for the table of equation inclusion does not line up
+with the content 
+* Increased file index searching limit in getFLUnit to avoid file unit ID overflow.
+
+## 2.1.4 (2013-03-29)
 
 * phenol input made runnable
 * total number of coefs before null space removal is now printed to the surfgen.out file

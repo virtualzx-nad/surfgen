@@ -909,7 +909,7 @@ CONTAINS
    integer         :: i
    logical         :: unitex,unitop
    UNIT=0
-   do i=15,99
+   do i=15,99999
      inquire(UNIT=i,EXIST=unitex,OPENED=unitop)
      if(unitex .and. .not. unitop)then
        UNIT=i

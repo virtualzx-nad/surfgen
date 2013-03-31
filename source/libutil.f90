@@ -303,9 +303,9 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
 
   integer           ::  igrp,i,j,iter,ldeg,udeg
   integer           ::  mi,mj  !location of maximum rotation
-  double precision, dimension(nstates,nstates)         :: jacobi
-  double precision, dimension(nstates,nstates)         :: beta   !required rotation 
-  double precision           :: max_b,t
+  double precision, dimension(pt%nvibs,nstates,nstates) :: newgrad
+  double precision, dimension(nstates,nstates)          :: beta   !required rotation 
+  double precision           :: max_b,t, c,s
   ! allowedRot stores the infomation whether rotation between two specific states 
   ! will not cause a gradient data to mix into a gradient that has not data
   LOGICAL,dimension(nstates,nstates)  :: allowedRot
@@ -331,22 +331,31 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
     iter=0
     ! check if rotations among these states are allowed.
-    allowedRot(ldeg:udeg,ldeg:udeg)=.false.
-    do i=ldeg,udeg
-        do j=ldeg,i-1
-          ! both gradients and coupling between then has to be present for them to be rotatable
-          if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
-            ! the available gradients list has to be identical for them
-            if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
-                allowedRot(i,j)=.true.
-                allowedRot(j,i)=.true.
-            end if
-          end if!hasGrad ii, ij, jj
-        end do!j
-    end do!i=ldeg,udeg
-    if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
+    if(all(hasGrad))then
+      allowedRot(ldeg:udeg,ldeg:udeg)=.true.
+    else
+      allowedRot(ldeg:udeg,ldeg:udeg)=.false.
+      write (*,"(6X,A)",advance='no') "Allowed rotations:"
+      do i=ldeg,udeg
+          do j=ldeg,i-1
+            ! both gradients and coupling between then has to be present for them to be rotatable
+            if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
+              ! the available gradients list has to be identical for them
+              if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
+                  write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
+                  allowedRot(i,j)=.true.
+                  allowedRot(j,i)=.true.
+              end if
+            end if!hasGrad ii, ij, jj
+          end do!j
+      end do!i=ldeg,udeg
+      if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
+        print *," none"
         print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
         cycle
+      else
+        print *,""
+      end if
     end if
     !build normalized g and h vectors from Hd and compute rotation angles the first time
     do i=ldeg,udeg 
@@ -360,20 +369,31 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
         end if!(abs(beta(i,j))>max_b)
       end do!j=ldeg,i-1
     end do!i=ldeg,udeg
-    if(printlvl>2)print *,"      max(|beta|)=",max_b
+    if(printlvl>2)print "(6X,A,E12.5,2(A,I1))","max(|beta|)=",max_b,&
+                " ,block:",mi,",",mj
     do while(iter<maxiter.and.max_b>toler)
       iter=iter+1
       t=beta(mi,mj)
-      jacobi=dble(0)  !construct Givens rotation matrix
+!      jacobi=dble(0)  !construct Givens rotation matrix
+!      do i=1,nstates
+!        jacobi(i,i)=dble(1)
+!      end do
+!      jacobi(mi,mi)=cos(t)
+!      jacobi(mj,mj)=jacobi(mi,mi)
+!      jacobi(mi,mj)=sin(t)
+!      jacobi(mj,mi)=-jacobi(mi,mj)
+      c = cos(t)
+      s = sin(t)
+! Gnew = J^T.G.J.   Gnew_ij=Jki*Gkl*Jlj
+      newgrad = pt%grads(:pt%nvibs,:,:)
       do i=1,nstates
-        jacobi(i,i)=dble(1)
+        newgrad(:,i,mi)=pt%grads(:pt%nvibs,i,mi)*c-pt%grads(:pt%nvibs,i,mj)*s
+        newgrad(:,i,mj)=pt%grads(:pt%nvibs,i,mj)*c+pt%grads(:pt%nvibs,i,mi)*s
       end do
-      jacobi(mi,mi)=cos(t)
-      jacobi(mj,mj)=jacobi(mi,mi)
-      jacobi(mi,mj)=sin(t)
-      jacobi(mj,mi)=-jacobi(mi,mj)
-      do i=1,pt%nvibs
-        pt%grads(i,:,:)=matmul(matmul(transpose(jacobi),pt%grads(i,:,:)),jacobi)
+      pt%grads(:pt%nvibs,:,:) = newgrad
+      do i=1,nstates
+        pt%grads(:pt%nvibs,mi,i)=newgrad(:,mi,i)*c-newgrad(:,mj,i)*s
+        pt%grads(:pt%nvibs,mj,i)=newgrad(:,mj,i)*c+newgrad(:,mi,i)*s 
       end do
       !update rotation angles
       do i=mj+1,udeg
@@ -475,7 +495,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
   end do
   beta=dble(0)  
   if(printlvl>0)print *,"     transforming Hd eigenvectors for point ",pt%id
-  if(printlvl>1)then
+  if(printlvl>2)then
     print *,"      reference ab initio gradients" 
     do i=1,nstates
       do j=1,i
@@ -559,7 +579,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
       end do!i=ldeg,udeg      
       if(printlvl>2)print *,"   iteration ",iter,", max(|beta|)=",max_b
     end do!while(iter<maxiter.and.max_b>toler)do
-    if(printlvl>1.and.iter>0)then
+    if(printlvl>2.and.iter>0)then
         if(max_b<toler)then
           print 1001,iter
         else

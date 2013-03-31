@@ -5,7 +5,7 @@ natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
 order      = 3,
 ngrp       = 3,
-groupsym   = 1,2,1,2
+groupsym   = 1,2,2,2
 groupprty  = 1,1,-1,-1
 inputfl    = 'hd.data'
 cntfl      = 'connect.in'
@@ -13,9 +13,9 @@ cntfl      = 'connect.in'
 &MAKESURF
 eshift     =  305.71135743d0
 usefij     = .true.
-deg_cap    = 1D-3
+deg_cap    = 5D-3
 dijscale   = 1d0
-energyT    = 4.7D4, 5.0D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
+energyT    = 4.5D4, 5.0D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
 highEScale = 5D-1,  2D-1,  5D-2,  1D-2,  1D-3, 1D-4, 1d-5
 useIntGrad = .true.
 maxd       = 1D0 
@@ -28,9 +28,14 @@ ckl_output = 'ckl.out'
 rmsexcl    = -2
 npoints    = 2553 
 SearchPath = 'data/s0_min_disp-0.01','data/LIC_s0_min2sad','data/s0_sad_disp-0.01',
-             'data/s1_min_disp-0.01',
+             'data/s1_min_hess-0.001','data/s1_min_disp-0.01',
              'data/path_tmp',
-             'data/s1_sad_hess-0.001','data/mex01_disp-0.01',
+             'data/s1_sad_hess-0.001','data/s1_sad_disp-0.01'
+	     'data/lic_mex12_to_s1min' ,
+	     'data/mex12_searchpath',
+ 	     'data/lic_mex12_to_mex01' ,
+ 	     'data/mex01_disp-0.01',
+	     'data/lic_mex01_to_s0-dissmin',
              'data/s1-diss_min_hessian-0.001',
              'data/s0-diss_min_disp-0.01'
 gmfptn  = 20*'geom'
@@ -39,7 +44,7 @@ grdfptn = 20*'cartgrd.drt1.state$.sp'
 cpfptn  = 20*'cartgrd.nad.drt1.state$.drt1.state$.sp'
 dfstart    = 0
 gcutoff    = 1D-7
-maxiter    = 10,
+maxiter    = 30,
 followPrev = .true.
 toler      = 1D-7
 LSETol     = 1.0D-8 

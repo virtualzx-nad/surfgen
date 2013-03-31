@@ -283,7 +283,7 @@ MODULE makesurfdata
     ng = 1
     do s1 = 1,nstates
       write(enerfate(s1),"(X,I2,X)") s1
-      do s2=s1,nstates
+      do s2= 1,s1     
         write(gradfate(ng),"(x,I2,',',I2,x)"),s1,s2
         ng= ng + 1
       end do !s2
