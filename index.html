@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Surfgen by virtualzx-nad</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1 class="header">Surfgen</h1>
+        <p class="header">Generates analytical coupled PESs from ab initio data using quasi-diabatic Hamiltonians</p>
+
+        <ul>
+          <li class="download"><a class="buttons" href="https://github.com/virtualzx-nad/surfgen/zipball/master">Download ZIP</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/virtualzx-nad/surfgen/tarball/master">Download TAR</a></li>
+          <li><a class="buttons github" href="https://github.com/virtualzx-nad/surfgen">View On GitHub</a></li>
+        </ul>
+
+        <p class="header">This project is maintained by <a class="header name" href="https://github.com/virtualzx-nad">virtualzx-nad</a></p>
+
+
+      </header>
+      <section>
+        <h1>Introduction</h1>
+
+<p>surfgen use <em>ab initio</em> data to generate analytical coupled <a href="http://en.wikipedia.org/wiki/Potential_energy_surface">potential energy surfaces(PES)</a> using quasi-diabatic Hamiltonians( <strong>H</strong>d ).<br>
+The primary purpose of this project is to provide a way to accelerate quantum mechanical 
+simulations of non-adiabatic chemical processes without compromising the accuracy of 
+expensive quantum chemical electronic structure methods required for non-adiabatic processes.</p>
+
+<p>This project is coded with <a href="http://en.wikipedia.org/wiki/Fortran_90#Fortran_90">Fortran 90</a> 
+and contains both fitting programs used to generate coupled PESs and evaluation libraries 
+that can be conveniently used to utilize the fit surface in any simulation program.</p>
+
+<h1>Features</h1>
+
+<h3>Fitting Ab Initio Data</h3>
+
+<p>The program is capable of fitting energy, energy gradient and <a href="https://en.wikipedia.org/wiki/Vibronic_coupling">derivative coupling</a> (AKA nonadiabatic coupling or
+vibronic coupling) data obtained from ab initio calculations.  A weighed least squares procedure is used to generate
+the fit to simultaneously optimize the reproduction of adiabatic energies and energy gradients and the diabaticity of
+the quasi-diabaticrepresentation, defined by the residual coupling between diabatic states.  Lagrange multipliers are
+used to enable the exact reproduction of arbitrary selected set of data, such as energy and gradients at critical
+points on the potential or energy difference and derivative couplings at points of conical intersections.</p>
+
+<h3>Nonadiabatic couplings and Seams of Conical Intersections</h3>
+
+<p>The <strong>H</strong>d approach is capable of extremely accurate description of nonadiabatic interactions.  It has been used to 
+successfully describe large portions of the seam of <a href="https://en.wikipedia.org/wiki/Conical_intersection">conical intersections</a>, spanning completely different 
+geometrically structures.  This is enabled by the application of intersection adapted coordinates.</p>
+
+<h3>Flexibility</h3>
+
+<p>The program allows the user to define the blocks of the matrix <strong>H</strong>d with a large set of customizable basis functions,
+enabling the flexibility to describe complex features on the surface to a high level of accuracy.</p>
+
+<h3>Global Symmetry Treatment</h3>
+
+<p>Projection operator method is used to allow the program to use an arbitrary subgroup of the Complete Nuclear 
+Permutation Inversion group to construct symmetry adapted basis for the fitting procedure.  With the help of 
+such feature, the program can correctly treat the symmetry in problems that involve large amplitude motions, 
+as well as vibrational problems.</p>
+
+<h3>Efficiency</h3>
+
+<p>With the fully analytical form of Hd, the evaluation time for a single point is usually within 50ms. Future 
+update is planned to allow vectorized evaluation of large number of data points.  The fitting program achieve 
+high efficiency through the extensive use of optimized and threaded LAPACK and BLAS libraries.   Other 
+functionalities such as automatic local internal coordinate construction, automatic null space removal and 
+GDIIS extrapolations provide tools to enhance performance.</p>
+
+<h1>Authors</h1>
+
+<p>surfgen is created by <a href="http://www.linkedin.com/in/virtualzx">Xiaolei Zhu</a> and 
+<a href="http://www.jhu.edu/%7Echem/yarkony/group.html">other awesome members</a>
+from <a href="http://www.jhu.edu/%7Echem/yarkony/">Yarkony Group</a>, Department of Chemistry, Johns Hopkins University</p>
+
+<p>This program is based on, and would not have been possible without the quadratic Hd fitting program 
+for vibrational spectroscopy simulation, developed by 
+<a href="ca.linkedin.com/pub/michael-schuurman/7/996/32">Michael Schuurman</a>, then also a member of Yarkony group.</p>
+
+<h1>References</h1>
+
+<p>Xiaolei Zhu and David Yarkony, <em>Toward eliminating the electronic structure bottleneck in</em> 
+<em>nonadiabatic dynamics on the fly: An algorithm to fit nonlocal, quasidiabatic, coupled</em> 
+<em>electronic state Hamiltonians based on ab initio electronic structure data</em> ,
+<a href="http://dx.doi.org/10.1063/1.3324982"><em>J. Chem. Phys.</em>, <strong>132</strong>, 104101 (2010)</a></p>
+
+<h1>Copyright</h1>
+
+<p>Copyright (c) 2013, Yarkony Group, Johns Hopkins University</p>
+
+<p>Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is 
+hereby granted, provided that the above copyright notice and this permission notice appear in all copies
+and that any documentation, advertising materials, and other materials related to such distribution and 
+use are provided with proper reference to 
+<a href="https://github.com/virtualzx-nad/surfgen/blob/master/README.md#references">surfgen publications</a>.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE 
+INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE 
+FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS 
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT 
+OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</p>
+      </section>
+      <footer>
+        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+		
+  </body>
+</html>
