@@ -655,7 +655,7 @@ CONTAINS
    INTEGER                          :: i,j,ios,SURFOUT
    if(filename=='')return
    SURFOUT=getFlUnit() !obtain a file unit index
-   open(unit=SURFOUT,file=filename,access='sequential',form='formatted',&
+   open(unit=SURFOUT,file=trim(adjustl(filename)),access='sequential',form='formatted',&
         STATUS='REPLACE',POSITION='REWIND',ACTION='WRITE',IOSTAT=ios)
    if(ios/=0)then !check if the file is successfully opened
      stop 'writeHd: Cannot open output file for write'

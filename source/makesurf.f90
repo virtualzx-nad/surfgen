@@ -55,6 +55,11 @@ MODULE makesurfdata
   CHARACTER(72)                                :: ckl_input   !if nonempty, read wave functions from this file
   CHARACTER(72)                                :: ckl_output  !if nonempty, output wave functions to this file
 
+! restartdir specifies a directory where hd coefficients for each iteration will
+! be saved. particularly useful if the error turns up at one point and you want
+! to restart from a specific iteration, or when the job was interrupted. 
+  CHARACTER(72)                                :: restartdir  !if nonempty, output wave functions to this file
+
   LOGICAL                                      :: usefij   ! use coupling instead of coupling*dE
 
 ! weights for equations of reproduction of energy, energy gradients, and non-adiabatic coupling
@@ -1420,7 +1425,7 @@ SUBROUTINE writeCkl(cklfl)
   do i=1,npoints
     write(7421,"(4E32.24)")ckl(i,:,:)
   end do!i=1,npoints
-  print *," wave functions exported to file ",trim(adjustl(cklfl))
+  print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
   close(unit=7421)
 END SUBROUTINE writeCkl
 !---------------------------------------------
@@ -1853,7 +1858,7 @@ SUBROUTINE makesurf()
   double precision,dimension(npoints,nstates,nstates)   :: errGrad,errGradh
   double precision,dimension(ncoord)             :: errgrd
   double precision,dimension(ncoord,3*natoms)    :: binv
-  CHARACTER(50)                                  :: fmt
+  CHARACTER(72)                                  :: fmt, fn
   double precision            ::  dener(nstates,nstates)
   integer                     ::  ios, status
   double precision, external  ::  dnrm2
@@ -2371,6 +2376,34 @@ SUBROUTINE makesurf()
    ! write iteration information to output file
    write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
    print *,"   Norm of coefficients:  ",dnrm2(ncons,asol,int(1))
+   ! Write coefficients of iteration to restart file
+   if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
+     c1=""
+     write(c1,"(I4)"),iter
+     fn = trim(restartdir)//'/hd.data.'//trim(adjustl(c1))
+     if(printlvl>1)print "(A)","  Exporting Hd coefficients to "//fn
+     ! convert hd to primitive form 
+     count1 = 0
+     do k=1,nblks
+       count2 = 0
+       do i=1,ncon_total
+         if(coefMap(i,2)==k)then
+           count2 = count2+1
+           hvec(i) = dot_product(ZBas(k)%List(count2,:),asol2(count1+1:count1+nBas(k)))
+         end if
+       end do
+       count1=count1+nBas(k)
+     end do!k
+     ! save h vector to file
+     call updateHd(hvec,coefmap,ncon_total)
+     call writeHd(fn,flheader,.false.)
+     ! save ckl
+     fn =  trim(restartdir)//'/ckl.'//trim(adjustl(c1))
+     if(printlvl>1)print "(A)","  Exporting Hd eigenvectors to "//fn
+     call writeCkl(fn)
+   end if!restartdir/=''   <<<<<<<<<<<<<<<<<<<<<<<
+   !------------------------------------------------------------
+   ! Write final eigenvectors to file  
   enddo !while(iter<maxiter.and.adif>toler)
   !----------------------------------
   ! End of self-consistent iterations
@@ -2406,7 +2439,7 @@ SUBROUTINE makesurf()
   ! save h vector to file
     call updateHd(hvec,coefmap,ncon_total)
     if(printlvl>1)print *,"  Exporting Hd coefficients to ",trim(outputfl)
-    call writehd(outputfl,flheader,.false.)
+    call writeHd(outputfl,flheader,.false.)
   end if
   !------------------------------------------------------------
   ! Write final eigenvectors to file 
@@ -2420,10 +2453,6 @@ SUBROUTINE makesurf()
   !------------------------------------------------------------
   errGrad=dble(0)
   errGradh=dble(0)
-  do j = 1,npoints
-   write(c2,'(i4)')j
-   rlabs(j) = ' GM '//trim(adjustl(c2))
-  enddo!j=1,npoints
   if(useIntGrad)then
     do i = 1,nvibs
      write(c1,'(i2)')i
@@ -2456,6 +2485,8 @@ SUBROUTINE makesurf()
           if(m<=dispgeoms(l)%nvibs)errGrad(l,i,i)=errGrad(l,i,i)+gradtable(k,2*m)**2!*dispgeoms(l)%scale(m)
         enddo !m=1,dispgeoms(i)%nvibs
         errGrad(l,i,i)=sqrt(errGrad(l,i,i))
+        write(c2,'(i4)')l
+        rlabs(k) = ' GM '//trim(adjustl(c2))
       enddo!l=1,npoints
       call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
     end if!any(hasGrad)
@@ -2488,6 +2519,8 @@ SUBROUTINE makesurf()
         errGrad(l,j,i)=errGrad(l,i,j)
         errGradh(l,i,j)=sqrt(errGradh(l,i,j))
         errGradh(l,j,i)=sqrt(errGradh(l,j,i))/2
+        write(c2,'(i4)')l
+        rlabs(k) = ' GM '//trim(adjustl(c2))
       enddo!l=1,npoints
       call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
     end if!any(hasGrad(i,j))
@@ -2512,6 +2545,8 @@ SUBROUTINE makesurf()
         enertable(j,2*k)   = NaN
     end if
    enddo!k=1,nstates
+   write(c2,'(i4)')j
+   rlabs(j) = ' GM '//trim(adjustl(c2))
   enddo!j=1,npoints
   call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,2*nstates,enertable,int(19),int(9))
   print *," Weighed Error Norms for Energy Gradients and Couplings"
@@ -2785,7 +2820,7 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
                       energyT,highEScale,maxd,scaleEx,linNegSteps, gscaler,ckl_output,ckl_input,maxRot,  &
                       dijscale,dijscale2,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening, &
-                      searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn
+                      searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
   npoints   = 0
   gscaler   = 1d-5
   maxiter   = 3
@@ -2809,6 +2844,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   dijscale  = 1d0
   dijscale2 = 0d0
   useIntGrad= .true.
+  restartdir= ''
   intGradT  = 1D-3
   scaleEx   = 1D0
   intGradS  = 1D-1

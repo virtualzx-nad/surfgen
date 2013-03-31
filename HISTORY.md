@@ -1,3 +1,9 @@
+## 2.1.6 (2013-03-31)
+
+* New input option `restartdir`:  the program will save Hd coefficients to `$restartdir/hd.data.$iter` every 
+iteration if this option is nonempty
+* Fixed a problem where the point indices are not correctly printed in `surfgen.out` when some ab initio are absent 
+
 ## 2.1.5 (2013-03-30)
 
 * Fixed a problem where the construction of intersection adapted coordinate at points with partially avaiable 
