@@ -1,25 +1,30 @@
 POINT SPECIFIC OPTIONS
 KEY111112222233333     ! comments
 wt   0   1    2000
+wt  -99   1   34       !  1- 34 loop around s0min
 ag   1    1    1       ! s0min 
-ag  43    1    1       ! s0sad
-wt   1    1   34       !  1- 34 loop around s0min
-wt   1   35   36       ! 35- 42 path from s0min to s0sad
-wt  1    37   37       ! 35- 42 path from s0min to s0sad
-wt -3    38   38       ! 35- 42 path from s0min to s0sad
-wt -10   39   39       ! 35- 42 path from s0min to s0sad
-wt -30   40   42       ! 35- 42 path from s0min to s0sad
-wt -300  43   76       ! 42- 76 loop around s0sad
-wt   1   77   110      ! 77-110 s1 min hessian   
-wt   1   111  144      !111-144 s1 min disp
-wt   0   145  165      !145-165 path from s0min to dissociation
-wt   1   166  199      !166-199 s1 sad hessian
-wt   1   200  233      !200-233 s1 sad disp
-wt   1   234  237      !234-237 lic from mex12 to s1min
-wt   1   238  238      !238     MEX12
-ad  238   2    3
-wt   1   239  242      !239-242 mex12 search path
-wt  1    243  248      !243-248 lic from mex12 to mex01 
-wt  1    249  249      !249-282 loop around mex01
-wt -10   250  282      !249-282 loop around mex01
-wt -99   283  283      !283-286 path from mex01 to s0-diss min
+wt  -6   35   68       ! 35- 68 s0min hessian
+wt   0   69   70       ! 69- 76 path from s0min to s0sad
+wt  0    71   72       ! 69- 76 path from s0min to s0sad
+wt  0    73   73       ! 69- 76 path from s0min to s0sad
+wt   0   74   76       ! 69- 76 path from s0min to s0sad
+wt   0   77   110      ! 77-110 loop around s0sad
+wt   1   111  144      !111-144 s1 min hessian   
+wt   1   145  178      !145-178 s1 min disp
+wt   0   179  199      !179-199 path from s0min to dissociation
+wt   1   200  233      !200-233 s1 sad hessian
+wt   1   234  267      !234-267 s1 sad disp
+wt   1   268  271      !268-271 lic from mex12 to s1min
+wt   1   272  272      !272     MEX12
+ld  272   2    3
+lG  272   2    3
+wt   1   273  306      !273-306 mex12 disp 0.01
+wt  -2   307  372      !273-306 mex12 disp+0.02-0.05
+wt   1   373  376      !373-376 mex12 search path
+wt  0    378  382      !377-382 lic from mex12 to mex01 
+wt   1   377  378      !377-382 lic from mex12 to mex01 
+wt  -20  379  379      !377-382 lic from mex12 to mex01 
+wt -300  380  380      !377-382 lic from mex12 to mex01 
+wt  0    383  383      !383-416 loop around mex01
+wt  0    384  416      !383-416 loop around mex01
+wt   0   417  417      !417-417 path from mex01 to s0-diss min

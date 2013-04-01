@@ -505,6 +505,7 @@ MODULE makesurfdata
     end do
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints
+
       cklPrev = ckl(i,:,:)
       CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
       ckl(i,:,:)=hmatPt
@@ -787,6 +788,7 @@ MODULE makesurfdata
 
    INTEGER  :: incdata,j,k,l,NEx_E,NEx_grd,nvpt,inc_e,inc_cp
    DOUBLE PRECISION  :: gnrm,dgrd,rmsexclthreshold,dE_exact,dG_exact,dcp,nrmcp,nrmdcp,ncp,de1,de2
+   double precision,external :: dnrm2
 
    if(rmsexcl>=0)then
      rmsexclthreshold = 0D0
@@ -822,8 +824,10 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(5x,A,I5,A,F10.3,A,E12.4)", &
-                       "Large coupling error at point ",j," : ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp)
+             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(5x,A,I5,A,F9.2,A,E12.4,A,F9.2,A)",    &
+                        "Large coupling error at point ",j," : ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
+                        ", ",dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
+                        dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)*100,"% cp*dE" 
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
            end if! coupling included

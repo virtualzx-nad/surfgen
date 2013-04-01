@@ -3,10 +3,10 @@ printlvl   = 3,
 jobtype    = 1, 
 natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
-order      = 4,
+order      = 3,
 ngrp       = 3,
-groupsym   = 1,2,2,2
-groupprty  = 1,1,-1,-1
+groupsym   = 1,2,2
+groupprty  = 1,1,-1
 inputfl    = 'hd.data'
 cntfl      = 'connect.in'
 /
@@ -18,8 +18,8 @@ dijscale   = 1d0
 energyT    = 4.5D4, 5.0D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
 highEScale = 5D-1,  2D-1,  5D-2,  1D-2,  1D-3, 1D-4, 1d-5
 useIntGrad = .true.
-maxd       = 1D-1
-dfstart    = 1
+maxd       = 1D0 
+dfstart    = 0
 intGradT   = 1D-2
 linSteps   =  0
 intGradS   = 1D-1
@@ -28,26 +28,25 @@ ckl_input  = ''
 ckl_output = 'ckl.out'
 rmsexcl    = -2
 npoints    = 2553 
-SearchPath = 'data/s0_min_disp-0.01','data/LIC_s0_min2sad','data/s0_sad_disp-0.01',
+SearchPath = 'data/s0_min_disp-0.01','data/s0_min_hess-0.001',
+             'data/LIC_s0_min2sad','data/s0_sad_disp-0.01',
              'data/s1_min_hess-0.001','data/s1_min_disp-0.01',
              'data/path_tmp',
              'data/s1_sad_hess-0.001','data/s1_sad_disp-0.01'
 	     'data/lic_mex12_to_s1min' ,
-	     'data/mex12_sp',
-	     'data/mex12_searchpath',
+             'data/mex12_sp','data/mex12_disp-0.01','data/mex12_disp+0.02-0.05','data/mex12_searchpath',
  	     'data/lic_mex12_to_mex01' ,
  	     'data/mex01_disp-0.01',
 	     'data/lic_mex01_to_s0-dissmin',
              'data/s1-diss_min_hessian-0.001',
              'data/s0-diss_min_disp-0.01'
-gmfptn  = 20*'geom'
-enfptn  = 20*'energy.all'
-grdfptn = 20*'cartgrd.drt1.state$.sp'
-cpfptn  = 20*'cartgrd.nad.drt1.state$.drt1.state$.sp'
+gmfptn  = 30*'geom'
+enfptn  = 30*'energy.all'
+grdfptn = 30*'cartgrd.drt1.state$.sp'
+cpfptn  = 30*'cartgrd.nad.drt1.state$.drt1.state$.sp'
 restartdir = 'restart'
-dfstart    = 1
 gcutoff    = 1D-7
-maxiter    = 10,
+maxiter    = 10 ,
 followPrev = .true.
 toler      = 1D-7
 LSETol     = 1.0D-9 
@@ -57,8 +56,8 @@ gorder     = 5000.
 outputfl   = 'hd.data'
 flheader   = 'coefficient file of phenol 3 state Hd made with surfgen'
 w_energy   = 1D0
-w_grad     = 1D-1
-w_fij      = 1D-1
+w_grad     = 2D-1
+w_fij      = 2D-1
 nrmediff   = 1D3
 ediffcutoff= 1D2
 nrmediff2  = 2d2

@@ -1,3 +1,11 @@
+## 2.1.7 (2013-03-31)
+
+* For points that has large coupling errors, the program will now also print out the percentage error for derivative coupling
+times energy difference.  This is particularly useful for diagnosis purpose in order to find out if it is gradients of Hd or
+energy difference that is causing the large gradient error.   For points with small energy separations, large relative error
+is sometimes unavoidable unless you force it with Lagrange multipliers using the *LD* option in `points.in`
+* Fixed a bug that sometimes corrupt the permutational sign of OOP angles and 4C dotproducts, resulting in problematic symmetry properties.
+
 ## 2.1.6 (2013-03-31)
 
 * New input option `restartdir`:  the program will save Hd coefficients to `$restartdir/hd.data.$iter` every 
