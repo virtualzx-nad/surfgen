@@ -245,7 +245,7 @@ The highest possible energy bracket (with lowest weight) will be used.
 .It nrmediff
 .Sy DOUBLE PRECISION [2D4]
 The weight for derivative coupling equations is weighed down by factor
-.Sy nrmediff/(\[u0394]E+ediffcutoff) .
+.Sy nrmediff/(\(*DE+ediffcutoff) .
 This weighing procedure is due to the fact that coupling times energy difference
 is being fit instead of the coupling itself, which is singular near intersections.
 Increasing the weight according to energy difference ensures that residue couplings
@@ -258,7 +258,7 @@ to change in energy difference.
 .It nrmediff2
 .Sy DOUBLE PRECISION [100.]
 Similar to the above case, the energy equations are weighed up by factor
-.Sy nrmediff2/(\[u0394]E+ediffcutoff2)
+.Sy nrmediff2/(\(*DE+ediffcutoff2)
 if this value is greater than 1.   This is to ensure that energy differences
 are properly reproduced for points that are close to degeneracy.
 .El
