@@ -247,6 +247,7 @@ MODULE makesurfdata
 !                     of the equations generated. gradID=0 for energies
 !nex             :  Number of exact equations actually generated
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
+!Exact equations will be sorted by point index
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,gradNorm,wvec)
     use hddata, only: nblks,blkmap,nstates
     use progdata, only: AU2CM1
@@ -255,6 +256,7 @@ MODULE makesurfdata
     integer,dimension(MaxEqs,4),intent(out) :: lseMap,exactEqs
     double precision,dimension(MaxEqs),intent(out)   :: wvec
     DOUBLE PRECISION,dimension(npoints,nvibs,nblks),intent(in)     :: gradNorm
+    integer   ::  tmp(4)
 
     integer  :: i,j,k,s1,s2,nr,ng
     double precision :: residue,resDir,ediff
@@ -430,6 +432,16 @@ MODULE makesurfdata
           end do !s2=1,nstates
         end do !s1=1,nstates
     end do!i=1,npoints
+    ! sort exact equations by point index
+    do i=1,nex-1
+      do j=nex,i+1,-1
+        if(exactEqs(i,1)>exactEqs(j,1))then
+          tmp           = exactEqs(i,:)
+          exactEqs(i,:) = exactEqs(j,:)
+          exactEqs(j,:) = tmp
+        end if
+      end do!j
+    end do!i
   1000 format(8X,"Point",I5,", St",2I3,", dir",I3,", grad=",E10.3)
   1001 format(8X,3F14.10)
   END SUBROUTINE
@@ -596,20 +608,29 @@ MODULE makesurfdata
     end do !i=1,nstates
   END SUBROUTINE folPrevCkl
 !-----------------------------------------------------------------------------------
-  SUBROUTINE makeNormalEquations(NE,rhs)
+! rhs is constructed for diff=.false.
+  SUBROUTINE makeNormalEquations(NE,rhs,wt)
     use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
     use progdata, only: printlvl
     IMPLICIT NONE
+    DOUBLE PRECISION,dimension(neqs),INTENT(IN)                 :: wt
     DOUBLE PRECISION,dimension(nex+ncons,nex+ncons),INTENT(OUT) :: NE
     DOUBLE PRECISION,dimension(nex+ncons),INTENT(OUT)           :: rhs
    
-    integer,parameter ::  bars = 50
-    integer           ::  i, pc, pc_last 
-    double precision  ::  cc(nstates,nstates)
-    integer           ::  l0,r0,ll,rr,iBlk,iBasis
+    integer,parameter ::  bars = 80
+    integer           ::  i,j,  pc, pc_last,g ,   nEqPt,nExPt,  neqTot, nexTot
+    double precision,dimension(:,:),allocatable  ::  AMat
+    double precision,dimension(:),allocatable    ::  bvec
+    integer           ::  LDA
 
-    NE = 0d0
+    ! initialization.   Only a strip of A matrix is stored
+    LDA = nstates**2*(nvibs+2)
+    allocate(AMat(LDA,ncons))
+    allocate(bvec(LDA))
+    NE  = 0d0
     rhs = 0d0
+    neqTot = 0
+    nexTot = 0
 
     !print the progress bar
     if(printlvl>0)then
@@ -619,182 +640,231 @@ MODULE makesurfdata
         write(*,'(a)',advance='no'),"_"
       end do
       print *,""
-      write (*,'(4x)',advance='no')
+      write (*,'(a,$)')"    "
     end if
 
     !main look, add up contributions from each data point
     pc_last=0
     do i=1,npoints
-      do iBlk = 1,nblks
-      ! get the density matrix for the current block
-       l0 = offs(RowGrp(iblk))
-       ll = GrpLen(RowGrp(iblk))
-       r0 = offs(ColGrp(iblk))
-       rr = GrpLen(ColGrp(iblk))
-       do iBasis=1,nBas(iBlk)
+      ! construct the strip of a matrix for the current point
+      call makeCoefMatPt(i,AMat,LDA,nEqPt,nExPt,wt,bvec)
+      ! fill in exact block of rhs and normal equations
+      do j=1,nExPt
+        NE(j+nexTot,nex+1:nex+ncons)= AMat(j,:)*scaleEx
+        rhs(j+nexTot)               = bvec(j)  *scaleEx
+      end do!j
+      ! accumulate rhs vector
+       CALL DGEMV('T',nEqPt,ncons,1d0,AMat(nExPt+1,1),LDA,&
+          bvec(nExPt+1),int(1),dble(1),rhs(nex+1),INT(1))
 
-       end do!iBasis
-     end do!iBlk
+      ! fill in the LSE block
+      CALL DSYRK('U','T',ncons,nEqPt,1d0,AMat(nExPt+1,1),&
+         LDA,dble(1),NE(nex+1,nex+1),ncons+nex)
+      
+      neqTot = neqTot+nEqPt
+      nexTot = nexTot+nExPt  
       ! print the progression bar
       if(printlvl>0)then
         pc = i*bars/npoints  ! check percentage finished and print out to screen
         if(pc>pc_last)then
-           write(*,"(A)",advance='no'),'>'
+           write(*,"(A,$)"),'>'
            pc_last = pc
         end if!pc>pc_last
       end if!printlvl>0
     end do!i
-    print *,""
+    if(printlvl>0)print *,"      [ DONE ]"
+    deallocate(AMat)
+    deallocate(bvec)
   END SUBROUTINE makeNormalEquations
 !-----------------------------------------------------------------------------------
 !Generate the matrix A of the linear coefficients between Hd basis and RHS values
-  SUBROUTINE makecoefmat(AMat)
+!for a specific data point
+!Also returns the number of exact and LSE equations for that point
+  SUBROUTINE makeCoefMatPt(pt,AMat,LDA,nEqPt,nExPt,wt,bvec)
     use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
     use progdata, only: printlvl
     IMPLICIT NONE
-    DOUBLE PRECISION,dimension(nex+neqs,ncons),INTENT(OUT)               :: AMat
-    INTEGER      :: i,j,l,r,l0,r0,pt,s1,s2,g,as1,as2,iBlk,iBasis,ll,rr
-    double precision  :: ediff,error
-    double precision  :: wij(npoints,nstates,nstates),Dij(npoints,nstates,nstates)
-    DOUBLE PRECISION,dimension(:,:,:,:),allocatable  :: VIJ
-    double precision  :: cc(npoints)
-    integer  :: count1,count2,count_rate
-    INTEGER    ::  Id(npoints),Jd(npoints),ndeg,Pd(npoints),ind1
-    DOUBLE PRECISION :: gvec(nvibs),hvec(nvibs)
+    INTEGER,INTENT(IN)                                  :: pt, LDA
+    DOUBLE PRECISION,dimension(LDA,ncons),INTENT(OUT)   :: AMat
+    INTEGER,INTENT(OUT)                                 :: nEqPt,nExPt
+    DOUBLE PRECISION,dimension(LDA),INTENT(OUT)         :: bvec
+    DOUBLE PRECISION,dimension(neqs),INTENT(IN)         :: wt
+    INTEGER      :: l,r,l0,r0,s1,s2,g,iBlk,ll,rr,offset,i
+    double precision  :: ediff(nstates,nstates),error
+    double precision,dimension(:,:,:),allocatable    :: WIJ,DIJ 
+    double precision,dimension(:,:,:,:),allocatable  :: VIJ
+    double precision,dimension(:),allocatable        :: dv
+    double precision  ::  cc
+    INTEGER           ::  Id(nstates**2),Jd(nstates**2),ndeg,ind1,pv1
+    DOUBLE PRECISION  ::  gvec(nvibs),hvec(nvibs)
+    double precision,external :: dnrm2
+    INTEGER           ::  ptEqMap(LDA,3)
+    double precision  ::  wtv(LDA)
 
-! construct Wij, Dij and Vij matrices for all data points
-    allocate(VIJ(npoints,nvibs,nstates,nstates))    
+! construct degeneracy list and energy difference table
+    ndeg = 0
+    if(enfDiab.ne.pt)then
+      do s1=1,nstates
+        do s2=s1+1,nstates
+          ediff(s1,s2) = fitE(pt,s2)-fitE(pt,s1)
+          if(abs(ediff(s1,s2))<deg_cap)then
+            ndeg = ndeg + 1
+            if(ndeg>nstates**2)STOP"TOO MANY DEGENERATE POINTS"
+            Id(ndeg)=s1
+            Jd(ndeg)=s2
+          end if
+        end do
+      end do
+    end if
 
-    if(printlvl>0)print *,"   Making equation coefficients."
-    call system_clock(COUNT=count1,COUNT_RATE=count_rate)
+    nEqPt = 0 
+    nExPt = 0 
+! construct equations map for the point
+! exact equations
+    do i=1,nex
+      if(eqMap(i,1).ne.pt)cycle
+      nExPt = nExPt+1
+      if(nExPt>LDA) stop "Error! makeCoefMatPt: Lower dimension of matrix too small"
+      ptEqMap(nExPt,1:3)=eqMap(i,2:4) 
+    end do
+! least squares equations
+    do i=1,neqs
+      if(eqMap(i+nex,1).ne.pt)cycle
+      nEqPt = nEqPt+1
+      if(nExPt+nEqPt>LDA) stop "Error! makeCoefMatPt: Lower dimension of matrix too small"
+      ptEqMap(nExPt+nEqPt,1:3)=eqMap(i+nex,2:4) 
+      wtv(nEqPt)=wt(i)
+    end do
+    if(nExPt+nEqPt==0)return
 
+! construct Wij, Dij and Vij matrices for all blocks
     error = dble(0)
-    j = 0
+    offset = 0
+    AMat = 0d0
     do iBlk = 1,nblks
      l0 = offs(RowGrp(iblk))
      ll = GrpLen(RowGrp(iblk))
      r0 = offs(ColGrp(iblk))
      rr = GrpLen(ColGrp(iblk))
-     do iBasis=1,nBas(iBlk)
-      j=j+1
-      WIJ = dble(0)
-      VIJ = dble(0)
-      DIJ = dble(0)
-      ndeg = 0
-      do s1=1,nstates
-        do s2=s1,nstates
-          do r= 1, rr
-            do l= 1, ll
+     pv1 =  npoints*(1+nvibs) *ll*rr
+     allocate(VIJ(nBas(iBlk),nvibs,nstates,nstates))    
+     allocate(WIJ(nBas(iBlk),nstates,nstates))    
+     allocate(DIJ(nBas(iBlk),nstates,nstates))    
+     allocate( dv(nBas(iBlk)))
+     WIJ = dble(0)
+     VIJ = dble(0)
+     DIJ = dble(0)
+     do s1=1,nstates
+       do s2=s1,nstates
+         do r= 1, rr
+           do l= 1, ll
    ! calculate the multiplication of ckl, with Hermitianization for off diagonal blocks
               if(RowGrp(iblk).eq.ColGrp(iblk))then
-                cc = ckl(:,l+l0,s1)*ckl(:,r+r0,s2)
+                cc = ckl(pt,l+l0,s1)*ckl(pt,r+r0,s2)
               else !(RowGrp(iblk).eq.ColGrp(iblk))
-                cc = ckl(:,l+l0,s1)*ckl(:,r+r0,s2) + ckl(:,r+r0,s1)*ckl(:,l+l0,s2)
+                cc = ckl(pt,l+l0,s1)*ckl(pt,r+r0,s2) + ckl(pt,r+r0,s1)*ckl(pt,l+l0,s2)
               end if !(RowGrp(iblk).eq.ColGrp(iblk))
 
    ! get the values of W and V
-              ind1 = ((r-1)*ll+l-1)*npoints*(nvibs+1)+1
-              WIJ(:,s1,s2) = WIJ(:,s1,s2)+cc*WMat(iBlk)%List(ind1:ind1+(npoints-1)*(nvibs+1):nvibs+1,iBasis)
+              ind1 = (((r-1)*ll+l-1)*npoints+pt-1)*(nvibs+1)+1
+              CALL DAXPY(nBas(iBlk),cc,WMat(iBlk)%List(ind1,1),pv1,WIJ(1,s1,s2),1)
    ! construct the Hamiltonian contribution of VIJ 
               do i=1,nvibs
                 ind1 = ind1+1
-                VIJ(:,i,s1,s2) = VIJ(:,i,s1,s2) + cc * WMat(iBlk)%List(ind1:ind1+(npoints-1)*(nvibs+1):nvibs+1,iBasis)
-              end do
-            end do !  l= 1, ll
-          end do !r= 1, rr
+                CALL DAXPY(nBas(iBlk),cc,WMat(iBlk)%List(ind1,1),pv1,VIJ(1,i,s1,s2),1)
+              end do!i=1,nvibs
+           end do !  l= 1, ll
+         end do !r= 1, rr
 
-          if(s1.ne.s2) then
-            if(abs(DijScale*DijScale2)>1D-30)then
+         if(s1.ne.s2) then
+           if(abs(DijScale*DijScale2)>1D-30.and.pt/=enfDiab)then
   ! construct DIJ from WIJ.  It is non zero only on the off diagonal
-              do i=1,npoints
-                if(i==enfDiab)cycle !no rotation for reference point
-                ediff = fitE(i,s2)-fitE(i,s1)
-                if(abs(ediff)<deg_cap)then
-                  DIJ(i,s1,s2)=dble(0)
-                  ndeg = ndeg + 1
-                  if(ndeg>npoints)STOP"TOO MANY DEGENERATE POINTS"
-                  Id(ndeg)=s1
-                  Jd(ndeg)=s2
-                  Pd(ndeg)=i
-                else!abs(ediff)<deg_cap
-                  DIJ(i,s1,s2)=WIJ(i,s1,s2)/ediff*DijScale*DijScale2
-                end if!abs(ediff)<deg_cap
-              end do !i=1,npoints
-            end if!
+  !no rotation for reference point
+             if(abs(ediff(s1,s2))>deg_cap) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale*DijScale2
+           end if!Dij/=0 and not enforcing diabat
   ! fill the lower triangle of D and W
-            WIJ(:,s2,s1)     =  WIJ(:,s1,s2)
-            DIJ(:,s2,s1)     = -DIJ(:,s1,s2)
-          end if !(J.ne.I)
+           WIJ(:,s2,s1)     =  WIJ(:,s1,s2)
+           DIJ(:,s2,s1)     = -DIJ(:,s1,s2)
+         end if !(s1.ne.s2)
   ! the Dij Contribution of VIJ
-          do g=1,nvibs
+         do g=1,nvibs
             do l=1,nstates
-              VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(:,g,l,s2) + DIJ(:,l,s2)*fitG(:,g,l,s1)     
+              VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
             end do
-          end do
-          if(s1.ne.s2)VIJ(:,:,s2,s1)=VIJ(:,:,s1,s2)
-        end do !s2
-      end do ! s1
+         end do!g
+         if(s1.ne.s2)VIJ(:,:,s2,s1)=VIJ(:,:,s1,s2)
+       end do !s2
+     end do ! s1
   ! construct DIJ contribution to degenerate points
-      if(abs(DijScale*DijScale2)>1D-30)then
+     if(abs(DijScale*DijScale2)>1D-30)then
         do i=1,ndeg
-          pt = Pd(i)
           s1 = Id(i)
           s2 = Jd(i) 
-          if(abs(DIJ(pt,s1,s2)).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
+          if(dnrm2(nBas(iBlk),DIJ(1,s1,s2),1).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
           gvec = fitG(pt,:,s1,s1)-fitG(pt,:,s2,s2)
           hvec = fitG(pt,:,s1,s2)
-          DIJ(pt,s1,s2)=(dot_product(VIJ(pt,:,s1,s1)-VIJ(pt,:,s2,s2),hvec)+dot_product(gvec,VIJ(pt,:,s1,s2)))&
-                   /(4*dot_product(hvec,hvec)-dot_product(gvec,gvec))
-          DIJ(pt,s2,s1)=-DIJ(pt,s1,s2)
-          VIJ(pt,:,s1,s2) = VIJ(pt,:,s1,s2) + DIJ(pt,s1,s2)*gvec
-          VIJ(pt,:,s2,s1) = VIJ(pt,:,s1,s2) 
-          VIJ(pt,:,s1,s1) = VIJ(pt,:,s1,s1) - DIJ(pt,s1,s2)*hvec*2
-          VIJ(pt,:,s2,s2) = VIJ(pt,:,s2,s2) + DIJ(pt,s1,s2)*hvec*2
+          do g=1,nvibs
+            dv   = VIJ(:,g,s1,s1)-VIJ(:,g,s2,s2)
+            CALL DAXPY(nBas(iBlk),hvec(g),dv,1,DIJ(1,s1,s2),1)
+            CALL DAXPY(nBas(iBlk),gvec(g),VIJ(1,g,s1,s2),1,DIJ(1,s1,s2),1)
+          end do!g
+          CALL DSCAL(nBas(iBlk),1/(4*dot_product(hvec,hvec)-dot_product(gvec,gvec)),DIJ(:,s1,s2),1)
+          DIJ(:,s2,s1)=-DIJ(:,s1,s2)
+          do g=1,nvibs
+            VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,s1,s2)*gvec(g)
+            VIJ(:,g,s2,s1) = VIJ(:,g,s1,s2) 
+            VIJ(:,g,s1,s1) = VIJ(:,g,s1,s1) - DIJ(:,s1,s2)*hvec(g)*2
+            VIJ(:,g,s2,s2) = VIJ(:,g,s2,s2) + DIJ(:,s1,s2)*hvec(g)*2
+          end do!g
         end do! I=1,ndeg
-      end if !DijScale /= 0
+     end if !DijScale /= 0
 ! Make AMAT from W and V matrices
-      do i=1,nex+neqs
-        AMat(i,j)=dble(0)
-        pt=eqMap(i,1)    ! point index
-        s1=eqMap(i,2)    ! state index 1
-        s2=eqMap(i,3)    ! state index 2
-        g =eqMap(i,4)    ! gradient component index
+      
+     do i=1,nEqPt+nExPt
+        s1=ptEqMap(i,1)    ! state index 1
+        s2=ptEqMap(i,2)    ! state index 2
+        g =ptEqMap(i,3)    ! gradient component index
         if(g==0)then !iGrad==0  => its an energy fit
           do l=1,GrpLen(RowGrp(iblk))
             do r=1,GrpLen(ColGrp(iblk))
-              as1=l+offs(RowGrp(iblk))
-              as2=r+offs(ColGrp(iblk))
               if(s2<0) then! equation for energy difference
-                AMat(i,j)=WIJ(pt,s1,s1)-WIJ(pt,-s2,-s2)
+                 AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s1)-WIJ(:,-s2,-s2)
+                 if(iBlk==1) bvec(i)=dispgeoms(pt)%energy(s1)-dispgeoms(pt)%energy(-s2)
               else         ! equation for energy 
                 if(s1==s2)then
-                  AMat(i,j)=WIJ(pt,s1,s2)
+                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
+                  if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1)
                 else
-                  AMat(i,j)=WIJ(pt,s1,s2)*(1-DijScale*DijScale2)
+                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)*(1-DijScale*DijScale2)
+                  if(iBlk==1)bvec(i)=0d0
                 end if 
               end if !s2<0
             end do!r
           end do!l
         else                                      ! equation for energy gradients or derivative couplings
-          AMat(i,j)=VIJ(pt,g,s1,s2)
+          AMat(i,offset+1:offset+nBas(iBlk))=VIJ(:,g,s1,s2)
+          if(iBlk==1)bvec(i)=dispgeoms(pt)%grads(g,s1,s2)
         end if!if(eqMap(i,4)==0)
-      end do!i=1,neqs+nex
-     end do! ibasis
+     end do!i=1,nEqPt+nExPt
+     offset=offset+nBas(iBlk)
+     deallocate(dv)
+     deallocate(VIJ)
+     deallocate(WIJ)
+     deallocate(DIJ)
     end do! iblk
-    deallocate(VIJ)
-    call system_clock(COUNT=count2)
-    if(printlvl>0)print "(7X,I12,A,F7.2,A)",&
-         ncons*(nex+neqs)," coefficients constructed after ",(count2-count1)/dble(count_rate),"s"
-  end SUBROUTINE makecoefmat
+    ! scale with weight factors
+    do i=1,nEqPt
+      CALL DSCAL(ncons,wtv(i),AMat(i+nExPt,1),LDA)
+      bvec(nExPt+i)=bvec(nExPt+i)*wtv(i)
+    end do
+  end SUBROUTINE makeCoefMatPt
 !-----------------------------------------------------------------------------------
 !generate rhs vectors for Hd fitting
   SUBROUTINE makebvec(bvec,diff)
-    use progdata, only: printlvl
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(nex+neqs),INTENT(INOUT)             :: bvec
     LOGICAL, INTENT(IN)                                            :: diff
     INTEGER                                                :: i,pt,s1,s2,g
-    if(printlvl>0)print *,"   Making right hand side vectors."
     do i = 1,nex+neqs
       pt=eqmap(i,1)
       s1=eqmap(i,2)
@@ -1362,63 +1432,6 @@ MODULE makesurfdata
     printlvl = prtl
   END SUBROUTINE
 
-! Construction of gradients of cost function and project out the component that overlaps
-! with exact equation gradients
-  SUBROUTINE GradProj(AMat,bvec,dcex,pgrad) 
-    USE progdata, only: printlvl
-    IMPLICIT NONE
-    DOUBLE PRECISION,INTENT(IN)           ::  AMat(neqs+nex,ncons),bvec(neqs+nex)
-    DOUBLE PRECISION,INTENT(OUT)          ::  dcex(ncons),pgrad(ncons)
-    
-    double precision,dimension(nex,nex)   ::  BBt
-    double precision,dimension(nex,ncons) ::  BOrth  
-    double precision,dimension(nex)       ::  bex,w ,bexw
-    double precision                      ::  WORK(2+7*nex+3*nex**2), nrmG,nrmEx,nrmPG,dp(ncons)
-    integer                               ::  LWORK,LIWORK,i,INFO,IWORK(4+6*nex), NNull
-    double precision,external             ::  dnrm2
-
-    LWORK  = 2+7*nex+3*nex**2
-    LIWORK = 4+6*nex
-    if(printlvl>1) print *,"Performing Gradient Projections. "
-
-    ! BBt = B.B^T
-    CALL DSYRK('U','N',nex,ncons,dble(1),AMat,nex+neqs,dble(0),BBt,nex)
-    CALL DSYEVD('V','U',nex,BBt,nex,W,WORK,LWORK,IWORK,LIWORK,INFO)
-
-    ! transform rhs of exact equations 
-    CALL DGEMV('T',nex,nex,dble(1),BBt,nex,bvec,int(1),dble(0),bex,int(1))
-
-    ! transform exact equation gradients
-    CALL DGEMM('T','N',nex,ncons,nex,dble(1),BBt,nex,AMat,nex+neqs,dble(0),BOrth,nex)
-    
-    NNull = 0
-    do i=1,nex
-      if(abs(w(i))>exactTol)then
-        w(i)   = 1/w(i)
-      else
-        w(i)   = dble(0)
-        NNull = i
-      end if
-    end do
-    if(printlvl>2) print *,"  Dimensionaliy of Null Space: ",NNull
-    !make exact displacement vector
-    bexw=bex*w
-    CALL DGEMV('T',nex,ncons,dble(1),BOrth,nex,bexw,int(1),dble(0),dcex,int(1))
-
-    !calculation the gradient of cost function
-    CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1,1),neqs+nex,bvec(nex+1),int(1),dble(0),pgrad,int(1))
-    nrmG = dnrm2(ncons,pgrad,int(1))
-    dp   = pgrad
-    !orthorgonalize it with respect to exact displacements
-    do I=NNull+1,nex
-      pgrad = pgrad - BOrth(i,:)*dot_product(pgrad,BOrth(i,:))*w(i)
-    end do !i=NNull+1,nex
-    dp   = dp-pgrad
-    nrmPG = dnrm2(ncons,pgrad,int(1))
-    nrmEx = dnrm2(ncons,dp,int(1))
-    if(printlvl>1)print "(3(A,E11.4))","  Norm of gradients:",nrmG,", Overlapping component:",nrmEx,", Orthogonal component:",nrmPG
-  END SUBROUTINE GradProj
-
 !----------------------------------------------------------------------------------------
 ! updates Hd then evaluate the RMS error from LSE and exact equations
   SUBROUTINE evaluateError(asol,weight,LSErr,ExErr)
@@ -1580,6 +1593,7 @@ SUBROUTINE genBasis(gradNorm)
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
         allocate(ZBas(k)%List(1,1))     ! just a place holder
+        pv1 = npoints*(1+nvibs)*ll*rr
         allocate(WMat(k)%List(pv1,nb))
         gradNorm(:,:,k) = 0d0
         cycle
@@ -1836,7 +1850,7 @@ SUBROUTINE makesurf()
   INTEGER                                        :: m,maxeqs, plvl
   INTEGER                                        :: iter,uerrfl,miter
   DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,dCi2,hvec,bvecP
-  DOUBLE PRECISION,dimension(:,:),allocatable    :: AMat,jaco,jaco2
+  DOUBLE PRECISION,dimension(:,:),allocatable    :: jaco,jaco2
   DOUBLE PRECISION,dimension(npoints,nvibs,nblks):: gradNorm
   DOUBLE PRECISION,dimension(npoints,nvibs*2)    :: gradtable
   DOUBLE PRECISION,dimension(npoints,2*nstates)  :: enertable
@@ -2007,116 +2021,64 @@ SUBROUTINE makesurf()
   ! ----------  MAIN LOOP ---------------
   call GetAngles(ckl,npoints,theta(0,:),sg(0,:))
   do while(iter<maxiter.and.adif>toler)
+   ! Write coefficients of iteration to restart file
+   if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
+     c1=""
+     write(c1,"(I4)"),iter
+     fn = trim(restartdir)//'/hd.data.'//trim(adjustl(c1))
+     if(printlvl>1)print "(A)","  Exporting Hd coefficients to "//fn
+     ! convert hd to primitive form 
+     count1 = 0
+     do k=1,nblks
+       count2 = 0
+       do i=1,ncon_total
+         if(coefMap(i,2)==k)then
+           count2 = count2+1
+           hvec(i) = dot_product(ZBas(k)%List(count2,:),asol2(count1+1:count1+nBas(k)))
+         end if
+       end do
+       count1=count1+nBas(k)
+     end do!k
+     ! save h vector to file
+     call updateHd(hvec,coefmap,ncon_total)
+     call writeHd(fn,flheader,.false.)
+     ! save ckl
+     fn =  trim(restartdir)//'/ckl.'//trim(adjustl(c1))
+     if(printlvl>1)print "(A)","  Exporting Hd eigenvectors to "//fn
+     call writeCkl(fn)
+   end if!restartdir/=''   <<<<<<<<<<<<<<<<<<<<<<<
    iter = iter + 1
    if(printlvl>0)print 1000,iter
    
+   ! check if should start differential convergence
    if(iter == dfstart)then
      print *,"  Starting differential convergence..."
      diff = .true.
      write(OUTFILE,*)"  Starting differential convergence..."
    end if
 
-   !construct normal equations matrix and right hand side vector
-   call makeNormalEquations(NEL,rhs)
+   ! get errors 
+   if(printlvl>0)then
+     call makebvec(bvec,.true.)
+     print "(5x,2(A,E12.5))","Initial RMS error for exact block:",dnrm2(nex,bvec,1),&
+                                        ", LSE block:",dnrm2(neqs,bvec(nex+1),1)
+   end if
 
-   !Make coefficients vector for least squares and exact equations
-   allocate(AMat(neqs+nex,ncons))    !Coefficients for least squares equations
-                                        ! and exact equations. Exact block is on the top
-   call makecoefmat(AMat)
-   call makebvec(bvec,diff)
-   if(printlvl>2.and.diff)then
-     if(iter>1.and.dnrm2(neqs+nex,bvecP,1)<dnrm2(neqs+nex,bvec,1))then
-       print *,"  Overall error increasing.  Tabulating change in equations..."
-       ! look for equations where error got larger
-       do i=1,nex+neqs
-        if((abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))>1d-1.and.abs((abs(bvec(i))-abs(bvecP(i))))>1d-3)then 
-         if(eqmap(i,4)==0)then
-           if(eqmap(i,2)==eqmap(i,3))then
-             print "(A,I6,I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
-                  "energy(pt,s):",eqmap(i,1:2),",val=",&
-                  (dispgeoms(eqmap(i,1))%energy(eqmap(i,2)))*au2cm1,&
-                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-           else
-             if(eqmap(i,3)>0)then !off diagonal block values
-               print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                  "E-diff(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                  au2cm1*(dispgeoms(eqmap(i,1))%energy(abs(eqmap(i,2:3)))),&
-                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-             else   ! energy differences
-               print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                  "off-diag(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
-                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-             end if
-           end if
-         else
-           if(eqmap(i,2)==eqmap(i,3))then
-             print "(A,I6,2I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
-                  "grad(pt,s,g):",eqmap(i,[1,2,4]),",state energie=",&
-                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2))),&
-                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-           else
-             print "(A,I6,3I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                  "coupling(pt,s1,s2,g):",eqmap(i,:),",state energies=",&
-                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
-                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-           end if
-         end if!eqmap(i,4)==0
-        end if! if change is large enough
-       end do!i
-     end if!iter>1 .and. 
-   end if!printlvl>2 .and. diff
-   bvecP = bvec
-   ! create linear equality constrained normal equations
-   do i=1,neqs
-     AMat(nex+i,:)=AMat(nex+i,:)*weight(i)
-     bvec(nex+i)  =bvec(nex+i)  *weight(i)
-   end do
-      
-   Print *,"   Making linear equality constrained normal equations."
-   do i=1,nex
-     AMat(i,:) = AMat(i,:)*scaleEx
-     bvec(i)   = bvec(i)*scaleEx
-   end do
+   ! construct normal equations matrix and right hand side vector
+   call makeNormalEquations(NEL,rhs,weight)
 
-   CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1,1),&
-         neqs+nex,dble(0),NEL(nex+1,nex+1),ncons+nex)
-   do i=nex+1,nex+ncons-1
-       CALL DCOPY(ncons+nex-i,NEL(i,i+1),ncons+nex,NEL(i+1,i),int(1))
-   end do
-  
+   ! solve the equations to get new hd coefficients
    if(diff)then
-       print "(2(A,E12.5))"," SumSq error for exact block:",dnrm2(nex,bvec,1),", LSE block:",dnrm2(neqs,bvec(nex+1),1)
-       rhs(1:nex)=-dLambda*scaleEx
-       rhs(nex+1:)=-dCi
-   else
-       !construct rhs for normal eqs block y2=A**T.y
-       rhs(1:nex)=bvec(1:nex)
-       CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1,1),neqs+nex,&
-          bvec(nex+1),int(1),dble(0),rhs(nex+1),INT(1))
-   end if!diff
-  
-     !construct Lagrange Multipliers block
-   do i=1,nex
-       NEL(i,nex+1:nex+ncons)=AMat(i,:)
-       NEL(nex+1:nex+ncons,i)=AMat(i,:)
-   end do
-   !zero out L-L block
-   NEL(1:nex,1:nex)=dble(0)
- ! 
-   deallocate(AMat)
-  
-   if(diff)then
+     rhs(1:nex)=-dLambda*scaleEx
+     rhs(nex+1:)=-dCi
      ! solve normal equations for change in coefficients
      call system_clock(COUNT=count1)
-       CALL solve(ncons,neqs,nex,NEL,rhs,&
-              exacttol,lsetol,dsol,printlvl)
+     CALL solve(ncons,neqs,nex,NEL,rhs,exacttol,lsetol,dsol,printlvl)
    else
        dsol = asol(1:ncons)
        ! solve normal equations
        call system_clock(COUNT=count1)
-       CALL solve(ncons,neqs,nex,NEL,rhs,&
-              exacttol,lsetol,asol,printlvl)
+       CALL solve(ncons,neqs,nex,NEL,rhs,exacttol,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
    end if
 
@@ -2230,32 +2192,6 @@ SUBROUTINE makesurf()
    ! write iteration information to output file
    write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
    print *,"   Norm of coefficients:  ",dnrm2(ncons,asol,int(1))
-   ! Write coefficients of iteration to restart file
-   if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
-     c1=""
-     write(c1,"(I4)"),iter
-     fn = trim(restartdir)//'/hd.data.'//trim(adjustl(c1))
-     if(printlvl>1)print "(A)","  Exporting Hd coefficients to "//fn
-     ! convert hd to primitive form 
-     count1 = 0
-     do k=1,nblks
-       count2 = 0
-       do i=1,ncon_total
-         if(coefMap(i,2)==k)then
-           count2 = count2+1
-           hvec(i) = dot_product(ZBas(k)%List(count2,:),asol2(count1+1:count1+nBas(k)))
-         end if
-       end do
-       count1=count1+nBas(k)
-     end do!k
-     ! save h vector to file
-     call updateHd(hvec,coefmap,ncon_total)
-     call writeHd(fn,flheader,.false.)
-     ! save ckl
-     fn =  trim(restartdir)//'/ckl.'//trim(adjustl(c1))
-     if(printlvl>1)print "(A)","  Exporting Hd eigenvectors to "//fn
-     call writeCkl(fn)
-   end if!restartdir/=''   <<<<<<<<<<<<<<<<<<<<<<<
    !------------------------------------------------------------
    ! Write final eigenvectors to file  
   enddo !while(iter<maxiter.and.adif>toler)

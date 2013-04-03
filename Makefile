@@ -16,7 +16,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.2.0
+SGENVER := 2.2.1
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -58,7 +58,7 @@ ifeq ($(DEBUGGING_SYMBOLS),YES)
     DEBUGFLAG = -g -fbounds-check -fbacktrace -Wall -Wextra
    else
     ifneq ($(findstring ifort,$(COMPILER)),)
-        DEBUGFLAG = -g -check all -traceback
+        DEBUGFLAG = -g -check uninit -check bound -check pointers -traceback -debug
     else
         DEBUGFLAG = -g
     endif

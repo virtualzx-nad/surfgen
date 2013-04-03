@@ -1,4 +1,10 @@
-## 2.2.0 (2013-04-2)  
+## 2.2.1 (2013-04-03)
+
+* Direct construction of normal equations enables the program to skip explicit construction and storage of W matrix, which becomes
+memory intensive when number of equations grow close to 100,000.  
+* MINMEX mode is deprecated.  Use the evaluation library with another program for the purpose.
+
+## 2.2.0 (2013-04-02)  
 
 This is a major update.  Part of your input will have to be redone in order to work properly.
 * You can now specify a list of allowed symmetries in stead of one specific symmetry for any state group.  This allows the treatment 

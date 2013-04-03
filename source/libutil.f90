@@ -494,7 +494,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
     gradnew(i,:,:)=matmul(matmul(transpose(ckl),dhmat(i,:,:)),ckl)
   end do
   beta=dble(0)  
-  if(printlvl>0)print *,"     transforming Hd eigenvectors for point ",pt%id
+  if(printlvl>2)print *,"     transforming Hd eigenvectors for point ",pt%id
   if(printlvl>2)then
     print *,"      reference ab initio gradients" 
     do i=1,nstates
