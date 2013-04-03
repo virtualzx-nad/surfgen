@@ -1,6 +1,6 @@
 /
 &GENERAL
-printlvl=3
+printlvl=2
 jobtype=1
 natoms=5
 atmgrp=1,2,3,3,4
@@ -23,16 +23,16 @@ intGradT=1D-3
 rmsexcl=-5
 npoints=157
 gcutoff=1D-7
-maxiter=15 
+maxiter=10 
 grdfptn= 'cartgrd.drt1.state$.all'
 cpfptn = 'cartgrd_total.drt1.state$.drt1.state$.all'
 toler=1D-3
-LSETol=1.0D-7
+LSETol=1.0D-8
 exactTol=1D-9 
-maxd=1d5 
-tbas=1d-14
+maxd=1d3 
+tbas=1d-10
 ckl_output='ckl.out'
-ckl_input='ckl.in'
+ckl_input=''
 dfstart=-1
 gorder=5000.
 outputfl='hd.data2'

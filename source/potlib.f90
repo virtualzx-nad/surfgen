@@ -702,7 +702,7 @@ SUBROUTINE readginput(jtype)
   use potdata
   use progdata 
   use hddata, only: initGrps,ncoord,nstates,order,getFLUnit 
-  use CNPI, only: irrep,grpPrty,grpSym 
+  use CNPI, only: irrep,GrpPrty,GrpSym,nSymLineUps 
   IMPLICIT NONE 
   INTEGER,INTENT(INOUT)           :: jtype 
   INTEGER                         :: i,j,mkadiabat,ios,k 
@@ -710,22 +710,22 @@ SUBROUTINE readginput(jtype)
   INTEGER,dimension(10)           :: surface,updatehess 
   INTEGER,dimension(50)           :: ci,atmgrp 
   DOUBLE PRECISION,dimension(500) :: minguess,mexguess 
-  INTEGER,DIMENSION(10)           :: groupSym,groupPrty 
+  INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty 
   DOUBLE PRECISION,dimension(50)  :: e_guess,B_r1,B_r2,B_h
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, &
-                            timeeval,B_r1,B_r2,B_h,parsing,eshift
+                            timeeval,B_r1,B_r2,B_h,parsing,eshift,nSymLineUps
 
-  atomlabels(1) = 'N'
-  atomlabels(2) = 'H'
+  atomlabels = ''
 
   do i=1,NRij
     dcoordls(i) = i
   end do
 
+  nSymLineUps = 1
   jtype      = 0 
   natoms     = 2 
   printlvl   = 1 
@@ -748,12 +748,12 @@ SUBROUTINE readginput(jtype)
    
   call readIrreps() 
   if(allocated(GrpSym))deallocate(GrpSym) 
-  if(allocated(grpPrty))deallocate(grpPrty) 
-  allocate(GrpSym(nGrp)) 
-  allocate(grpPrty(nGrp)) 
-  GrpSym=groupsym(1:nGrp) 
-  grpPrty=groupprty(1:nGrp) 
-  call initGrps(nGrp,irrep(GrpSym(:))%Dim) 
+  if(allocated(GrpPrty))deallocate(GrpPrty) 
+  allocate(GrpSym(nGrp,nSymLineUps)) 
+  allocate(GrpPrty(nGrp,nSymLineUps)) 
+  GrpSym=groupsym(1:nGrp,1:nSymLineUps) 
+  GrpPrty=groupprty(1:nGrp,1:nSymLineUps) 
+  call initGrps(nGrp,irrep(GrpSym(:,1))%Dim) 
  
   if(allocated(innerB_r1))deallocate(innerB_r1)
   if(allocated(innerB_r2))deallocate(innerB_r2)

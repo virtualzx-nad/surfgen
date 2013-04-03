@@ -75,7 +75,7 @@ CONTAINS
     integer  :: i,n,nx,rank, INFO
     double precision,external :: dnrm2
 
-    if(printlvl>0)print 1000
+    if(printlvl>0)print 1000,m,nlse,nex
     n  = nex+nlse
     nx = nex+m
 

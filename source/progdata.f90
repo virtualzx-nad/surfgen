@@ -117,7 +117,8 @@ module progdata
   INTEGER,parameter                            :: IRREPFL=14
   INTEGER,parameter                            :: PTFL=15
   INTEGER,parameter                            :: OUTFILE=31
-  INTEGER,parameter                            :: NADVIBS=32
+
+  INTEGER,parameter                            :: MAX_ALLOWED_SYM=10
 
   INTEGER                                      :: nCoordSets
   type(TCoordSet),dimension(:),allocatable     :: CoordSet
@@ -130,24 +131,6 @@ module progdata
   INTEGER                                      :: natoms
   CHARACTER(72)                                :: inputfl
   CHARACTER(99)                                :: inputdir
-
-! MINMEX input parameters
-  INTEGER                                      :: nmin
-  INTEGER                                      :: nmex
-  INTEGER                                      :: nept
-  INTEGER                                      :: h_recal
-  INTEGER                                      :: optiter
-  INTEGER,dimension(10)                        :: minstates
-  INTEGER,dimension(10)                        :: ptstates
-  INTEGER,dimension(10,2)                      :: mexstates
-  LOGICAL,dimension(10)                        :: h_update
-  DOUBLE PRECISION                             :: maxstep
-  DOUBLE PRECISION                             :: opttoler
-  DOUBLE PRECISION,dimension(:,:),allocatable  :: minstart
-  DOUBLE PRECISION,dimension(:,:),allocatable  :: mexstart
-  DOUBLE PRECISION                             :: xscale,sscale
-  DOUBLE PRECISION                             :: degtoler
-  LOGICAL                                      :: enforcepd
 
 ! * MOLECULE PROPERTIES *
 ! typeCount            :  number of types of indistinguishable atoms.

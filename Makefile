@@ -9,14 +9,14 @@
 
 # Objects needed for standalone fitting program
 OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
-            libsym.o libinternal.o localcoord.o makesurf.o minmex.o io.o surfgen.o 
+            libsym.o libinternal.o localcoord.o makesurf.o io.o surfgen.o 
 
 # Objects needed for runtime interface library
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.1.7
+SGENVER := 2.2.0
 
 # Get the OS name and version
 UNAME := $(shell uname -a)

@@ -41,7 +41,6 @@ MODULE makesurfdata
   DOUBLE PRECISION                             :: eshift    ! uniform shift on ab initio energies
   DOUBLE PRECISION                             :: deg_cap   ! threshold below which intersection adapted coordinates will be used
   INTEGER                                      :: maxiter
-  INTEGER                                      :: mmiter    ! maximum number of micro iterations
   INTEGER                                      :: npoints
   DOUBLE PRECISION                             :: toler     !criteria for convergence
   DOUBLE PRECISION                             :: gcutoff   !gradient cutoff
@@ -119,13 +118,10 @@ MODULE makesurfdata
   DOUBLE PRECISION,dimension(:)  ,allocatable  ::  rhs
 
 ! maximum allowed change in coefficients in each iteration
-  DOUBLE PRECISION  :: maxd, maxED
+  DOUBLE PRECISION  :: maxd
 
 ! scaling factors to exact equations
   DOUBLE PRECISION  :: scaleEx
-
-! scaling factor for the gradients for gradient based methods
-  DOUBLE PRECISION  :: gScaler
 
 ! scaling factors to exact equations
   logical,dimension(:,:,:),allocatable       :: incgrad,g_exact
@@ -143,7 +139,6 @@ MODULE makesurfdata
   double precision                           :: ecutoff  ! energy threshold above which data will be excluded from basis construction
   double precision                           :: egcutoff ! energy threshold above which gradients will no longer be used in fit
   type(T2DDList),dimension(:),allocatable    :: ZBas ! transformation from primitive to the reconstructed basis for each block
-  type(T2DDList),dimension(:),allocatable    :: ZBasI! corresponding backwards transformation
 
 ! scaling factor of dij term.  0 gives old result and 1 gives exact gradients
   double precision            :: DijScale
@@ -151,12 +146,6 @@ MODULE makesurfdata
 
 ! index of the iteration to start differential convergence
   integer    :: dfstart
-
-! method used to predict steps
-  integer    :: stepMethod 
-
-! tolerance for micro iterations convergence of exact equation error
-  double precision   :: ExConv
 
 ! number of test point for gradient verifications
   integer    :: ntest
@@ -607,6 +596,57 @@ MODULE makesurfdata
     end do !i=1,nstates
   END SUBROUTINE folPrevCkl
 !-----------------------------------------------------------------------------------
+  SUBROUTINE makeNormalEquations(NE,rhs)
+    use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
+    use progdata, only: printlvl
+    IMPLICIT NONE
+    DOUBLE PRECISION,dimension(nex+ncons,nex+ncons),INTENT(OUT) :: NE
+    DOUBLE PRECISION,dimension(nex+ncons),INTENT(OUT)           :: rhs
+   
+    integer,parameter ::  bars = 50
+    integer           ::  i, pc, pc_last 
+    double precision  ::  cc(nstates,nstates)
+    integer           ::  l0,r0,ll,rr,iBlk,iBasis
+
+    NE = 0d0
+    rhs = 0d0
+
+    !print the progress bar
+    if(printlvl>0)then
+      print *,"   Constructing normal equations"
+      write (*,'(4x)',advance='no')
+      do i=1,bars
+        write(*,'(a)',advance='no'),"_"
+      end do
+      print *,""
+      write (*,'(4x)',advance='no')
+    end if
+
+    !main look, add up contributions from each data point
+    pc_last=0
+    do i=1,npoints
+      do iBlk = 1,nblks
+      ! get the density matrix for the current block
+       l0 = offs(RowGrp(iblk))
+       ll = GrpLen(RowGrp(iblk))
+       r0 = offs(ColGrp(iblk))
+       rr = GrpLen(ColGrp(iblk))
+       do iBasis=1,nBas(iBlk)
+
+       end do!iBasis
+     end do!iBlk
+      ! print the progression bar
+      if(printlvl>0)then
+        pc = i*bars/npoints  ! check percentage finished and print out to screen
+        if(pc>pc_last)then
+           write(*,"(A)",advance='no'),'>'
+           pc_last = pc
+        end if!pc>pc_last
+      end if!printlvl>0
+    end do!i
+    print *,""
+  END SUBROUTINE makeNormalEquations
+!-----------------------------------------------------------------------------------
 !Generate the matrix A of the linear coefficients between Hd basis and RHS values
   SUBROUTINE makecoefmat(AMat)
     use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
@@ -824,8 +864,8 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(5x,A,I5,A,F9.2,A,E12.4,A,F9.2,A)",    &
-                        "Large coupling error at point ",j," : ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
+             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
+                        "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
                         ", ",dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
                         dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)*100,"% cp*dE" 
              nrmdcp = nrmdcp+dcp
@@ -855,8 +895,8 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) print "(5x,A,I5,A,F10.3,A,E12.4)", &
-                       "Large gradient error at point ",j," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
+             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
+                       "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
              if(gnrm>1D-4) then
                 nrmgrad = nrmgrad + dgrd
                 avggrad = avggrad + sqrt(dgrd)
@@ -1470,7 +1510,7 @@ SUBROUTINE genBasis(gradNorm)
   use hddata, only: T3DDList,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,EvaluateVal
   use progdata, only: printlvl
   use makesurfdata, only:  npoints,dispgeoms,nvibs,npb,nbas,dWVals,WVals,ncons,coefMap,ptWeights,energyT,highEScale,&
-                           TBas,ZBas,ZBasI,WMat,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
+                           TBas,ZBas,WMat,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
   IMPLICIT NONE
   DOUBLE PRECISION,dimension(npoints,nvibs,nblks),intent(OUT):: gradNorm
   integer  :: i,j,k,count1,count2,count_rate,pv1,n1,n2
@@ -1499,13 +1539,6 @@ SUBROUTINE genBasis(gradNorm)
     deallocate(ZBas)
   end if!allocated(ZBas
   allocate(ZBas(nblks))
-  if(allocated(ZBasI))then
-    do i=1,ubound(ZBasI,1)
-      if(associated(ZBasI(i)%List))deallocate(ZBasI(i)%List)
-    end do
-    deallocate(ZBasI)
-  end if!allocated(ZBasI)
-  allocate(ZBasI(nblks))
   if(allocated(WMat))then
     do i=1,ubound(WMat,1)
       if(associated(WMat(i)%List))deallocate(WMat(i)%List)
@@ -1547,7 +1580,6 @@ SUBROUTINE genBasis(gradNorm)
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
         allocate(ZBas(k)%List(1,1))     ! just a place holder
-        allocate(ZBasI(k)%List(1,1))
         allocate(WMat(k)%List(pv1,nb))
         gradNorm(:,:,k) = 0d0
         cycle
@@ -1632,7 +1664,7 @@ SUBROUTINE genBasis(gradNorm)
         if(printlvl>1)print 1001, " finished in",dble(count2-count1)/count_rate," s"
     ! construct transformations to the new basis 
     ! count number of eigenvalues larger than threshold and invert the square roots of the valid ones
-    ! ZBas is forward transformation and ZBasI is backwards transformation
+    ! ZBas is transformation from old to new basis 
         nb= 0 
         do i=npb(k),1,-1
           if(eval(i)<TBas)exit
@@ -1644,10 +1676,8 @@ SUBROUTINE genBasis(gradNorm)
         if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
     ! form the transformation matrix.Z=U.L^-1/2
         allocate(ZBas(k)%List(npb(k),nb))
-        allocate(ZBasI(k)%List(nb,npb(k)))
         do i=npb(k),npb(k)-nb+1,-1
           ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)
-          ZBasI(k)%List(npb(k)-i+1,:)=evec(:,i)
         end do
         deallocate(evec)
         deallocate(eval)
@@ -1666,12 +1696,9 @@ SUBROUTINE genBasis(gradNorm)
         if(printlvl>1)print *,"  TBas<=0, skipping null space removal. Using intermediate basis in fit."
         nBas(k) = npb(k)
         allocate(ZBas(k)%List(npb(k),npb(k)))
-        allocate(ZBasI(k)%List(npb(k),npb(k)))
         Zbas(k)%List=0d0
-        ZBasI(k)%List=0D0
         do i=1,npb(k)
             ZBas(k)%List(i,i) =  1D0
-            ZBasI(k)%List(i,i)=  1D0
         end do
         pv1 = npoints*(1+nvibs)*ll*rr
         ! generate new coefficient matrix in the basis.  WMat = pbas
@@ -1680,44 +1707,6 @@ SUBROUTINE genBasis(gradNorm)
         deallocate(pbasw)
         deallocate(pbas)
     end if!(TBas>0)
-
-! verify if the resulting basis yield a orthogonal coefficient matrix
-!    if(printlvl>2)then
-!      count2 = count
-!      print *,"    Verifying the overlap matrix in new basis."
-!      allocate(dmat(nb,nb))
-!      CALL DSYRK('U','T',nb,pv1,dble(1),WMat(k)%List,pv1,dble(0),dmat,nb)
-!      dmin = dmat(1,1)
-!      dmax = dmat(1,1)
-!      omin = minval(dmat(1,2:))
-!      i    = 1
-!      j    = minloc(dmat(1,2:),1)
-!      omax = maxval(dmat(1,2:))
-!      p    = 1
-!      q    = maxloc(dmat(1,2:),1)
-!      do l=2,nb
-!        DMIN = MIN(DMIN,DMAT(L,L))
-!        dmax = max(dmax,dmat(l,l))
-!        pval=minval(dmat(l,l+1:))
-!        if(pval<omin)then
-!          omin =  pval
-!          i = l
-!          j = minloc(dmat(l,l+1:),1)+l
-!        end if
-!        pval=maxval(dmat(l,l+1:))
-!        if(pval>omax)then
-!          omax =  pval
-!          p = l
-!          q = maxloc(dmat(l,l+1:),1)+l
-!        end if
-!      end do
-!      print "(2(A,F9.4))","       Diagonal elements     : min=",dmin," max=",dmax
-!      print "(2(A,F9.4,A,I5,A,I5,A))","       Off-diagonal elements : min=",omin,"@(",I,',',J,"),",&
-!                                                              " max=",omax,"@(",P,',',Q,")"
-!      deallocate(dmat)
-!      call system_clock(COUNT=count1)
-!      if(printlvl>1)print 1001, "     verification finished in",dble(count1-count2)/count_rate," s"
-!    end if
 
 ! generate gradNorm and zero out components that are excluded
     gn0 = 0d0
@@ -1963,7 +1952,7 @@ SUBROUTINE makesurf()
     do i=1,ncon_total
       if(coefMap(i,2)==k)then
         count2 = count2+1
-        asol2(count1+1:count1+nBas(k))=asol2(count1+1:count1+nBas(k))+ZBasI(k)%List(:,count2)*hvec(i)
+        asol2(count1+1:count1+nBas(k))=asol2(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec(i)
       end if
     end do
     count1=count1+nBas(k)
@@ -2016,10 +2005,6 @@ SUBROUTINE makesurf()
   adif=toler+1
   diff = .false.
   ! ----------  MAIN LOOP ---------------
-  if(stepmethod==1)then
-    diff=.true.
-    dfstart=-1
-  end if
   call GetAngles(ckl,npoints,theta(0,:),sg(0,:))
   do while(iter<maxiter.and.adif>toler)
    iter = iter + 1
@@ -2031,261 +2016,127 @@ SUBROUTINE makesurf()
      write(OUTFILE,*)"  Starting differential convergence..."
    end if
 
+   !construct normal equations matrix and right hand side vector
+   call makeNormalEquations(NEL,rhs)
 
-   select case(stepMethod)
-    ! method 1:  gradient projection.   
-    ! Derivatives of cost function is first evaluated.  
-    ! Gradients of exact equations are orthogonalized and are used to project out
-    ! the overlapping components of cost function gradients.
-    ! In the exact dimensions linear step is taken to yield exact results.  
-    ! In the othorgonal space, line search is performed to minimize fitting error
-    case(1) 
-     !Make coefficients vector for least squares and exact equations
-     allocate(AMat(neqs+nex,ncons))    !Coefficients for least squares equations
+   !Make coefficients vector for least squares and exact equations
+   allocate(AMat(neqs+nex,ncons))    !Coefficients for least squares equations
                                         ! and exact equations. Exact block is on the top
-     call makecoefmat(AMat)
-     call makebvec(bvec,diff)
-     ! get projected gradient and displacement in exact block.
-     call evaluateError(asol,weight,LSErr,ExErr)
-     if(printlvl>1)PRINT "(A,2E13.6)","  RMS Errors before taking step(LSE,Ex): ",LSErr,ExErr
-     miter = 0
-     plvl = printlvl
-     if(printlvl>1)PRINT *,"   Taking steps for exact equations."
-     do while(ExErr>ExConv.and.miter<mmiter)
-       miter = miter+1
-       dCi2 = dsol
-       call GradProj(AMat,bvec,dsol,dCi)  !dsol: exact; dCi: LS
-       nrmD = dnrm2(ncons,dsol,int(1))
-       if(nrmD>maxED)then
-         dsol = dsol/nrmD*maxED
-         nrmD=maxED
-       end if
-       if(miter==1)then
-         dCi2=dsol
-         printlvl = 0
-       end if
-       PRINT "(A,I4,3(A,E13.6),A,F8.2)","   miter=",miter,", disp=",nrmD,&
-           ", RMSE(LS)=",LSErr,", RMSE(Ex)=",ExErr,&
-           ", angle= ",ACOS(dot_product(dsol,dCi2)/sqrt(dot_product(dsol,dsol)*dot_product(dCi2,dCi2)))*5.729578D1
-       asol = asol+dsol*scaleEx
-       call evaluateError(asol,weight,LSErr,ExErr)
-       call makecoefmat(AMat)
-       call makebvec(bvec,.true.)
-     end do! while(ExErr>ExConv .and. miter<mmiter)
-     if(plvl>1)PRINT "(A,2E13.6)","  Error after initial steps(LSE,Ex): ",LSErr,ExErr
-     LSE0 = LSErr
-     LSE1 = LSErr
-     do i=1,neqs
-       AMat(nex+i,:)=AMat(nex+i,:)*weight(i)
-       bvec(nex+i)  =bvec(nex+i)  *weight(i)
-     end do
-     printlvl = plvl
-     call GradProj(AMat,bvec,dsol,dCi)  !dsol: exact; dCi: LS
-     PRINT *,"  Taking step along reduced gradient direction."
-     printlvl = 0
-     asol1=asol
-     ! determine proper bond
-     dCi=dCi/dnrm2(ncons,dCi,int(1))
-     stepl=toler+1D-30
-     asol=asol1+stepl*dCi
-     call evaluateError(asol,weight,LSErr,ExErr)
-     print "(A,2E13.6)","   initial step error:",LSErr,ExErr
-     do while(LSErr<LSE1.and.stepl<maxD)
-       stepl=stepl*linSteps
-       asol=asol1+stepl*dCi
-       LSE1=LSErr
-       call evaluateError(asol,weight,LSErr,ExErr)
-       print "(A,2E13.6)","   trial step error:  ",LSErr,ExErr
-     end do!while(stepl>toler)
-     print "(A,E13.6)","   crude step size:  ",stepl
-     asol=asol1+stepl*dCi
-     call evaluateError(asol,weight,LSErr,ExErr)
-     call makecoefmat(AMat)
-     call makebvec(bvec,.true.)
-     do i=1,neqs
-       AMat(nex+i,:)=AMat(nex+i,:)*weight(i)
-       bvec(nex+i)  =bvec(nex+i)  *weight(i)
-     end do
-     call GradProj(AMat,bvec,dsol,dCi2)  !dsol: exact; dCi: LS
-     dCi=(dCi+dCi2+dsol)/2
-     print *,"   movement direction adjusted."
-     if(stepl>maxD)then
-       if(LSErr>=LSE1)stepl=stepl/linSteps
-       if(stepl>maxD)stepl=maxD
-       asol=asol1+stepl*dCi
-       print *,"Step too large, resized to maxD=",maxD
-     else !if stepl>maxD
-       stepl=stepl/linSteps
-       if(stepl<toler)then
-         asol=asol1+stepl*dCi
-         PRINT "(A,E13.6)","Step size smaller than convergence tolerance. "
-       else!stepl<toler
-         do i=2,linSteps
-           asol=asol1+stepl*dCi*i
-           call evaluateError(asol,weight,LSE2,ExErr)
-           print "(A,2E13.6)","   linear step error:",LSErr,ExErr
-           if(LSE2>LSE1)then
-             exit
+   call makecoefmat(AMat)
+   call makebvec(bvec,diff)
+   if(printlvl>2.and.diff)then
+     if(iter>1.and.dnrm2(neqs+nex,bvecP,1)<dnrm2(neqs+nex,bvec,1))then
+       print *,"  Overall error increasing.  Tabulating change in equations..."
+       ! look for equations where error got larger
+       do i=1,nex+neqs
+        if((abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))>1d-1.and.abs((abs(bvec(i))-abs(bvecP(i))))>1d-3)then 
+         if(eqmap(i,4)==0)then
+           if(eqmap(i,2)==eqmap(i,3))then
+             print "(A,I6,I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
+                  "energy(pt,s):",eqmap(i,1:2),",val=",&
+                  (dispgeoms(eqmap(i,1))%energy(eqmap(i,2)))*au2cm1,&
+                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
            else
-             LSE0=LSE1
-             LSE1=LSE2
+             if(eqmap(i,3)>0)then !off diagonal block values
+               print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
+                  "E-diff(pt,s1,s2):",eqmap(i,1:3),",energies=",&
+                  au2cm1*(dispgeoms(eqmap(i,1))%energy(abs(eqmap(i,2:3)))),&
+                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
+             else   ! energy differences
+               print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
+                  "off-diag(pt,s1,s2):",eqmap(i,1:3),",energies=",&
+                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
+                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
+             end if
            end if
-         end do!i=2,linSteps
-         stepl=stepl/2/(LSE0-2*LSE1+LSE2)* &
-          ((2*i-1)*LSE0+(4-4*i)*LSE1+(2*i-3)*LSE2)
-         asol = asol1+stepl*dCi
-         print "(A,3E13.6)","  Interpolating between points with errors:",LSE0,LSE1,LSE2
-         call evaluateError(asol,weight,LSErr,ExErr)
-         print "(A,2E13.6)","  Final errors : ",LSErr,ExErr
-       end if!stepl<toler
-     end if!(stepl>maxD)
-     printlvl = plvl
-     deallocate(AMat)
-
-    ! displacement determined by multidimensional conjugate gradient approach
-    case (2)
-      if(printlvl>0)print *," Predicting step using generalized conjugate gradients..."
-      if(iter==1)then
-        if(printlvl>1)print *,"   Initial step taken as gradients..." 
-        dsol = grdv2 
-        dis0 = dsol 
-      else 
-        denom = dot_product(grdv1,grdv1)
-        if(denom<1D-30)then
-          beta = 0d0
-        else
-          beta = dot_product(grdv2,grdv2-grdv1)/denom
-        end if 
-        beta = max(0d0,beta)
-        if(printlvl>1)print *,"   Factor beta=",beta 
-        dsol = grdv2 + beta*dis0
-        dis0 = dsol
-      end if
-      dsol = dsol*gscaler
-
-    ! Default direction method is solving pseudo-normal equations for the linearized
-    !   least squares problem with exact equations achieved by lagrange multipliers    
-    case default
-     !Make coefficients vector for least squares and exact equations
-     allocate(AMat(neqs+nex,ncons))    !Coefficients for least squares equations
-                                        ! and exact equations. Exact block is on the top
-     call makecoefmat(AMat)
-     call makebvec(bvec,diff)
-     if(printlvl>2.and.diff)then
-       if(iter>1.and.dnrm2(neqs+nex,bvecP,1)<dnrm2(neqs+nex,bvec,1))then
-         print *,"  Overall error increasing.  Tabulating change in equations..."
-         ! look for equations where error got larger
-         do i=1,nex+neqs
-          if((abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))>1d-1.and.abs((abs(bvec(i))-abs(bvecP(i))))>1d-3)then 
-           if(eqmap(i,4)==0)then
-             if(eqmap(i,2)==eqmap(i,3))then
-               print "(A,I6,I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
-                    "energy(pt,s):",eqmap(i,1:2),",val=",&
-                    (dispgeoms(eqmap(i,1))%energy(eqmap(i,2)))*au2cm1,&
-                    ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-             else
-               if(eqmap(i,3)>0)then !off diagonal block values
-                 print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                    "E-diff(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(abs(eqmap(i,2:3)))),&
-                    ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-               else   ! energy differences
-                 print "(A,I6,2I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                    "off-diag(pt,s1,s2):",eqmap(i,1:3),",energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
-                    ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-               end if
-             end if
+         else
+           if(eqmap(i,2)==eqmap(i,3))then
+             print "(A,I6,2I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
+                  "grad(pt,s,g):",eqmap(i,[1,2,4]),",state energie=",&
+                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2))),&
+                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
            else
-             if(eqmap(i,2)==eqmap(i,3))then
-               print "(A,I6,2I2,A,F10.1,A,E12.5,A,SP,F9.2,A)",&
-                    "grad(pt,s,g):",eqmap(i,[1,2,4]),",state energie=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2))),&
-                    ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-             else
-               print "(A,I6,3I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
-                    "coupling(pt,s1,s2,g):",eqmap(i,:),",state energies=",&
-                    au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
-                    ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
-             end if
-           end if!eqmap(i,4)==0
-          end if! if change is large enough
-         end do!i
-       end if!iter>1 .and. 
-     end if!printlvl>2 .and. diff
-     bvecP = bvec
-     ! create linear equality constrained normal equations
-     do i=1,neqs
-       AMat(nex+i,:)=AMat(nex+i,:)*weight(i)
-       bvec(nex+i)  =bvec(nex+i)  *weight(i)
-     end do
+             print "(A,I6,3I2,A,2F10.1,A,E12.5,A,SP,F9.2,A)",&
+                  "coupling(pt,s1,s2,g):",eqmap(i,:),",state energies=",&
+                  au2cm1*(dispgeoms(eqmap(i,1))%energy(eqmap(i,2:3))),&
+                  ",err: ",bvec(i),"(",(abs(bvec(i))-abs(bvecP(i)))/abs(bvecP(i))*100,"%)"
+           end if
+         end if!eqmap(i,4)==0
+        end if! if change is large enough
+       end do!i
+     end if!iter>1 .and. 
+   end if!printlvl>2 .and. diff
+   bvecP = bvec
+   ! create linear equality constrained normal equations
+   do i=1,neqs
+     AMat(nex+i,:)=AMat(nex+i,:)*weight(i)
+     bvec(nex+i)  =bvec(nex+i)  *weight(i)
+   end do
       
-     Print *,"   Making linear equality constrained normal equations."
-     do i=1,nex
-       AMat(i,:) = AMat(i,:)*scaleEx
-       bvec(i)   = bvec(i)*scaleEx
-     end do
+   Print *,"   Making linear equality constrained normal equations."
+   do i=1,nex
+     AMat(i,:) = AMat(i,:)*scaleEx
+     bvec(i)   = bvec(i)*scaleEx
+   end do
 
-     CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1,1),&
+   CALL DSYRK('U','T',ncons,neqs,dble(1),AMat(nex+1,1),&
          neqs+nex,dble(0),NEL(nex+1,nex+1),ncons+nex)
-     do i=nex+1,nex+ncons-1
+   do i=nex+1,nex+ncons-1
        CALL DCOPY(ncons+nex-i,NEL(i,i+1),ncons+nex,NEL(i+1,i),int(1))
-     end do
+   end do
   
-     if(diff)then
+   if(diff)then
        print "(2(A,E12.5))"," SumSq error for exact block:",dnrm2(nex,bvec,1),", LSE block:",dnrm2(neqs,bvec(nex+1),1)
        rhs(1:nex)=-dLambda*scaleEx
        rhs(nex+1:)=-dCi
-     else
+   else
        !construct rhs for normal eqs block y2=A**T.y
        rhs(1:nex)=bvec(1:nex)
        CALL DGEMV('T',neqs,ncons,dble(1),AMat(nex+1,1),neqs+nex,&
           bvec(nex+1),int(1),dble(0),rhs(nex+1),INT(1))
-     end if!diff
+   end if!diff
   
      !construct Lagrange Multipliers block
-       do i=1,nex
+   do i=1,nex
        NEL(i,nex+1:nex+ncons)=AMat(i,:)
        NEL(nex+1:nex+ncons,i)=AMat(i,:)
-     end do
-     !zero out L-L block
-     NEL(1:nex,1:nex)=dble(0)
+   end do
+   !zero out L-L block
+   NEL(1:nex,1:nex)=dble(0)
  ! 
-     deallocate(AMat)
+   deallocate(AMat)
   
-     if(diff)then
-       ! solve normal equations for change in coefficients
-       call system_clock(COUNT=count1)
+   if(diff)then
+     ! solve normal equations for change in coefficients
+     call system_clock(COUNT=count1)
        CALL solve(ncons,neqs,nex,NEL,rhs,&
               exacttol,lsetol,dsol,printlvl)
-     else
+   else
        dsol = asol(1:ncons)
        ! solve normal equations
        call system_clock(COUNT=count1)
        CALL solve(ncons,neqs,nex,NEL,rhs,&
               exacttol,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
-     end if
+   end if
 
-     CALL cleanArrays()
+   CALL cleanArrays()
 
-     call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+   call system_clock(COUNT=count2,COUNT_RATE=count_rate)
      if(printlvl>0)print 1002,dble(count2-count1)/count_rate  
-   end select !step method
 
    ! Perform line search
-   if(stepMethod.ne.1)then 
-     nrmD = dnrm2(ncons,dsol,int(1))
-     if(printlvl>0)print "(A,E15.7)","   Original size of displacement : ",nrmD
-     ! scaling the whole displacement vector is larger than the maximum size
-     if(nrmD>maxd)then
+   nrmD = dnrm2(ncons,dsol,int(1))
+   if(printlvl>0)print "(A,E15.7)","   Original size of displacement : ",nrmD
+   ! scaling the whole displacement vector is larger than the maximum size
+   if(nrmD>maxd)then
        if(printlvl>0)print "(2(A,E12.5))","  Displacement vector scaled from",nrmD," to ",maxD
        dsol=dsol*maxD/nrmD
        nrmD = maxD
-     end if 
-     if(linSteps+linNegSteps<=0)then
+   end if 
+   if(linSteps+linNegSteps<=0)then
        asol(1:ncons)=asol2(1:ncons)+dsol
-     else !linsteps<=0
+   else !linsteps<=0
        dmin = 0d0
        disp = 0d0
        dinc = 1d0
@@ -2311,12 +2162,12 @@ SUBROUTINE makesurf()
            disp = disp - dinc 
            dinc = dinc / (1+linSteps-i)
          end if
-       end do
+     end do
 !  Negative displacements
-       disp = 0d0
-       dinc =-1d0
-       print *,"  Performing ",linNegSteps," negative displacements."   
-       do i=1,linNegSteps
+     disp = 0d0
+     dinc =-1d0
+     print *,"  Performing ",linNegSteps," negative displacements."   
+     do i=1,linNegSteps
          disp = disp+dinc
          asol(1:ncons)=asol2(1:ncons)+dsol*disp
          call evaluateError(asol,weight,LSErr,ExErr)
@@ -2334,23 +2185,22 @@ SUBROUTINE makesurf()
            disp = disp - dinc
            dinc = dinc / (1+linSteps-i)
          end if
-       end do
+     end do
 
-       if(plvl>1)print "(2(A,E12.5))","   optimal step length:",dmin,", norm of grad=",gmin
-       asol(1:ncons)=asol2(1:ncons)+dsol*dmin
-       printlvl=plvl
-     end if!linSteps<=0
+     if(plvl>1)print "(2(A,E12.5))","   optimal step length:",dmin,", norm of grad=",gmin
+     asol(1:ncons)=asol2(1:ncons)+dsol*dmin
+     printlvl=plvl
+   end if!linSteps<=0
 
-     ! make new eigenvectors
-     call updateEigenVec(asol,followPrev)
-     CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-     CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
-     grdv1 = grdv2
-     grdv2 = -dCi
-     nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-     print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
+   ! make new eigenvectors
+   call updateEigenVec(asol,followPrev)
+   CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
+   CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
+   grdv1 = grdv2
+   grdv2 = -dCi
+   nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
+   print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-   end if
    call GetAngles(ckl,npoints,theta(iter,:),sg(iter,:))
    theta2 = theta(iter,:) - theta(iter-1,:)
    PRINT *,"Maximum allowed change in diabatrization angle is ",maxRot
@@ -2654,9 +2504,6 @@ END SUBROUTINE makesurf
 !
 !
 !
-!
-!
-!
 SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
   use progdata, only: OUTFILE
   use makesurfdata,only: maxiter,toler,gcutoff
@@ -2822,16 +2669,14 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx,linNegSteps, gscaler,ckl_output,ckl_input,maxRot,  &
-                      dijscale,dijscale2,dfstart,stepMethod,ntest,ExConv,linSteps,maxED,mmiter,flattening, &
+                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,  &
+                      dijscale,dijscale2,dfstart,ntest,linSteps,flattening, &
                       searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
   npoints   = 0
-  gscaler   = 1d-5
   maxiter   = 3
   followprev= .false.
   usefij    = .true.
   deg_cap   = 1d-5
-  mmiter    = 10
   ecutoff   = 1d0
   egcutoff  = 6d-1
   TBas      = 1D-6
@@ -2842,8 +2687,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   ntest     = 0
   linSteps  = 0
   linNegSteps = 0
-  ExConv    = 1D-5
-  stepMethod= 0
   dfstart   = 0
   dijscale  = 1d0
   dijscale2 = 0d0
@@ -2853,7 +2696,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   scaleEx   = 1D0
   intGradS  = 1D-1
   maxd      = 1D0
-  maxed     = 1D-2
   energyT   = 1D30
   highEScale = 1D0
   gScaleMode = 2

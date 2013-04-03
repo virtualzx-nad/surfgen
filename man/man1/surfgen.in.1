@@ -104,16 +104,35 @@ Number of electronic state groups.  Each group contains a set of electronic
 states that carry an irreducible representation.  For example, for OH radical 
 the lowest 3 states are contained in 2 groups, an E group with 2 states and 
 A group with 1 state.
+.It nSymLineUps
+.Sy INTEGER [1]
+Total number of symmetry lineups.  The program will generate basis matrices
+for all the symmetry line-ups, then combine them to yield the basis.  Any 
+basis that result from multiple line-ups will be merged to remove any possible
+redundancy.  This detection procedure only examines the expansion coefficients
+of the basis matrices and is based on the assumption that each coordinate is an
+independent degree of freedom.
 .It groupsym
-.Sy INTEGER,dimension(ngrp) 
+.Sy INTEGER,dimension(ngrp,nSymLineUps) 
 Index of permutational irreducible representations carried by each 
 of the state groups.  For each irrep, representation matrices for 
 every permutation must be supplied in input file irrep.in
 Irreps are indexed as they appear in 
 .Ar irrep.in
+If 
+.Va nSymLineUps
+is specified, then each column should contain a complete set of state symmetries that
+defines one symmetry line-up.  Note that even if two symmetry line-ups have different
+symmetry definitions, some block still may possess the same symmetry so adding symmetry
+ may not generate more basis for all the blocks.  Using non-pure symmetry also allows
+the Hamiltonian to experience constant rotations, which is in most cases removed by 
+symmetry near a symmetric geometry.   Use 
+.Va enfDiab 
+if you find it a problem.
 .It groupprty
-.Sy INTEGER,dimension(ngrp) 
-Inversion symmetry (parity) of each of the state group.
+.Sy INTEGER,dimension(ngrp,nSymLineUps) 
+Inversion symmetry (parity) of each of the state group for each of the symmetry line-ups.
+Use -1 for anti-symmetric and 1 for symmetric.
 .It printlvl
 .Sy INTEGER [1]
 Controls the level of infomation printed to standard output. 
@@ -348,30 +367,6 @@ Uniformly scale all exact equations.  Since there is no weight for exact equatio
 this is done through scaling the gradient of the Lagrangian with respect to Lagrange
 multipliers.  This option normally does not need to be changed.  Only use it when 
 convergence problems occur.
-.It stepMethod
-.Sy INTEGER [0]
-This option specifies the algorithm used for fitting procedure.  Currently 
-.Em method 0
-uses linear equality constrained least squares equations and 
-.Em method 1
-uses gradient projection technique.  
-.Sy Method 1 is not working very well at the moment.  Please use 0.
-.It ExConv
-.Sy DOUBLE PRECISION [1D-5]
-Convergence criteria for exact equations.  Used by 
-.Em stepMethod=1 .
-.It maxED
-.Sy DOUBLE PRECISION [1D-2]
-Maximum step length for exact step.  Used by
-.Em stepMethod=1 .
-.It mmiter
-.Sy INTEGER [10]
-Number of micro iterations for 
-.Em stepMethod=1 .
-.It gscaler
-.Sy DOUBLE PRECISION [1D-5]
-Scaling factor for projected gradient.  Used by 
-.Em stepMethod=1 .
 .El
 ./"  DELETED: EXPANSION_INPUT, EXPANSION_OUTPUT
 .Pp

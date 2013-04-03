@@ -47,11 +47,12 @@ MODULE CNPI
 !----GLOBAL VARIABLES-----------------------------------
  ! * SYMMETRY PROPERTIES *
  ! array that contains all the relevant irreducibles
- type(TIrrep),DIMENSION(:),allocatable        ::  irrep
- integer                                      ::  nirrep=0
+ type(TIrrep),DIMENSION(:),allocatable  ::  irrep
+ integer                                ::  nirrep=0
 
- INTEGER,dimension(:),allocatable             ::  grpSym
- INTEGER,dimension(:),allocatable             ::  grpPrty
+ INTEGER,dimension(:,:),allocatable     ::  GrpSym
+ INTEGER,dimension(:,:),allocatable     ::  GrpPrty
+ INTEGER                                ::  nSymLineUps
 
 ! * PERMUTATION PROPERTIES
 ! nPmt      number of feasible permutations
@@ -487,8 +488,7 @@ CONTAINS
       pC=>permCycle(ord)%handle
       do iCyc=1,permCycle(ord)%nCycle
         pC=>pC%pNext
-        if(pC%parity==grpPrty(RowGrp(i))*grpPrty(ColGrp(i))) &
-            CALL MatProj(ord,i,pC,nl(i)*nr(i))
+        CALL MatProj(ord,i,pC,nl(i)*nr(i))
       end do !iCyc=1,permCycle(ord)%nCycle
       if(printlvl>1)print 1000,i, nBasis(ord,i)
       ntotal=ntotal+nBasis(ord,i)
@@ -513,60 +513,81 @@ CONTAINS
     INTEGER                              ::  LWORK,info
     DOUBLE PRECISION,DIMENSION(LR*5+1)   ::  WORK
     double precision,dimension(LR,pC%nterms)  ::  coef
+    double precision,dimension(LR,pC%nterms,LR*nSymLineUps)  ::  coefSave  ! all added coefficients
+    double precision,external :: dnrm2
+    double precision   :: ovlp
+    integer   ::  iAdd
+    integer   ::  iSym  ! index of symmetry setup
+
     ll=nl(m)
     rr=nr(m)
     if(LR/=ll*rr)stop"MatProj: inconsistent LR value"
-    lirr=grpSym(RowGrp(m))
-    rirr=grpSym(ColGrp(m))
-    !initializations
-    !Construct X matrix X=Sum[D^l_ik(T)*D^r_jl(T),{T/in W}]
-    do i=1,ll
-     do j=1,rr
-      do k=1,ll
-        do l=1,rr
-          x=sum(irrep(lirr)%RepMat(pC%W,i,k)*irrep(rirr)%RepMat(pC%W,j,l))&
-           -sum(irrep(lirr)%RepMat(pC%U,i,k)*irrep(rirr)%RepMat(pC%U,j,l))
-          x=x/nPmt
-          CALL chop(x,IrrepMatCutOff)
-          XT(k*rr-rr+l,i*rr-rr+j)=x
-        end do !l=1,rr
-      end do !k=1,ll
-     end do !j=1,rr
-    end do !i=1,ll
-    !if X matrix is 0 then the block is 0 by symmetry
-    if(sum(XT*XT)<MatProjCutOff**2)return
-    ! Make linearly independent components of matrix X
-    nProj=1  !norm(X)>0, at least 1 independent component exists
-    if(LR>1)then !if dim>1, linearly independent rows of X are constructed
-     LWORK=LR*5+1
-     JPVT=0
-     CALL DGEQP3(LR,LR,XT,LR,JPVT, TAU, WORK, LWORK, INFO)
-     if(INFO/=0)stop"MatProj: Failed to decomposite XT"
-     ! Filter out rows whose diagonal element is higher than the threshold.
-     do i=2,LR
-       if(XT(i,i)>MatProjCutOff)then
-         nProj=nProj+1  ! Remove the transformation info output by DGEQP3
-         XT(i,1:i-1)=dble(0)  !   and only keep the upper triangle matrix R.
-       else   !!if(XT(i,i)>MatProjCutOff
-         exit
-       end if !if(XT(i,i)>MatProjCutOff
-     end do !i=2,LR
-    end if !if(LR>1)
-    ! fill in the output array
-    do t=1,nProj
-      coef=dble(0)
+    iAdd = 0
+    do iSym=1,nSymLineUps
+      ! check the parity of the current symmetry line up
+      ! skip to the next line-up if parity is wrong
+      if(pC%parity.ne.GrpPrty(RowGrp(m),iSym)*GrpPrty(ColGrp(m),iSym))cycle
+      lirr=GrpSym(RowGrp(m),iSym)
+      rirr=GrpSym(ColGrp(m),iSym)
+      !initializations
+      !Construct X matrix X=Sum[D^l_ik(T)*D^r_jl(T),{T/in W}]
       do i=1,ll
        do j=1,rr
-         do s=1,pC%nTerms
-          do k=1,ll
-             coef(i+(j-1)*ll,s)=coef(i+(j-1)*ll,s)+ irrep(lirr)%RepMat(pC%V(s),i,k)* &
-                  sum(XT(t,k*rr-rr+1:k*rr)*irrep(rirr)%RepMat(pC%V(s),j,:))*pC%sgnTerm(s)
-          end do ! k
-         end do !do s=1,pC%nterms
-       end do !do j=1,rr
-      end do !do i=1,ll
-      CALL add2maptab(n,m,pC%nterms,pC%term,coef)
-    end do !do t=1,nProj
+        do k=1,ll
+          do l=1,rr
+            x=sum(irrep(lirr)%RepMat(pC%W,i,k)*irrep(rirr)%RepMat(pC%W,j,l))&
+             -sum(irrep(lirr)%RepMat(pC%U,i,k)*irrep(rirr)%RepMat(pC%U,j,l))
+            x=x/nPmt
+            CALL chop(x,IrrepMatCutOff)
+            XT(k*rr-rr+l,i*rr-rr+j)=x
+          end do !l=1,rr
+        end do !k=1,ll
+       end do !j=1,rr
+      end do !i=1,ll
+      !if X matrix is 0 then the block is 0 by symmetry
+      if(sum(XT*XT)<MatProjCutOff**2)return
+      ! Make linearly independent components of matrix X
+      nProj=1  !norm(X)>0, at least 1 independent component exists
+      if(LR>1)then !if dim>1, linearly independent rows of X are constructed
+       LWORK=LR*5+1
+       JPVT=0
+       CALL DGEQP3(LR,LR,XT,LR,JPVT, TAU, WORK, LWORK, INFO)
+       if(INFO/=0)stop"MatProj: Failed to decomposite XT"
+       ! Filter out rows whose diagonal element is higher than the threshold.
+       do i=2,LR
+         if(XT(i,i)>MatProjCutOff)then
+           nProj=nProj+1  ! Remove the transformation info output by DGEQP3
+           XT(i,1:i-1)=dble(0)  !   and only keep the upper triangle matrix R.
+         else   !!if(XT(i,i)>MatProjCutOff
+           exit
+         end if !if(XT(i,i)>MatProjCutOff
+       end do !i=2,LR
+      end if !if(LR>1)
+      ! fill in the output array
+      do t=1,nProj
+        coef=dble(0)
+        do i=1,ll
+         do j=1,rr
+           do s=1,pC%nTerms
+            do k=1,ll
+               coef(i+(j-1)*ll,s)=coef(i+(j-1)*ll,s)+ irrep(lirr)%RepMat(pC%V(s),i,k)* &
+                    sum(XT(t,k*rr-rr+1:k*rr)*irrep(rirr)%RepMat(pC%V(s),j,:))*pC%sgnTerm(s)
+            end do ! k
+           end do !do s=1,pC%nterms
+         end do !do j=1,rr
+        end do !do i=1,ll
+        coef = coef / dnrm2(LR*pC%nTerms,coef,1)
+        ! verifies if this new basis overlaps with an older basis
+        ovlp = 0d0
+        do i=1,iAdd
+           ovlp = ovlp+sum(coef*coefSave(:,:,i))**2
+        end do
+        if(ovlp>9.5d-1)cycle !this function is already present. skipping
+        CALL add2maptab(n,m,pC%nterms,pC%term,coef)
+        iAdd = iAdd+1
+        coefSave(:,:,iAdd) = coef
+      end do !do t=1,nProj
+    end do !iSym
  END SUBROUTINE MatProj
  
  ! Release the memory occupied by entries of permCycle

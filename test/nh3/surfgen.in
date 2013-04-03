@@ -12,11 +12,11 @@ groupprty specifies the parity of each group.
 
 /
 &GENERAL
-printlvl   = 3,
+printlvl   = 2,
 jobtype    = 1, 
 natoms     = 4,
 atmgrp     = 1,2,2,2
-order      = 3,
+order      = 4,
 ngrp       = 2,
 groupsym   = 1,2
 groupprty  = 1,-1
@@ -33,19 +33,20 @@ gscalemode = 0
 useIntGrad = .true.
 linsteps   = 0
 linNegSteps= 0
-stepmethod = 0
-maxd       = 1D1
+maxd       = 3D0 
 intGradT   = 1D-2
+ckl_input  = ''
+ckl_output = 'ckl.out'
 intGradS   = 1D-1
-TBas       = 1d-15
+TBas       = 1d-10
 rmsexcl    = -2
 npoints    = 2553 
-dfstart    = 0
+dfstart    = 1
 gcutoff    = 1D-7
-maxiter    = 0,
+maxiter    = 5 
 toler      = 1D-7
-LSETol     = 1.0D-7
-flattening = 1.0D-8 
+LSETol     = 1.0D-8
+flattening = 1.0D-10
 exactTol   = 1.0D-9 
 gorder     = 5000.
 outputfl   = 'hd.data'

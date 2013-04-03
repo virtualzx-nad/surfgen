@@ -1,3 +1,13 @@
+## 2.2.0 (2013-04-2)  
+
+This is a major update.  Part of your input will have to be redone in order to work properly.
+* You can now specify a list of allowed symmetries in stead of one specific symmetry for any state group.  This allows the treatment 
+of a changing symmetry.  All specified symmetry has to share the same dimensionalities, otherwise the result will be unpredictable.
+* Options `groupsym` and `groupprty` are now two dimensional arrays, with the first dimension being index of state group, second 
+being the index of allowed symmetry.   
+* Merged matrix basis forward and backward transformation matrix for basis reconstruction to improve memory efficiency further.
+* StepMethod/=0 is now depreciated since it does not really work.
+
 ## 2.1.7 (2013-03-31)
 
 * For points that has large coupling errors, the program will now also print out the percentage error for derivative coupling
