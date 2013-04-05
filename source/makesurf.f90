@@ -2060,8 +2060,10 @@ SUBROUTINE makesurf()
    ! get errors 
    if(printlvl>0)then
      call makebvec(bvec,.true.)
-     print "(5x,2(A,E12.5))","Initial RMS error for exact block:",dnrm2(nex,bvec,1),&
-                                        ", LSE block:",dnrm2(neqs,bvec(nex+1),1)
+     print "(5x,A)","RMS Errors of Fitting Equations"
+     print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
+                             ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
+                             ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1)*weight,1)/dnrm2(neqs,weight,1)
    end if
 
    ! construct normal equations matrix and right hand side vector

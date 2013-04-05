@@ -1,3 +1,8 @@
+## 2.2.2 (2013-04-05)
+
+* The print out for errors in LSE block before every iteration were not weighted and therefore does not reflect the true quality of
+fit.  Now both weighted and unweighted results are reported.   
+
 ## 2.2.1 (2013-04-03)
 
 * Direct construction of normal equations enables the program to skip explicit construction and storage of W matrix, which becomes
