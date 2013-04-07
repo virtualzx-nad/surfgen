@@ -14,10 +14,20 @@
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
+		<key>surfgen.app.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>surfgen.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+		<key>testsurfgen.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
 		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
@@ -33,6 +43,16 @@
 			<true/>
 		</dict>
 		<key>229BE1CE16FE032B00AB38FE</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>22BB145F1710C1D900524803</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>22BB146C1710C27200524803</key>
 		<dict>
 			<key>primary</key>
 			<true/>

@@ -111,6 +111,8 @@ SUBROUTINE readCoords()
         if(CoordSet(i)%Scaling.ne.0)then
             read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef(:)
             if(ios/=0)stop "Error reading coord set definitions."
+        else
+            CoordSet(i)%Coef= 0d0
         end if !(CoordSet(i)%Scaling.ne.0)
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -169,8 +171,9 @@ SUBROUTINE readCoords()
                         "Error: atoms with same index in 4-center dot product definition"
           end do!l
         end do!j
-        
+
         allocate(tmpCoord(4,nPmt))
+        CoordSet(i)%ncoord    = 0
 ! generate coordinate list by going through all permutations
         do l=1,nPmt
           rawCoord = pmtList(l,CoordSet(i)%atom)

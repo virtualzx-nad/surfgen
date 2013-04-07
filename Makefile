@@ -16,7 +16,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Set surfgen vesion
-SGENVER := 2.2.2
+SGENVER := 2.2.3
 
 # Get the OS name and version
 UNAME := $(shell uname -a)

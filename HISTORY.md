@@ -1,3 +1,9 @@
+## 2.2.3 (2013-04-07)
+
+* A test program created to test the consistency and detect problems within subroutines
+* Fixed a bug that ncoords was not initialized to 0, which caused 4-center dot product
+ definition to behave erroneously with `gfortran` compiler.
+
 ## 2.2.2 (2013-04-05)
 
 * The print out for errors in LSE block before every iteration were not weighted and therefore does not reflect the true quality of

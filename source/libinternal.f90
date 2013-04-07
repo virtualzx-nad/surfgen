@@ -131,52 +131,7 @@ SUBROUTINE reorderDot4(oldDot4,newDot4,parity)
         call swapInd(newDot4(2),newDot4(4),parity)
   end if
 END SUBROUTINE reorderDot4
-!
-! Transform a gradient in cartesian coordinates to one in internal
-! coordinates
-!
-SUBROUTINE cart2intgrad(cgrad,bmat,igrad)
-  use hddata, only:  ncoord
-  use progdata, only: natoms
-  IMPLICIT NONE
-  DOUBLE PRECISION,dimension(3*natoms),INTENT(IN)         :: cgrad
-  DOUBLE PRECISION,dimension(ncoord),INTENT(INOUT)        :: igrad
-  DOUBLE PRECISION,dimension(ncoord,3*natoms),INTENT(IN)  :: bmat
 
-  DOUBLE PRECISION,dimension(ncoord,3*natoms)             :: invB
-  DOUBLE PRECISION,dimension(3*natoms,1)      :: tmp
-
-  tmp(1:3*natoms,1)=cgrad
-  call ginv(ncoord,3*natoms,bmat,ncoord,invB,1D-7)
-  ! igrad=invB.cgrad
-  igrad=reshape(matmul(invB,tmp),(/ncoord/))
-end subroutine cart2intgrad
-
-!builds b matrix then calculate eigenvectors of B^T.B
-SUBROUTINE evecBTB(dim,cgeom,evals,evecs,cweight)
-  USE progdata, only: natoms
-  USE hddata, only: ncoord
-  IMPLICIT NONE
-  INTEGER,intent(IN)                                   :: dim
-  DOUBLE PRECISION,dimension(dim),INTENT(IN)           :: cgeom
-  DOUBLE PRECISION,dimension(natoms),INTENT(IN)        :: cweight
-  DOUBLE PRECISION,dimension(dim),INTENT(OUT)          :: evals
-  DOUBLE PRECISION,dimension(dim,dim),INTENT(OUT)      :: evecs
-  
-  double precision, dimension(ncoord)                  :: igeom
-  double precision, dimension(ncoord,3*natoms)         :: bmat
-  double precision, dimension(3*natoms,3*natoms)       :: btb
-  double precision,dimension(45*natoms*natoms)  :: scr
-  integer                      ::  INFO,i
-
-  call buildWBmat(cgeom(:3*natoms),igeom,bmat)
-  do i=1,natoms
-    bmat(:,i*3-2:i*3)=bmat(:,i*3-2:i*3)/sqrt(cweight(i))
-  end do
-  btb=matmul(transpose(bmat),bmat)
-  call DSYEV('V','U',3*natoms,btb,3*natoms,evals(:3*natoms),scr,45*natoms*natoms,INFO)
-  evecs(:3*natoms,:3*natoms)=btb
-END SUBROUTINE 
 !
 ! Builds a b-matrix given a set of internal coordinates definitions
 !
@@ -438,43 +393,6 @@ SUBROUTINE dvec(na,a1,a2,cgeom,vec,vnorm)
 
   return
 end SUBROUTINE dvec
-
-
-!
-!
-!
-SUBROUTINE cprod(vec1,vec2,cpvec,cpnorm)
-  IMPLICIT NONE
-  DOUBLE PRECISION,dimension(3),INTENT(IN)    :: vec1,vec2
-  DOUBLE PRECISION,INTENT(INOUT)              :: cpnorm
-  DOUBLE PRECISION,dimension(3),INTENT(INOUT) :: cpvec
-
-  INTEGER                                     :: i
-  DOUBLE PRECISION                            :: denom
-
-  cpvec(1) = vec1(2)*vec2(3) - vec1(3)*vec2(2)
-  cpvec(2) = vec1(3)*vec2(1) - vec1(1)*vec2(3)
-  cpvec(3) = vec1(1)*vec2(2) - vec1(2)*vec2(1)
-
-  cpnorm = 0
-  do i = 1,3
-   cpnorm = cpnorm + cpvec(i)**2
-  enddo
-
-  cpnorm = Sqrt(cpnorm)
-  if(cpnorm<1d-30) then
-   denom = 1.
-  else
-   denom = cpnorm
-  endif
-
-  do i = 1,3
-   cpvec(i) = cpvec(i)/denom
-  enddo
-
-  return
-end SUBROUTINE cprod
-
 
 !********************************************************************************
 ! CalcWij  

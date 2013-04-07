@@ -714,10 +714,10 @@ SUBROUTINE readginput(jtype)
   DOUBLE PRECISION,dimension(50)  :: e_guess,B_r1,B_r2,B_h
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
-                            printlvl,inputfl,atmgrp
+                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, &
-                            timeeval,B_r1,B_r2,B_h,parsing,eshift,nSymLineUps
+                            timeeval,B_r1,B_r2,B_h,parsing,eshift
 
   atomlabels = ''
 

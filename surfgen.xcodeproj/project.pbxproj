@@ -20,7 +20,6 @@
 		22489C8B16F900A300F2007F /* libutil.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7D16F9008100F2007F /* libutil.f90 */; };
 		22489C8C16F900A300F2007F /* localcoord.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7E16F9008100F2007F /* localcoord.f90 */; };
 		22489C8D16F900A300F2007F /* makesurf.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7F16F9008100F2007F /* makesurf.f90 */; };
-		22489C8E16F900A300F2007F /* minmex.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8016F9008100F2007F /* minmex.f90 */; };
 		22489C9016F900A300F2007F /* progdata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8216F9008100F2007F /* progdata.f90 */; };
 		22489C9116F900A300F2007F /* rdleclse.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8316F9008100F2007F /* rdleclse.f90 */; };
 		22489C9216F900A300F2007F /* surfgen.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8416F9008100F2007F /* surfgen.f90 */; };
@@ -33,6 +32,14 @@
 		229BE1D916FE03D300AB38FE /* libutil.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7D16F9008100F2007F /* libutil.f90 */; };
 		229BE1DD16FE03D300AB38FE /* potlib.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8116F9008100F2007F /* potlib.f90 */; };
 		229BE1DE16FE03D300AB38FE /* progdata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8216F9008100F2007F /* progdata.f90 */; };
+		22BB147B1711AFA600524803 /* hddata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7916F9008100F2007F /* hddata.f90 */; };
+		22BB147C1711AFA600524803 /* progdata.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C8216F9008100F2007F /* progdata.f90 */; };
+		22BB147D1711AFCE00524803 /* libinternal.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7B16F9008100F2007F /* libinternal.f90 */; };
+		22BB147E1711AFD600524803 /* libsym.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7C16F9008100F2007F /* libsym.f90 */; };
+		22BB147F1711B29C00524803 /* combinatorial.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7716F9008100F2007F /* combinatorial.f90 */; };
+		22BB14801711B30600524803 /* io.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7A16F9008100F2007F /* io.f90 */; };
+		22BB14811711B51B00524803 /* libutil.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22489C7D16F9008100F2007F /* libutil.f90 */; };
+		22FC9F031711B6F100DF72DD /* testsurfgen.f90 in Sources */ = {isa = PBXBuildFile; fileRef = 22FC9F021711B6E000DF72DD /* testsurfgen.f90 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -56,6 +63,17 @@
 			);
 			script = "/usr/bin/gfortran -m64 -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR} ${XZHU_BUILD_SETTING}";
 		};
+		22BB14781710C2B400524803 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = sourcecode.fortran;
+			isEditable = 1;
+			outputFiles = (
+				"$(TARGET_BUILD_DIR)/$(INPUT_FILE_BASE).o",
+				"",
+			);
+			script = "/usr/bin/gfortran -m64 -c ${INPUT_FILE_DIR}/${INPUT_FILE_NAME} -o ${TARGET_BUILD_DIR}/${INPUT_FILE_BASE}.o -I ${TARGET_BUILD_DIR} -J ${TARGET_BUILD_DIR} ${XZHU_BUILD_SETTING}";
+		};
 /* End PBXBuildRule section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -72,6 +90,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		22BB146B1710C27200524803 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -84,7 +111,6 @@
 		22489C7D16F9008100F2007F /* libutil.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = libutil.f90; path = source/libutil.f90; sourceTree = "<group>"; };
 		22489C7E16F9008100F2007F /* localcoord.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = localcoord.f90; path = source/localcoord.f90; sourceTree = "<group>"; };
 		22489C7F16F9008100F2007F /* makesurf.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = makesurf.f90; path = source/makesurf.f90; sourceTree = "<group>"; };
-		22489C8016F9008100F2007F /* minmex.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = minmex.f90; path = source/minmex.f90; sourceTree = "<group>"; };
 		22489C8116F9008100F2007F /* potlib.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = potlib.f90; path = source/potlib.f90; sourceTree = "<group>"; };
 		22489C8216F9008100F2007F /* progdata.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = progdata.f90; path = source/progdata.f90; sourceTree = "<group>"; };
 		22489C8316F9008100F2007F /* rdleclse.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = rdleclse.f90; path = source/rdleclse.f90; sourceTree = "<group>"; };
@@ -94,13 +120,19 @@
 		226A224B16FC2D630010C951 /* HISTORY.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = HISTORY.md; sourceTree = "<group>"; };
 		226A266E169547B4003C4445 /* Surfgen-OSX-ML */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Surfgen-OSX-ML"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2289FF8D16F99A9B009D4934 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
-		2299C4D916FA0E230027C5A9 /* bin */ = {isa = PBXFileReference; lastKnownFileType = folder; path = bin; sourceTree = "<group>"; };
 		229BE1CF16FE032B00AB38FE /* liblibsurfgen.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = liblibsurfgen.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		229BE1E416FE0EB600AB38FE /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		22BF126E169A66DD00566C40 /* test */ = {isa = PBXFileReference; lastKnownFileType = folder; path = test; sourceTree = "<group>"; };
+		22BB146D1710C27200524803 /* testsurfgen */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = testsurfgen; sourceTree = BUILT_PRODUCTS_DIR; };
+		22BB14791710C2FE00524803 /* examples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = examples; sourceTree = "<group>"; };
+		22BB147A1710C36600524803 /* testsurfgen.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = testsurfgen.1; path = man/man1/testsurfgen.1; sourceTree = "<group>"; };
 		22E02D7116EA83A4001D5AC1 /* coord.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = coord.in.1; path = man/man1/coord.in.1; sourceTree = "<group>"; };
 		22E02D7216EA937A001D5AC1 /* surfgen.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = surfgen.in.1; path = man/man1/surfgen.in.1; sourceTree = "<group>"; };
 		22EC242F16F3D80B00A8C67B /* points.in.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; name = points.in.1; path = man/man1/points.in.1; sourceTree = "<group>"; };
+		22FC9F021711B6E000DF72DD /* testsurfgen.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = testsurfgen.f90; path = test/testsurfgen.f90; sourceTree = SOURCE_ROOT; };
+		22FC9F041711B7AD00DF72DD /* connect.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = connect.in; path = test/connect.in; sourceTree = SOURCE_ROOT; };
+		22FC9F051711B7AD00DF72DD /* coord.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = coord.in; path = test/coord.in; sourceTree = SOURCE_ROOT; };
+		22FC9F061711B7AD00DF72DD /* hd.data */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = hd.data; path = test/hd.data; sourceTree = SOURCE_ROOT; };
+		22FC9F071711B7AD00DF72DD /* irrep.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = irrep.in; path = test/irrep.in; sourceTree = SOURCE_ROOT; };
+		22FC9F081711B7AD00DF72DD /* surfgen.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = surfgen.in; path = test/surfgen.in; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +144,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		229BE1CC16FE032B00AB38FE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22BB146A1710C27200524803 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -133,7 +172,6 @@
 				22489C7D16F9008100F2007F /* libutil.f90 */,
 				22489C7E16F9008100F2007F /* localcoord.f90 */,
 				22489C7F16F9008100F2007F /* makesurf.f90 */,
-				22489C8016F9008100F2007F /* minmex.f90 */,
 				22489C8116F9008100F2007F /* potlib.f90 */,
 				22489C8216F9008100F2007F /* progdata.f90 */,
 				22489C8316F9008100F2007F /* rdleclse.f90 */,
@@ -149,16 +187,16 @@
 				22532A21168AE2CE00238D30 /* Makefile */,
 				226A224B16FC2D630010C951 /* HISTORY.md */,
 				22489C7616F9001600F2007F /* Source Code */,
+				22BB146E1710C27200524803 /* testsurfgen */,
 				226A266F169547B4003C4445 /* Products */,
-				229BE1E416FE0EB600AB38FE /* lib */,
-				2299C4D916FA0E230027C5A9 /* bin */,
-				22BF126E169A66DD00566C40 /* test */,
+				22BB14791710C2FE00524803 /* examples */,
 			);
 			sourceTree = "<group>";
 		};
 		22535BCE16E6796E003F3F34 /* Man Pages */ = {
 			isa = PBXGroup;
 			children = (
+				22BB147A1710C36600524803 /* testsurfgen.1 */,
 				2289FF8D16F99A9B009D4934 /* README.md */,
 				22535BCD16E67968003F3F34 /* surfgen.1 */,
 				22E02D7116EA83A4001D5AC1 /* coord.in.1 */,
@@ -173,8 +211,22 @@
 			children = (
 				226A266E169547B4003C4445 /* Surfgen-OSX-ML */,
 				229BE1CF16FE032B00AB38FE /* liblibsurfgen.a */,
+				22BB146D1710C27200524803 /* testsurfgen */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		22BB146E1710C27200524803 /* testsurfgen */ = {
+			isa = PBXGroup;
+			children = (
+				22FC9F041711B7AD00DF72DD /* connect.in */,
+				22FC9F051711B7AD00DF72DD /* coord.in */,
+				22FC9F061711B7AD00DF72DD /* hd.data */,
+				22FC9F071711B7AD00DF72DD /* irrep.in */,
+				22FC9F081711B7AD00DF72DD /* surfgen.in */,
+				22FC9F021711B6E000DF72DD /* testsurfgen.f90 */,
+			);
+			path = testsurfgen;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -192,11 +244,12 @@
 /* Begin PBXLegacyTarget section */
 		22532A1B168AE2A700238D30 /* surfgen */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "$(ACTION)";
+			buildArgumentsString = "$(ACTION) FC=gfortran";
 			buildConfigurationList = 22532A1E168AE2A700238D30 /* Build configuration list for PBXLegacyTarget "surfgen" */;
 			buildPhases = (
 			);
 			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
 			dependencies = (
 			);
 			name = surfgen;
@@ -242,6 +295,24 @@
 			productReference = 229BE1CF16FE032B00AB38FE /* liblibsurfgen.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		22BB146C1710C27200524803 /* testsurfgen */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22BB14731710C27200524803 /* Build configuration list for PBXNativeTarget "testsurfgen" */;
+			buildPhases = (
+				22BB14691710C27200524803 /* Sources */,
+				22BB146A1710C27200524803 /* Frameworks */,
+				22BB146B1710C27200524803 /* CopyFiles */,
+			);
+			buildRules = (
+				22BB14781710C2B400524803 /* PBXBuildRule */,
+			);
+			dependencies = (
+			);
+			name = testsurfgen;
+			productName = testsurfgen;
+			productReference = 22BB146D1710C27200524803 /* testsurfgen */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -266,6 +337,7 @@
 				22532A1B168AE2A700238D30 /* surfgen */,
 				226A266D169547B4003C4445 /* Surfgen-OSX-ML.app */,
 				229BE1CE16FE032B00AB38FE /* libsurfgen */,
+				22BB146C1710C27200524803 /* testsurfgen */,
 			);
 		};
 /* End PBXProject section */
@@ -283,7 +355,6 @@
 				22489C8A16F900A300F2007F /* libsym.f90 in Sources */,
 				22489C8B16F900A300F2007F /* libutil.f90 in Sources */,
 				22489C8C16F900A300F2007F /* localcoord.f90 in Sources */,
-				22489C8E16F900A300F2007F /* minmex.f90 in Sources */,
 				22489C9116F900A300F2007F /* rdleclse.f90 in Sources */,
 				22489C8D16F900A300F2007F /* makesurf.f90 in Sources */,
 				22489C8816F900A300F2007F /* io.f90 in Sources */,
@@ -307,6 +378,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		22BB14691710C27200524803 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22BB14811711B51B00524803 /* libutil.f90 in Sources */,
+				22BB147F1711B29C00524803 /* combinatorial.f90 in Sources */,
+				22BB147C1711AFA600524803 /* progdata.f90 in Sources */,
+				22BB147B1711AFA600524803 /* hddata.f90 in Sources */,
+				22BB147D1711AFCE00524803 /* libinternal.f90 in Sources */,
+				22BB147E1711AFD600524803 /* libsym.f90 in Sources */,
+				22BB14801711B30600524803 /* io.f90 in Sources */,
+				22FC9F031711B6F100DF72DD /* testsurfgen.f90 in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -321,7 +407,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2.2.2;
+				CURRENT_PROJECT_VERSION = 2.2.3;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -354,7 +440,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2.2.2;
+				CURRENT_PROJECT_VERSION = 2.2.3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -459,6 +545,40 @@
 			};
 			name = Release;
 		};
+		22BB14741710C27200524803 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				OTHER_LDFLAGS = (
+					"-L/usr/local/lib",
+					"-lgfortran",
+					"-framework",
+					vecLib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		22BB14751710C27200524803 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				OTHER_LDFLAGS = (
+					"-L/usr/local/lib",
+					"-lgfortran",
+					"-framework",
+					vecLib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -494,6 +614,15 @@
 			buildConfigurations = (
 				229BE1D016FE032B00AB38FE /* Debug */,
 				229BE1D116FE032B00AB38FE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		22BB14731710C27200524803 /* Build configuration list for PBXNativeTarget "testsurfgen" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22BB14741710C27200524803 /* Debug */,
+				22BB14751710C27200524803 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -965,8 +965,9 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
-                       "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
+             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) &
+                        print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
+                        "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
              if(gnrm>1D-4) then
                 nrmgrad = nrmgrad + dgrd
                 avggrad = avggrad + sqrt(dgrd)
@@ -1788,55 +1789,6 @@ SUBROUTINE GetAngles(ckl,npoints,theta,sg)
   end do
 END SUBROUTINE GetAngles
 !---------------------------------------------
-SUBROUTINE testCoord(geom,step)
-  use hddata, only : ncoord
-  use progdata, only:natoms,coordmap,CoordSet
-  IMPLICIT NONE
-  DOUBLE PRECISION,dimension(3*natoms),intent(in)::geom
-  double precision,intent(in) :: step
-
-  INTEGER :: I,j,k,m,n
-  double precision ::   dgeom(3*natoms),cgrad,    &
-                        bmat(ncoord,3*natoms),igeom(ncoord), &
-                        bm2(ncoord,3*natoms)
-  integer,parameter :: maxstep=2
-  double precision,parameter :: fdcoef(maxstep)=[2d0/3,-1d0/12]
-  print *,"Testing Coordinate Gradients."
-  print *,"initial Cartesian geometry: "
-  j=1
-  do i=1,natoms
-    print "(3F12.5)",geom(j:j+2)
-    j=j+3
-  end do
-  call buildWBmat(geom,igeom,bmat)
-  do i=1,ncoord
-    m=coordmap(i,1) !index of set
-    n=coordmap(i,2) !index in set
-    print *,""
-    print *,"Testing Coordinate ",i," (set",m,",ind",n,")"
-    print *,"  Coord Type=",CoordSet(m)%Type,"  , Scaling Mode=",CoordSet(m)%Scaling
-    print *,"  Atoms: ",CoordSet(m)%coord(:,n)
-    print "(A)","   Cart# Analytical Numerical  Difference "
-    do j=1,3*natoms
-    ! calculating numerical gradient of coord i with respect to cartesian j
-        cgrad = 0d0
-        do k=1,maxstep
-            dgeom = geom
-            dgeom(j)=dgeom(j)+step*k
-            call buildWBmat(dgeom,igeom,bm2)
-            cgrad = cgrad+fdcoef(k)*igeom(i)
-            dgeom = geom
-            dgeom(j)=dgeom(j)-step*k
-            call buildWBmat(dgeom,igeom,bm2)
-            cgrad = cgrad-fdcoef(k)*igeom(i)
-        end do!k
-        cgrad=cgrad/step
-        if(abs(cgrad-bmat(i,j))>1d-8)  &
-            print "(3x,I4,2x,3E11.4)",j,bmat(i,j),cgrad,cgrad-bmat(i,j)
-    end do!j=1,3*natoms
-  end do!i=1,ncoord
-END SUBROUTINE testCoord
-!---------------------------------------------
 ! Fit Hd according to Ab initio Data
 SUBROUTINE makesurf()
   use hddata, only: nstates,ncoord,nblks,order,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
@@ -1882,9 +1834,6 @@ SUBROUTINE makesurf()
 
   NaN  = 0
   NaN  = NaN/NaN
-
-  !call testCoord(dispgeoms(1)%cgeom,1d-5)  !perform testings for coordinate definitions
-  !stop                                     !  only use these for new coordinates
 
   if(printlvl>0)print *,"Entering makesurf"
   call getPtList()
