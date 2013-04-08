@@ -129,8 +129,8 @@ module progdata
 ! GLOBAL VARIABLES
   INTEGER                                      :: printlvl
   INTEGER                                      :: natoms
-  CHARACTER(72)                                :: inputfl
-  CHARACTER(99)                                :: inputdir
+  CHARACTER(255)                               :: inputfl
+  CHARACTER(255)                               :: inputdir
 
 ! * MOLECULE PROPERTIES *
 ! typeCount            :  number of types of indistinguishable atoms.
@@ -151,7 +151,7 @@ module progdata
  LOGICAL                                      ::  switchdiab
 
 ! Connectivities to be preserved for filtering of non-feasible permutations
- CHARACTER(72)                                ::  cntfl
+ CHARACTER(255)                               ::  cntfl
 
 CONTAINS
  !***********************************************************************

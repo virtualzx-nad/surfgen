@@ -16,11 +16,11 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
 # Objects needed for test programs 
-OBJTf   =  hddata.o  combinatorial.o progdata.o libutil.o libsym.o libinternal.o \
-           io.o testsurfgen.o
+OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
+           libsym.o libinternal.o localcoord.o makesurf.o io.o testsurfgen.o
 
 # Set surfgen vesion
-SGENVER := 2.2.4
+SGENVER := 2.2.5
 
 # Get the OS name and version
 UNAME := $(shell uname -a)

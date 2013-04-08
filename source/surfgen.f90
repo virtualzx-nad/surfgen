@@ -31,9 +31,7 @@ SUBROUTINE readinput(jtype)
   INTEGER,INTENT(INOUT)           :: jtype
   INTEGER                         :: i,j,ios
   INTEGER                         :: nGrp,jobtype
-  INTEGER,dimension(10)           :: surface,updatehess
-  INTEGER,dimension(50)           :: ci,atmgrp
-  DOUBLE PRECISION,dimension(500) :: minguess,mexguess
+  INTEGER,dimension(50)           :: atmgrp
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupsym,groupPrty
 
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
@@ -54,7 +52,6 @@ SUBROUTINE readinput(jtype)
   if(ios/=0)then
     print *,"readinput: cannot open file surfgen.in.  IOSTAT=",ios
   end if!ios/=0
-
   read(unit=INPUTFILE,NML=GENERAL)
   if(printlvl>0)print *,"    readinput():  Control parameters read from surfgen.in"
   jtype  = jobtype

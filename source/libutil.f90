@@ -242,7 +242,7 @@ SUBROUTINE getCartHd(cgeom,energy,cgrads,hmat,dcgrads)
   DOUBLE PRECISION,dimension(3*natoms,nstates,nstates),intent(OUT) ::  cgrads,dcgrads
   DOUBLE PRECISION,dimension(nstates),intent(OUT)                  ::  energy
 
-  double precision,dimension(nstates,nstates)              ::  evec
+  double precision,dimension(nstates,nstates)              ::  evec,hmat2
   double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
   double precision,dimension(ncoord)                ::  igeom
   double precision,dimension(ncoord,3*natoms)       ::  bmat 
@@ -272,7 +272,8 @@ SUBROUTINE getCartHd(cgeom,energy,cgrads,hmat,dcgrads)
   end do !i=1,3*natoms
 
  ! generate eigenvectors and energies at current geometry
-  CALL DSYEVR('V','A','U',nstates,hmat,nstates,dble(0),dble(0),0,0,1D-12,m,&
+  hmat2 = hmat
+  CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-16,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
@@ -622,7 +623,7 @@ CONTAINS
     if(hasGrad(i,j)) errrot=errg
     if(hasGrad(i,i).and.hasGrad(j,j)) errrot=errrot+errh
     if(errrot<errcurr)then
-      if(printlvl>0)print *,"    G and H vectors are switched."
+      if(printlvl>2)print *,"    G and H vectors are switched."
       if(beta>0)then
           beta=beta-pi/4
       else

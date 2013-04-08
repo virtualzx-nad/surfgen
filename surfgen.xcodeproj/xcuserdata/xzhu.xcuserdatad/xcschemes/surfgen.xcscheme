@@ -48,13 +48,14 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "NO"
+      useCustomWorkingDirectory = "YES"
+      customWorkingDirectory = "/Users/xzhu/Documents/workspace/surfgen/test"
       buildConfiguration = "Debug"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       allowLocationSimulation = "YES">
       <PathRunnable
-         FilePath = "/Users/xzhu/Documents/workspace/surfgen/surfgen">
+         FilePath = "/Users/xzhu/Documents/workspace/surfgen/bin/surfgen-2.2.5-Darwin-x86_64">
       </PathRunnable>
       <AdditionalOptions>
       </AdditionalOptions>

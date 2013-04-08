@@ -8,7 +8,7 @@ SUBROUTINE readCoords()
   use progdata,only:printlvl,nCoordSets,CoordSet,coordmap,nCoordCond,CoordCond,condRHS
   use CNPI, only: nPmt, pmtList
   implicit none
-  character(72) :: comment
+  character(255):: comment
   character(4)  :: str
   logical       :: found
   integer       :: ios,i,j,k,l,newcrd(4), &
@@ -383,7 +383,7 @@ SUBROUTINE readIrreps()
   use progdata, only:IRREPFL,printlvl
   use CNPI, only:  nirrep, irrep, deallocIrreps
   IMPLICIT NONE
-  character(72)            ::  comment
+  character(255)           ::  comment
   character(3)             ::  tpStr
   integer                  ::  i,j,k,d,ordr,ios
 
@@ -560,7 +560,7 @@ end SUBROUTINE cleanup
 SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   use hddata, only:  getFLUnit
   IMPLICIT NONE
-  CHARACTER(72),INTENT(IN)                              :: gfile
+  CHARACTER(255),INTENT(IN)                             :: gfile
   INTEGER,INTENT(IN)                                    :: na
   INTEGER,INTENT(INOUT)                                 :: ngeoms
   CHARACTER(3),dimension(na),INTENT(INOUT)              :: atoms
@@ -593,7 +593,7 @@ END SUBROUTINE readColGeom
 ! output COLUMBUS geom file
 SUBROUTINE writeColGeom(gfile,na,atoms,anums,cgeom,masses)
   IMPLICIT NONE
-  CHARACTER(72),INTENT(IN)                       :: gfile
+  CHARACTER(255),INTENT(IN)                      :: gfile
   INTEGER,INTENT(IN)                             :: na
   CHARACTER(3),dimension(na),INTENT(INOUT)       :: atoms
   DOUBLE PRECISION,dimension(na),INTENT(INOUT)   :: anums,masses
@@ -627,7 +627,7 @@ END SUBROUTINE writeColGeom
 SUBROUTINE readEner(efile,ngeoms,nstates,eners,st1,st2)
   use hddata, only: getFLUnit
   IMPLICIT NONE
-  CHARACTER(72),INTENT(IN)                              :: efile
+  CHARACTER(255),INTENT(IN)                             :: efile
   INTEGER,INTENT(IN)                                    :: nstates
   INTEGER,INTENT(INOUT)                                 :: ngeoms
   INTEGER,INTENT(OUT)                                   :: st1,st2
@@ -669,7 +669,7 @@ END SUBROUTINE readEner
 SUBROUTINE readGrads(gfile,ngrads,na,cgrads)
   use hddata, only: getFLUnit
   IMPLICIT NONE
-  CHARACTER(72),INTENT(IN)                              :: gfile
+  CHARACTER(255),INTENT(IN)                             :: gfile
   INTEGER,INTENT(INOUT)                                 :: ngrads
   INTEGER,INTENT(IN)                                    :: na
   DOUBLE PRECISION,dimension(3*na,ngrads),INTENT(INOUT) :: cgrads
@@ -700,7 +700,7 @@ END SUBROUTINE readGrads
 !
 SUBROUTINE readHessian(gfile,nrc,hess)
   IMPLICIT NONE
-  CHARACTER(72),INTENT(IN)                                :: gfile
+  CHARACTER(255),INTENT(IN)                               :: gfile
   INTEGER,INTENT(IN)                                      :: nrc
   DOUBLE PRECISION,dimension(nrc*(nrc+1)/2),INTENT(INOUT) :: hess
   INTEGER                                                 :: i,GUNIT,ileft,nread,ndone
@@ -729,8 +729,8 @@ end SUBROUTINE readHessian
 FUNCTION filename(s1,s2,grdptn,cpptn)
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: s1,s2
-  CHARACTER(72),INTENT(IN)    :: grdptn,cpptn
-  CHARACTER(72)               :: filename
+  CHARACTER(255),INTENT(IN)   :: grdptn,cpptn
+  CHARACTER(255)              :: filename
   CHARACTER(1)                :: st1,st2
   integer :: i
 
@@ -773,7 +773,7 @@ SUBROUTINE printMatrix(ofile,rlabs,clabs,pcols,nr,nc,mat,fld,dcml)
   INTEGER                                :: i,j,k,ilo,ihi,nbatch
   INTEGER                                :: rlen,clen,flen,lspace,rspace
   CHARACTER(4)                           :: rlstr,clstr,lstr,rstr
-  CHARACTER(72)                          :: FMT1,FMT2,FMT3,FMT4
+  CHARACTER(255)                         :: FMT1,FMT2,FMT3,FMT4
 
   flen = fld
   rlen = 0

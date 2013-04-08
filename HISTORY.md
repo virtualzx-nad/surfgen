@@ -1,3 +1,9 @@
+## 2.2.5 (2013-04-08)
+
+* Test program for the gradients of Hd and the Largrangian added to the test program
+* Increased the length of all filename strings from 72 to 255
+* Code clean up and structural optimizations
+
 ## 2.2.4 (2013-04-08)
 
 * Test program can now be compiled and run with `make` by doing

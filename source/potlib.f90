@@ -27,7 +27,7 @@ MODULE potdata
      DOUBLE PRECISION :: mdev
 
 ! name of file that contains reference geometries
-     CHARACTER(72) ::  gflname
+     CHARACTER(255)::  gflname
      DOUBLE PRECISION :: mindcutoff
      INTEGER       ::  nrpts   !# of points in reference geom file
 ! reference geometry in scaled rij coordinates
@@ -57,7 +57,7 @@ MODULE potdata
 ! errflname   Name of the file that contains fitting energy error and gradient error
 !             of all the data points
      LOGICAL                                ::  calcErr
-     CHARACTER(72)                          ::  errflname
+     CHARACTER(255)                         ::  errflname
 
 ! Surface number and time data used for outputfile generation
      DOUBLE PRECISION                       ::  timetraj

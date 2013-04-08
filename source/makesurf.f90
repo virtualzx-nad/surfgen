@@ -31,11 +31,11 @@ MODULE makesurfdata
   INTEGER,parameter                            :: MaxSearchPaths=100 ! Maximum number of search pathes that can be provided by user
   INTEGER                                      :: NSearchPaths
   CHARACTER(1000),dimension(MaxSearchPaths)    :: SPNotes
-  CHARACTER(72),dimension(MaxSearchPaths)      :: SearchPath    ! The program will look for input files in these directories
+  CHARACTER(255),dimension(MaxSearchPaths)     :: SearchPath    ! The program will look for input files in these directories
   LOGICAL,dimension(:,:),allocatable           :: hasEner       ! specifies the presence of data at each point
   LOGICAL,dimension(:,:,:),allocatable         :: hasGrad       ! specifies the presence of data at each point
   
-  CHARACTER(72),dimension(MaxSearchPaths)      :: notefptn,gmfptn,enfptn,grdfptn,cpfptn  ! naming pattern of input files.
+  CHARACTER(255),dimension(MaxSearchPaths)      :: notefptn,gmfptn,enfptn,grdfptn,cpfptn  ! naming pattern of input files.
 
 ! General options
   DOUBLE PRECISION                             :: eshift    ! uniform shift on ab initio energies
@@ -49,15 +49,15 @@ MODULE makesurfdata
   DOUBLE PRECISION                             :: flattening!flattening parameter for differential convergence
 !gorder: energy difference below which ckl will be ordered according to gradients rather than energies
   DOUBLE PRECISION                             :: gorder
-  CHARACTER(72)                                :: outputfl  !name of the output file generated after fit
-  CHARACTER(72)                                :: flheader  !comment line in the outputfile
-  CHARACTER(72)                                :: ckl_input   !if nonempty, read wave functions from this file
-  CHARACTER(72)                                :: ckl_output  !if nonempty, output wave functions to this file
+  CHARACTER(255)                               :: outputfl  !name of the output file generated after fit
+  CHARACTER(255)                               :: flheader  !comment line in the outputfile
+  CHARACTER(255)                               :: ckl_input   !if nonempty, read wave functions from this file
+  CHARACTER(255)                               :: ckl_output  !if nonempty, output wave functions to this file
 
 ! restartdir specifies a directory where hd coefficients for each iteration will
 ! be saved. particularly useful if the error turns up at one point and you want
 ! to restart from a specific iteration, or when the job was interrupted. 
-  CHARACTER(72)                                :: restartdir  !if nonempty, output wave functions to this file
+  CHARACTER(255)                               :: restartdir  !if nonempty, output wave functions to this file
 
   LOGICAL                                      :: usefij   ! use coupling instead of coupling*dE
 
@@ -147,12 +147,10 @@ MODULE makesurfdata
 ! index of the iteration to start differential convergence
   integer    :: dfstart
 
-! number of test point for gradient verifications
-  integer    :: ntest
-
-! 
-! number of unknown coefficients
+! number of unknown coefficients after null-space reduction (actually used in fit)
   integer    :: ncons
+! number of unknown coefficients before null-space reduction (hd storage)
+  integer    :: ncon_total
 ! number of least squares fitting equations
   integer    :: neqs
 ! number of exact equations
@@ -161,9 +159,16 @@ MODULE makesurfdata
 ! number of linear steps to search along positive and negative direction
   integer    :: linSteps, linNegSteps
 
+! Total norm of gradients by all basis function for physical gradient component
+! at each specific data point
+  DOUBLE PRECISION,dimension(:,:,:),allocatable     :: gradNorm
+
+! Weights for least squars equations
+  DOUBLE PRECISION,dimension(:),allocatable         :: weight
+
 !Hd predictions for all data points
-  DOUBLE PRECISION,dimension(:,:,:,:),allocatable    :: fitG
-  DOUBLE PRECISION,dimension(:,:),allocatable        :: fitE
+  DOUBLE PRECISION,dimension(:,:,:,:),allocatable   :: fitG
+  DOUBLE PRECISION,dimension(:,:),allocatable       :: fitE
  CONTAINS
 
   ! determine if each equation will be include / excluded / fitted exactly
@@ -248,14 +253,13 @@ MODULE makesurfdata
 !nex             :  Number of exact equations actually generated
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
 !Exact equations will be sorted by point index
-  SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,gradNorm,wvec)
+  SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,wvec)
     use hddata, only: nblks,blkmap,nstates
     use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
     integer,dimension(MaxEqs,4),intent(out) :: lseMap,exactEqs
     double precision,dimension(MaxEqs),intent(out)   :: wvec
-    DOUBLE PRECISION,dimension(npoints,nvibs,nblks),intent(in)     :: gradNorm
     integer   ::  tmp(4)
 
     integer  :: i,j,k,s1,s2,nr,ng
@@ -991,21 +995,19 @@ MODULE makesurfdata
     if(printlvl>1)print *,"    RMS error to exact gradient equations:  ",Sqrt(dG_exact/NEx_grd)
     if(printlvl>1)print "(2(A,E12.4))","    RMS error of derivative couplings:   ",&
                         Sqrt(nrmdcp/inc_cp),"  RMS norm of couplings:",Sqrt(nrmcp/inc_cp)
- END SUBROUTINE
+ END SUBROUTINE getError
 
   !----------------------------------------------------------------------------------------
   !Calculate numerical gradients with respect to the fitting coefficients
-  SUBROUTINE getCGrad(nex,neqs,nc,cilm,dCi,dLambda,lag,weight,jaco)
+  SUBROUTINE getCGrad(cilm,dCi,dLambda,lag,jaco)
     USE progdata, ONLY : printlvl
     USE hddata,   ONLY : RowGrp, ColGrp, offs, GrpLen, nstates,nBasis,nBlks
     IMPLICIT NONE
-    INTEGER, INTENT(IN)                                                  :: nex, neqs, nc
-    DOUBLE PRECISION,dimension(nex+nc), INTENT(IN)                       :: cilm
-    DOUBLE PRECISION,dimension(neqs),INTENT(IN)                          :: weight
-    DOUBLE PRECISION,dimension(nc ), INTENT(OUT)                         :: dCi
-    DOUBLE PRECISION,dimension(nex), INTENT(OUT)                         :: dLambda
-    DOUBLE PRECISION,                INTENT(OUT)                         :: Lag    
-    DOUBLE PRECISION,dimension(nex,nc), INTENT(OUT)                      :: jaco
+    DOUBLE PRECISION,dimension(nex+ncons), INTENT(IN)               :: cilm
+    DOUBLE PRECISION,dimension(ncons), INTENT(OUT)                  :: dCi
+    DOUBLE PRECISION,dimension(nex), INTENT(OUT)                    :: dLambda
+    DOUBLE PRECISION,                INTENT(OUT)                    :: Lag
+    DOUBLE PRECISION,dimension(nex,ncons), INTENT(OUT)              :: jaco
     
 !  These intermediate quantities are constructed for each coefficient i as vectors over
 !  all the points, because they are used by multiple equations that involve the same point.
@@ -1054,7 +1056,6 @@ MODULE makesurfdata
     allocate(VIJ(npoints,nvibs,nstates,nstates))
     allocate(UIJ(npoints,nvibs,nstates,nstates))
     allocate(DIJ(npoints,nstates,nstates))
-
     dCi     = dble(0)
     dLambda = dble(0)
     PmQ     = dble(0)
@@ -1208,7 +1209,7 @@ MODULE makesurfdata
       t4 = t4 + dble(count2-count1)/count_rate
       
 !  construct derivative of the Lagrangian with respect to coefficient
-      dCi(ico) = - dot_product(PmQ(nex+1:)*weight,dQ(nex+1:)*weight)+dot_product(cilm(nc+1:),dQ(1:nex))+flattening*cilm(ico)
+      dCi(ico) = - dot_product(PmQ(nex+1:)*weight,dQ(nex+1:)*weight)+dot_product(cilm(ncons+1:),dQ(1:nex))+flattening*cilm(ico)
       jaco(1:nex,ico) =  dQ(1:nex)
       call system_clock(COUNT=count1,COUNT_RATE=count_rate)
       t5 = t5 + dble(count1-count2)/count_rate
@@ -1217,8 +1218,8 @@ MODULE makesurfdata
 
 ! construct derivative with respect to Lagrange multipliers
     dLambda = - PmQ(1:nex)
-    lag =    sum(weight*weight*PmQ(nex+1:)*PmQ(nex+1:))/2-sum(cilm(nc+1:)*PmQ(1:nex))+&
-             sum(cilm(1:nc)*cilm(1:nc))*flattening/2
+    lag =    sum(weight*weight*PmQ(nex+1:)*PmQ(nex+1:))/2-sum(cilm(ncons+1:)*PmQ(1:nex))+&
+             sum(cilm(1:ncons)*cilm(1:ncons))*flattening/2
     deallocate(WIJ)
     deallocate(VIJ)
     deallocate(DIJ)
@@ -1243,14 +1244,14 @@ MODULE makesurfdata
 ! of the norm of the gradient of Lagrangian, the subroutine attempts
 ! to minimize norm of gradient of L.
 ! On output, the rows of B are orthongalized by the transformation matrix Q
-  SUBROUTINE optLag(nc,nex,B,ldb,dCi,asol,Borth)
+  SUBROUTINE optLag(B,ldb,dCi,asol,Borth)
     USE progdata, ONlY: printlvl
     IMPLICIT NONE
-    INTEGER, INTENT(IN)                                         :: nex, nc, ldb
-    DOUBLE PRECISION,dimension(ldb,nc),intent(IN)               :: B
-    DOUBLE PRECISION,dimension(ldb,nc),intent(OUT)              :: Borth
-    DOUBLE PRECISION, INTENT(INOUT),dimension(nc)               :: dCi
-    DOUBLE PRECISION,dimension(nex+nc),INTENT(INOUT)            :: asol
+    INTEGER, INTENT(IN)                                         :: ldb
+    DOUBLE PRECISION,dimension(ldb,ncons),intent(IN)            :: B
+    DOUBLE PRECISION,dimension(ldb,ncons),intent(OUT)           :: Borth
+    DOUBLE PRECISION, INTENT(INOUT),dimension(ncons)            :: dCi
+    DOUBLE PRECISION,dimension(nex+ncons),INTENT(INOUT)         :: asol
 
     double precision,dimension(nex,nex)   ::  BBt
     double precision,dimension(nex)       ::  Bg, tmp, dLag,w
@@ -1264,10 +1265,10 @@ MODULE makesurfdata
       print *,"  Calculating optimal values of Lagrange multipliers..."
       call system_clock(COUNT=c1,COUNT_RATE=crate)
     end if
-    CALL DGEMV('N',nex,nc,dble(-1),B,ldb,dCi,int(1),dble(0),Bg,int(1))
+    CALL DGEMV('N',nex,ncons,dble(-1),B,ldb,dCi,int(1),dble(0),Bg,int(1))
 
     ! BBt = B.B^T
-    CALL DSYRK('U','N',nex,nc,dble(1),B,ldb,dble(0),BBt,nex)
+    CALL DSYRK('U','N',nex,ncons,dble(1),B,ldb,dble(0),BBt,nex)
     CALL DSYEVD('V','U',nex,BBt,nex,W,WORK,LWORK,IWORK,LIWORK,INFO)
     CALL DGEMV('T',nex,nex,dble(1),BBt,nex,Bg,int(1),dble(0),tmp,int(1))
     do i=1,nex
@@ -1278,160 +1279,25 @@ MODULE makesurfdata
       end if
     end do!i=1,nex
     CALL DGEMV('N',nex,nex,dble(1),BBt,nex,tmp,int(1),dble(0),dLag,int(1))
-    asol(nc+1:)=asol(nc+1:)+dLag
+    asol(ncons+1:)=asol(ncons+1:)+dLag
     do i=1,nex
-      if(abs(asol(i+nc))>1D0.and.printlvl>1)then
+      if(abs(asol(i+ncons))>1D0.and.printlvl>1)then
        print "(4x,A,I4,A,F8.2,A,4I5)",&
-                 "Large Lagrange multiplier. eq",i,",val=",asol(i+nc),",eqmap=",eqmap(i,:)
+                 "Large Lagrange multiplier. eq",i,",val=",asol(i+ncons),",eqmap=",eqmap(i,:)
       end if
     end do!i=1,nex
     ! update new gradient
-    CALL DGEMV('T',nex,nc,dble(1),B,ldb,dLag,int(1),dble(1),dCi,int(1))
+    CALL DGEMV('T',nex,ncons,dble(1),B,ldb,dLag,int(1),dble(1),dCi,int(1))
     if(printlvl>1)then
       call system_clock(COUNT=c2)
       print "(A,F6.2,A)","  Lagrange multipliers and Lagrangian gradients updated in ",(c2-c1)/dble(crate),"s"
     end if
     ! B'=Q^T.B
-    CALL DGEMM('T','N',nex,nc,nex,dble(1),BBt,nex,B,ldb,dble(0),Borth,ldb)
+    CALL DGEMM('T','N',nex,ncons,nex,dble(1),BBt,nex,B,ldb,dble(0),Borth,ldb)
     do i=1,nex
       if(abs(w(i))>exactTol) Borth(i,:)=Borth(i,:)/sqrt(w(i))
     end do!i=1,nex
   END SUBROUTINE optLag
-!------------------------------------------------------------------------------------------------------
-! subroutine for testing gradients for Hd and/or gradients for Lagrangian
-! An eight point 8th order finite difference scheme is used to evaluate the gradients
-! 
-  SUBROUTINE testSurfgen(disp,hvec,wtvec)
-    USE progdata, only : natoms, printlvl
-    USE hddata, only : nstates, updateHd,linearizeHd
-    IMPLICIT NONE
-    DOUBLE PRECISION, INTENT(IN)                  :: disp
-    DOUBLE PRECISION, INTENT(IN),dimension(ncons) :: hvec
-    DOUBLE PRECISION, DIMENSION(ncons),INTENT(IN) :: wtvec
-    integer           ::  i,  n, j, k, prtl
-    double precision  ::  Ea(nstates), dHa(3*natoms,nstates,nstates)   ,&
-                          hmat(nstates,nstates), dcgrads(3*natoms,nstates,nstates)
-    double precision,dimension(3*natoms) ::  cgeom,dgeom,cgeom0
-    double precision                     :: hnorm, ind, maxratio
-    double precision, dimension(ncons+nex)   ::  asol0, asol, dsol
-    double precision,external            :: dnrm2
-    double precision  :: DNumHd(nstates,nstates), DAnaHd(nstates,nstates),&   ! Numerical and analytical gradients
-                         DNumHa(nstates),DAnaHa(nstates), &                               ! for Hd in both representations
-                         DNumL, DAnaL     ! for Hd and Lagrangian
-    double precision  :: lag, dCi(ncons), dL(nex)
-    double precision, dimension(nex,ncons)                      :: jaco
-    integer, parameter:: ndisp=4
-    double precision  :: coef(ndisp)=(/ 4/5D0 , -1/5D0, 4/105D0, -1/280D0 /)
- 
-    if(ntest<=0)return
-    prtl = printlvl
-    printlvl = 0
-    hnorm = dnrm2(ncons,hvec,int(1))
-    print *,"Testing gradients of Hd along 3 random pathes"
-    print *,"  Cartesian displacement size :", disp
-    call init_random_seed()
-    maxratio = 0d0
-    do i=1,ntest
-      print *,"  displacement",i," :  evaluating analytical gradients"
-    ! initialize random Hd, geometry and displacements
-    ! Hd is initialized as a random offset from existing Hd
-      call random_number(asol0)
-      asol0 = asol0-5d-1
-      asol0 = asol0/dnrm2(ncons,asol0,int(1))*hnorm*5D-2+hvec
-      call updateHd(asol0,coefmap,ncons)
-      call linearizeHd()
-    ! geometry is taken as a random offset from a random data point
-      call random_number(cgeom0)
-      cgeom0=(cgeom0-5d-1)*1d-1
-      call random_number(ind)
-      cgeom0=cgeom0+dispgeoms(int(ind*npoints+1))%cgeom
-    ! generate a random direction for geometry displacement
-      call random_number(dgeom)
-      dgeom = (dgeom-5d-1)
-      dgeom = dgeom/dnrm2(3*natoms,dgeom,int(1))*disp
-
-    ! generate a random displacement in coefficient space
-      call random_number(dsol)
-      dsol = dsol - 5D-1
-      dsol = dsol/dnrm2(ncons,dsol,int(1))*disp
-
-    ! analytical evaluation of Hd gradients
-      call getCartHd(cgeom0,Ea,dHa,hmat,dcgrads)
-      DAnaHd = 0d0
-      DAnaHa = 0d0
-      do j=1,nstates
-        DAnaHa(j) = dot_product(dHa(:,j,j),dgeom)
-        DAnaHd(j,j) = dot_product(dcgrads(:,j,j),dgeom)
-        do k=j+1,nstates
-          DAnaHd(j,k) = dot_product(dcgrads(:,j,k),dgeom)
-          DAnaHd(k,j) = DAnaHd(j,k)
-        end do
-      end do
-      DAnaHd = DAnaHd/disp
-      DAnaHa = DAnaHa/disp
-
-    ! analytical evaluation of Lag gradients
-      call updateEigenVec(asol0)
-      CALL getCGrad(nex,neqs,ncons,asol0,dCi,dL,lag,wtvec,jaco)
-      DAnaL = dot_product(dsol(1:ncons),dCi)
-      DAnaL = DAnaL/disp
-
-      print *,""
-      print *,"Generating Hd Numerical Gradients (Ana-Num=Diff)"
-    ! numerical evaluation of Hd gradients
-      DNumHa = 0d0
-      DNumHd = 0d0
-      do n = 1,ndisp
-        cgeom = cgeom0 + dgeom*n
-        call getCartHd(cgeom,Ea,dHa,hmat,dcgrads)
-        DNumHa = DNumHa+coef(n)*Ea
-        DNumHd = DNumHd+coef(n)*hmat
-        cgeom = cgeom0 - dgeom*n
-        call getCartHd(cgeom,Ea,dHa,hmat,dcgrads)
-        DNumHa = DNumHa-coef(n)*Ea
-        DNumHd = DNumHd-coef(n)*hmat
-      end do
-      DNumHa = DNumHa/disp
-      DNumHd = DNumHd/disp
-      !print out comparisons  
-      print *,"Diabatic Representation  : "
-      do j=1,nstates
-        do k=j,nstates
-          print "(2(A,I4),3(A,E14.7))","  Block(",j,",",k,"):  ",DAnaHd(j,k)," - ",DNumHd(j,k)," = ",DAnaHd(j,k)-DNumHd(j,k)
-          maxratio = max(maxratio,abs((DAnaHd(j,k)-DNumHd(j,k))/DNumHd(j,k)))
-        end do
-      end do
-      print *,"Adiabatic Representation  : "
-      do j=1,nstates
-        print "(A,I4,3(A,E14.7))","  State ",j,":   ",DAnaHa(j)," - ",DNumHa(j)," = ",DAnaHa(j)-DNumHa(j)
-        maxratio = max(maxratio,abs((DAnaHa(j)-DNumHa(j))/DNumHa(j)))
-      end do
-
-    ! numerical evaluation of Lag gradients
-      print *,""
-      Print *,"Generating Lagrangian Gradients (Ana-Num=Diff)"
-      DNumL = 0d0
-      do n = 1,ndisp
-        asol = asol0 + dsol*n
-        call updateEigenVec(asol)
-        CALL getCGrad(nex,neqs,ncons,asol,dCi,dL,lag,wtvec,jaco)
-        DNumL = DNumL + coef(n)*lag
-        asol = asol0 - dsol*n
-        call updateEigenVec(asol)
-        CALL getCGrad(nex,neqs,ncons,asol,dCi,dL,lag,wtvec,jaco)
-        DNumL = DNumL - coef(n)*lag
-      end do
-      DNumL = DNumL/disp 
-   
-    ! Comparisons
-      print "(3(A,E14.7))","   ",DAnaL," - ",DNumL," = ",DNumL-DAnaL
-      maxratio = max(maxratio,abs((DNumL-DAnaL)/DNumL))
-    end do!i=1,3
-    call updateHd(hvec,coefmap,ncons)
-    print "(A,F10.5,A)"," Maximum percentage error : ",maxratio*100,"%"
-    print *,""
-    printlvl = prtl
-  END SUBROUTINE
 
 !----------------------------------------------------------------------------------------
 ! updates Hd then evaluate the RMS error from LSE and exact equations
@@ -1464,48 +1330,45 @@ MODULE makesurfdata
     end if
     printlvl = plvl
   END SUBROUTINE evaluateError
-END MODULE
 !---------------------------------------------
 ! store ckl to a file
-SUBROUTINE writeCkl(cklfl)
-  use makesurfdata, only: npoints,ckl
-  IMPLICIT NONE
-  CHARACTER(72),INTENT(IN) :: cklfl
+  SUBROUTINE writeCkl(cklfl)
+    IMPLICIT NONE
+    CHARACTER(255),INTENT(IN) :: cklfl
 
-  integer  ios, i
-  open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
-     status='replace',action='write',position='rewind',iostat=ios)
-  if(ios/=0)then
-    print *,"writeCkl: failed to open ckl file ",trim(adjustl(cklfl))
-    return
-  end if
+    integer  ios, i
+    open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
+       status='replace',action='write',position='rewind',iostat=ios)
+    if(ios/=0)then
+        print *,"writeCkl: failed to open ckl file ",trim(adjustl(cklfl))
+        return
+    end if
   
-  do i=1,npoints
-    write(7421,"(4E32.24)")ckl(i,:,:)
-  end do!i=1,npoints
-  print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
-  close(unit=7421)
-END SUBROUTINE writeCkl
+    do i=1,npoints
+        write(7421,"(4E32.24)")ckl(i,:,:)
+    end do!i=1,npoints
+    print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
+    close(unit=7421)
+  END SUBROUTINE writeCkl
 !---------------------------------------------
-SUBROUTINE readCkl(cklfl)
-  use makesurfdata, only: npoints, ckl
-  IMPLICIT NONE
-  CHARACTER(72),INTENT(IN) :: cklfl
+  SUBROUTINE readCkl(cklfl)
+    IMPLICIT NONE
+    CHARACTER(255),INTENT(IN) :: cklfl
 
-  integer  ios, i
-  open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
-     status='old',action='read',position='rewind',iostat=ios)
-  if(ios/=0)then
-    print *,"readCkl: failed to open ckl file ",trim(adjustl(cklfl))
-    return
-  end if
+    integer  ios, i
+    open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
+        status='old',action='read',position='rewind',iostat=ios)
+    if(ios/=0)then
+        print *,"readCkl: failed to open ckl file ",trim(adjustl(cklfl))
+        return
+    end if
 
-  do i=1,npoints
-    read(7421,*)ckl(i,:,:)
-  end do
-  print *," wave functions loaded from file ",trim(adjustl(cklfl))
-  close(unit=7421)
-END SUBROUTINE readCkl
+    do i=1,npoints
+        read(7421,*)ckl(i,:,:)
+    end do
+    print *," wave functions loaded from file ",trim(adjustl(cklfl))
+    close(unit=7421)
+  END SUBROUTINE readCkl
 !---------------------------------------------
 ! Generate the basis for the fit using linear combinations of primitive basis functions
 !   * Values and gradients of primitive functions are evaluated at each data point and put into inter-
@@ -1520,13 +1383,10 @@ END SUBROUTINE readCkl
 !     bute to any data points at any diabatrization schemes.  There will also be null space that arise 
 !     from each individual d values (wave functions), which will be removed from fitting procedure.
 !   
-SUBROUTINE genBasis(gradNorm)
+  SUBROUTINE genBasis()
   use hddata, only: T3DDList,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,EvaluateVal
   use progdata, only: printlvl
-  use makesurfdata, only:  npoints,dispgeoms,nvibs,npb,nbas,dWVals,WVals,ncons,coefMap,ptWeights,energyT,highEScale,&
-                           TBas,ZBas,WMat,w_grad,w_energy,w_fij,incener,incgrad,e_exact,g_exact
   IMPLICIT NONE
-  DOUBLE PRECISION,dimension(npoints,nvibs,nblks),intent(OUT):: gradNorm
   integer  :: i,j,k,count1,count2,count_rate,pv1,n1,n2
   integer  :: ll,rr,p,nb
   double precision,allocatable,dimension(:)   :: WORK, eval
@@ -1744,8 +1604,75 @@ SUBROUTINE genBasis(gradNorm)
     call system_clock(COUNT=count2)
     if(printlvl>1)print 1001, "     Total contribution to each equation generated in ",dble(count2-count1)/count_rate," s"
   end do! k=1,nblks
-1001 format(a,f7.2,a)
-END SUBROUTINE genBasis!
+  1001 format(a,f7.2,a)
+  END SUBROUTINE genBasis!
+!---------------------------------------------
+! initialize variables for makesurf
+! Allocate memory for shared structures and construct coefficient and
+! equations maps.
+  SUBROUTINE initMakesurf()
+    use hddata, only: nblks,nstates,order,nBasis,makeCoefMap
+    use progdata, only: printlvl
+    IMPLICIT NONE
+    INTEGER,DIMENSION(:,:),ALLOCATABLE             :: tmpEqMap,tmpExactEq
+    DOUBLE PRECISION,dimension(:),allocatable      :: tmpW
+    integer    :: i,j,maxeqs
+
+    call getPtList()
+    if(allocated(gradNorm))deallocate(gradNorm)
+    allocate(gradNorm(npoints,nvibs,nblks))
+    if(allocated(ckl))deallocate(ckl)
+    allocate(ckl(npoints,nstates,nstates))
+    if(allocated(fitE))deallocate(fitE)
+    if(allocated(fitG))deallocate(fitG)
+    allocate(fitE(npoints,nstates))
+    allocate(fitG(npoints,nvibs,nstates,nstates))
+
+
+    if(printlvl>0)print*,"   Making list of unknown coefficients."
+    ncons = 0
+    do i = 1,nblks
+      do j= 0,order
+        ncons=ncons+nBasis(j,i)
+      end do
+    enddo
+    allocate(coefMap(ncons,3))
+    call makeCoefMap(0,order,coefMap,ncons)
+
+    if(printlvl>0)print*,"        ncons=",ncons
+
+    call genBasis()
+
+    ncon_total = ncons
+    ncons = sum(nBas)
+    if(printlvl>0)then
+      print *,""
+      print *,"  Total number of basis matrices:",ncons
+      print *,""
+      print *,"Making list of fitting equations."
+    end if!printlvl>0
+
+    maxeqs=npoints*nstates*(nstates+1)/2*(nvibs+1)
+    allocate(tmpEqMap(maxeqs,4))
+    allocate(tmpExactEq(maxeqs,4))
+    allocate(tmpW(maxeqs))
+    call makeEqMap(maxeqs,tmpEqMap,tmpExactEq,tmpW)
+    allocate(EqMap(nex+neqs,4))
+    if(allocated(weight))deallocate(weight)
+    allocate(weight(neqs))
+    weight=tmpW(1:neqs)
+    eqMap(1:nex,:)=tmpExactEq(1:nex,:)
+    eqmap(nex+1:nex+neqs,:)=tmpEqMap(1:neqs,:)
+    deallocate(tmpW)
+    deallocate(tmpEqMap)
+    deallocate(tmpExactEq)
+    if(printlvl>0)print*,"    Number of Least Squares Equations:",neqs
+    if(printlvl>0)print*,"    Number of Exact Equations:        ",nex
+    ! allocate spaces for arrays and matrices
+    if((neqs+nex)<ncons.and.printlvl>0)print *,"    Warning: neqs<ncons, data set might be inadequate."
+  END SUBROUTINE initMakesurf
+
+END MODULE
 !---------------------------------------------
 ! convert angle and determinant to 2x2 matrix
 SUBROUTINE PutAngle(ckl,theta,sg)
@@ -1789,25 +1716,77 @@ SUBROUTINE GetAngles(ckl,npoints,theta,sg)
   end do
 END SUBROUTINE GetAngles
 !---------------------------------------------
+! Transform Hd with a block-by-block transformation ZBas
+! This is used by the null-space to do both forward and backward transformation.
+! Arguments:
+! TRANS     [in] CHARACTER*1
+!           Specifies whether the forward or backward transformation
+!           will be taken.  Case insensitive.
+!           'F' or 'N'      Forward transformation
+!           'B' or 'T'      Backward transformation
+! hvec_old  [in] DOUBLE PRECISION(*)
+!           Original Hd vector before transformation
+! hvec_new  [in] DOUBLE PRECISION(*)
+!           New Hd vector after transformation
+SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
+    use makesurfdata, only: ncons,nex,ncon_total,ZBas,nBas,coefMap
+    use hddata,only: nblks
+    IMPLICIT NONE
+    CHARACTER,INTENT(IN)        :: TRANS
+    DOUBLE PRECISION,INTENT(IN) :: hvec_old(*)
+    DOUBLE PRECISION,INTENT(OUT):: hvec_new(*)
+
+    integer ::  i,count1,count2,k
+
+    select case (TRANS)
+        case('N','n','F','f')
+          hvec_new(1:ncons+nex)  = 0d0
+          count1 = 0
+          do k=1,nblks
+            count2 = 0
+            do i=1,ncon_total
+              if(coefMap(i,2)==k)then
+                count2 = count2+1
+                hvec_new(count1+1:count1+nBas(k))=hvec_new(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec_old(i)
+              end if
+            end do
+            count1=count1+nBas(k)
+          end do!k
+
+        case('T','t','B','b')
+          count1 = 0
+          do k=1,nblks
+            count2 = 0
+            do i=1,ncon_total
+              if(coefMap(i,2)==k)then
+                count2 = count2+1
+                hvec_new(i) = dot_product(ZBas(k)%List(count2,:),hvec_old(count1+1:count1+nBas(k)))
+              end if
+            end do
+            count1=count1+nBas(k)
+          end do!k
+        case default
+    end select !case (TRANS)
+
+END SUBROUTINE tranHd
+!---------------------------------------------
 ! Fit Hd according to Ab initio Data
 SUBROUTINE makesurf()
   use hddata, only: nstates,ncoord,nblks,order,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
-                    makecoefmap,ExtractHd,getFLUnit,EvaluateHd3
+                    ExtractHd,getFLUnit,EvaluateHd3
   use progdata, only: printlvl,OUTFILE,AU2CM1,natoms,PI
   use makesurfdata
   use rdleclse
   use DIIS
   IMPLICIT NONE
   INTEGER                                        :: i,j,k,l,count1,count2,count_rate
-  INTEGER                                        :: m,maxeqs, plvl
+  INTEGER                                        :: m, plvl
   INTEGER                                        :: iter,uerrfl,miter
   DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,dCi2,hvec,bvecP
   DOUBLE PRECISION,dimension(:,:),allocatable    :: jaco,jaco2
-  DOUBLE PRECISION,dimension(npoints,nvibs,nblks):: gradNorm
   DOUBLE PRECISION,dimension(npoints,nvibs*2)    :: gradtable
   DOUBLE PRECISION,dimension(npoints,2*nstates)  :: enertable
-  INTEGER,DIMENSION(:,:),ALLOCATABLE             :: tmpEqMap,tmpExactEq
-  DOUBLE PRECISION,dimension(:),allocatable      :: tmpW,weight, grdv1,grdv2,dis0
+  DOUBLE PRECISION,dimension(:),allocatable      :: grdv1,grdv2,dis0
   DOUBLE PRECISION                               :: adif,nrmener,avgener,lag,gmin,nrmG, dmin, dinc, disp
   double precision                               :: LSErr,ExErr,LSE0,LSE1,LSE2,beta, denom
   DOUBLE PRECISION                               :: nrmgrad,avggrad,nrmD,stepl
@@ -1817,7 +1796,7 @@ SUBROUTINE makesurf()
   double precision,dimension(npoints,nstates,nstates)   :: errGrad,errGradh
   double precision,dimension(ncoord)             :: errgrd
   double precision,dimension(ncoord,3*natoms)    :: binv
-  CHARACTER(72)                                  :: fmt, fn
+  CHARACTER(255)                                 :: fmt, fn
   double precision            ::  dener(nstates,nstates)
   integer                     ::  ios, status
   double precision, external  ::  dnrm2
@@ -1826,65 +1805,16 @@ SUBROUTINE makesurf()
   DOUBLE PRECISION,dimension(nstates,nstates)            :: hmatPT
   DOUBLE PRECISION,dimension(nvibs,nstates,nstates)      :: dhmatPT
   
-  integer  :: ncon_total
   double precision,dimension(0:maxiter,npoints)   ::   theta  ! rotation angle
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision,dimension(npoints)   ::   theta2
   double precision  :: NaN
 
+  if(printlvl>0)print *,"Entering makesurf"
   NaN  = 0
   NaN  = NaN/NaN
-
-  if(printlvl>0)print *,"Entering makesurf"
-  call getPtList()
-
-  if(printlvl>0)print*,"   Making list of unknown coefficients."
-  ncons = 0
-  do i = 1,nblks
-   do j= 0,order
-     ncons=ncons+nBasis(j,i)
-   end do
-  enddo
-  allocate(coefMap(ncons,3))
-  call makeCoefMap(0,order,coefMap,ncons)
-
-  if(printlvl>0)print*,"        ncons=",ncons
-
-  if(allocated(ckl))deallocate(ckl)
-  allocate(ckl(npoints,nstates,nstates))
-  if(allocated(fitE))deallocate(fitE)
-  if(allocated(fitG))deallocate(fitG)
-  allocate(fitE(npoints,nstates))
-  allocate(fitG(npoints,nvibs,nstates,nstates))
-
-  call genBasis(gradNorm)
-
-  ncon_total = ncons
-  ncons = sum(nBas)
-  if(printlvl>0)then
-    print *,""
-    print *,"  Total number of basis matrices:",ncons
-    print *,""
-    print *,"Making list of fitting equations."
-  end if!printlvl>0
-  maxeqs=npoints*nstates*(nstates+1)/2*(nvibs+1)
-  allocate(tmpEqMap(maxeqs,4))
-  allocate(tmpExactEq(maxeqs,4))
-  allocate(tmpW(maxeqs))
-  call makeEqMap(maxeqs,tmpEqMap,tmpExactEq,gradNorm,tmpW)
-  allocate(EqMap(nex+neqs,4))
-  allocate(weight(neqs))
-  weight=tmpW(1:neqs)
-  eqMap(1:nex,:)=tmpExactEq(1:nex,:)
-  eqmap(nex+1:nex+neqs,:)=tmpEqMap(1:neqs,:)
-  deallocate(tmpW)
-  deallocate(tmpEqMap)
-  deallocate(tmpExactEq)
-  if(printlvl>0)print*,"    Number of Least Squares Equations:",neqs
-  if(printlvl>0)print*,"    Number of Exact Equations:        ",nex
+  call initMakesurf()
   call printSurfHeader(ncon_total,ncons,neqs,nex)
-! allocate spaces for arrays and matrices 
-  if((neqs+nex)<ncons.and.printlvl>0)print *,"    Warning: neqs<ncons, data set might be inadequate."
   print 1001,"    Memory required to store coefficient matrix:",(neqs+nex)*ncons*7.62939453125D-6," MB"
   allocate(hvec(ncon_total))               ! Hd coefficients vector in original form
   allocate(bvec(neqs+nex))                 !rhs for exact and LSE equations
@@ -1906,20 +1836,8 @@ SUBROUTINE makesurf()
   allocate(rhs(ncons+nex))
 
   iter = 0
-  asol2 = dble(0)
   call getHdvec(hvec,coefmap,ncon_total)
-  ! convert primitive h expansion to block orthogonal basis expansions
-  count1 = 0
-  do k=1,nblks
-    count2 = 0
-    do i=1,ncon_total
-      if(coefMap(i,2)==k)then
-        count2 = count2+1
-        asol2(count1+1:count1+nBas(k))=asol2(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec(i)
-      end if
-    end do
-    count1=count1+nBas(k)
-  end do!k
+  call tranHd('F',hvec,asol2)   ! convert primitive h expansion to block orthogonal basis expansions
 
   !----------------------------------
   ! Begin self-consistent iterations
@@ -1951,10 +1869,9 @@ SUBROUTINE makesurf()
     call updateEigenVec(asol2)
     printlvl=printlvl+1
   endif!(ckl_input/='')then
-  call testSurfgen(1D-5,asol2,weight)
   asol = asol2
-  CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-  CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
+  CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+  CALL optLag(jaco,nex,dCi,asol,jaco2)
   nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
   grdv1 = 0d0
   grdv2 =-dCi
@@ -1976,24 +1893,11 @@ SUBROUTINE makesurf()
      write(c1,"(I4)"),iter
      fn = trim(restartdir)//'/hd.data.'//trim(adjustl(c1))
      if(printlvl>1)print "(A)","  Exporting Hd coefficients to "//fn
-     ! convert hd to primitive form 
-     count1 = 0
-     do k=1,nblks
-       count2 = 0
-       do i=1,ncon_total
-         if(coefMap(i,2)==k)then
-           count2 = count2+1
-           hvec(i) = dot_product(ZBas(k)%List(count2,:),asol2(count1+1:count1+nBas(k)))
-         end if
-       end do
-       count1=count1+nBas(k)
-     end do!k
-     ! save h vector to file
-     call updateHd(hvec,coefmap,ncon_total)
-     call writeHd(fn,flheader,.false.)
+     call tranHd('B',asol2,hvec)                ! convert hd to nascent basis
+     call updateHd(hvec,coefmap,ncon_total)     ! convert vector hd to list form
+     call writeHd(fn,flheader,.false.)          ! save h vector to file
      ! save ckl
      fn =  trim(restartdir)//'/ckl.'//trim(adjustl(c1))
-     if(printlvl>1)print "(A)","  Exporting Hd eigenvectors to "//fn
      call writeCkl(fn)
    end if!restartdir/=''   <<<<<<<<<<<<<<<<<<<<<<<
    iter = iter + 1
@@ -2062,8 +1966,8 @@ SUBROUTINE makesurf()
          asol(1:ncons)=asol2(1:ncons)+dsol*disp
          call evaluateError(asol,weight,LSErr,ExErr)
          CALL getError(nrmener,avgener,nrmgrad,avggrad)
-         CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-         CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
+         CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+         CALL optLag(jaco,nex,dCi,asol,jaco2)
          nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
          if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
                ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
@@ -2085,8 +1989,8 @@ SUBROUTINE makesurf()
          asol(1:ncons)=asol2(1:ncons)+dsol*disp
          call evaluateError(asol,weight,LSErr,ExErr)
          CALL getError(nrmener,avgener,nrmgrad,avggrad)
-         CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-         CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
+         CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+         CALL optLag(jaco,nex,dCi,asol,jaco2)
          nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
          if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
                ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
@@ -2107,8 +2011,8 @@ SUBROUTINE makesurf()
 
    ! make new eigenvectors
    call updateEigenVec(asol,followPrev)
-   CALL getCGrad(nex,neqs,ncons,asol,dCi,dLambda,lag,weight,jaco)
-   CALL optLag(ncons,nex,jaco,nex,dCi,asol,jaco2)
+   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+   CALL optLag(jaco,nex,dCi,asol,jaco2)
    grdv1 = grdv2
    grdv2 = -dCi
    nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
@@ -2164,31 +2068,15 @@ SUBROUTINE makesurf()
   ! Write coefficients of final surface to file
   !------------------------------------------------------------
   if(outputfl/='')then
-  ! convert hd to primitive form 
-    count1 = 0
-    do k=1,nblks
-      count2 = 0
-      do i=1,ncon_total
-        if(coefMap(i,2)==k)then
-          count2 = count2+1
-          hvec(i) = dot_product(ZBas(k)%List(count2,:),asol2(count1+1:count1+nBas(k)))
-        end if
-      end do
-      count1=count1+nBas(k)
-    end do!k
-  !----------------------------------
-  ! save h vector to file
-    call updateHd(hvec,coefmap,ncon_total)
+    call tranHd('B',asol2,hvec)             ! convert hd to nascent basis
+    call updateHd(hvec,coefmap,ncon_total)  ! transform vector hd to list form
     if(printlvl>1)print *,"  Exporting Hd coefficients to ",trim(outputfl)
-    call writeHd(outputfl,flheader,.false.)
+    call writeHd(outputfl,flheader,.false.) ! save h vector to file
   end if
   !------------------------------------------------------------
   ! Write final eigenvectors to file 
   !------------------------------------------------------------
-  if(ckl_output/='')then
-    if(printlvl>1)print *,"  Exporting eigenvectors to ",trim(ckl_output)
-    call writeCkl(ckl_output)
-  end if
+  if(ckl_output/='') call writeCkl(ckl_output)
   !------------------------------------------------------------
   ! Compare ab initio and computed derivative couplings
   !------------------------------------------------------------
@@ -2386,11 +2274,7 @@ SUBROUTINE makesurf()
 1017 format(/,2x,'Energies')
 END SUBROUTINE makesurf
 
-!
-!
-!
-!
-!
+! Print job description to surfgen.out
 SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
   use progdata, only: OUTFILE
   use makesurfdata,only: maxiter,toler,gcutoff
@@ -2543,7 +2427,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   end do !i=1,fitpt%ndeggrp
 1000 format(6X,"Point ",I4," States ",I2," to ",I2,&
           " ordered by gradients. Error:",E11.4,"->",E11.4)
-END SUBROUTINE
+END SUBROUTINE gradOrder
 
 ! read input parameters for makesurf
 SUBROUTINE readMakesurf(INPUTFL)
@@ -2556,9 +2440,9 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,  &
-                      dijscale,dijscale2,dfstart,ntest,linSteps,flattening, &
-                      searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
+                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,dijscale,dijscale2,  &
+                      dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
+                      
   npoints   = 0
   maxiter   = 3
   followprev= .false.
@@ -2571,7 +2455,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
-  ntest     = 0
   linSteps  = 0
   linNegSteps = 0
   dfstart   = 0
@@ -2635,7 +2518,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
   if(nstates>nstates.or.nstates<1)nstates=nstates
-END SUBROUTINE
+END SUBROUTINE readMakesurf
 
 ! load pointwise options
 SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO,ptWt)
@@ -2645,7 +2528,7 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   IMPLICIT NONE
   TYPE(TEqList),INTENT(OUT):: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   double precision,dimension(npoints),intent(out)  :: ptWt
-  character(72)            :: comment
+  character(255)           :: comment
   integer                  :: ptid,i,j,ios,tmp,lsID
   character(2)             :: job
   INTEGER,DIMENSION(6,npoints*nstates*(nstates+1)/2,3)::tpLists !EE,EG,LG,LE,LD,GO
@@ -2658,6 +2541,12 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
     status='old',action='read',position='rewind',iostat=ios)
   if(ios/=0)then
     print *,"Cannot open points.in.  Skipping..."
+    exclEner%Length=0
+    exclGrad%Length=0
+    exactEner%Length=0
+    exactGrad%Length=0
+    exactDiff%Length=0
+    enfGO%Length=0
     return
   end if!ios/=0
   read(PTFL,1000,IOSTAT=ios) comment
@@ -2769,8 +2658,8 @@ CONTAINS
   1002 format(4X,"POINT  STATE1  STATE2")
   1003 format(4X,I4,3X,I4,4X,I4)
   1004 format(4X,"---------------------")
-  END SUBROUTINE
-END SUBROUTINE
+  END SUBROUTINE fillout
+END SUBROUTINE readDispOptions
 !
 !
 !
@@ -2839,7 +2728,7 @@ end SUBROUTINE printDisps
 ! filename pattern.
 INTEGER FUNCTION PatternNInd(pattern)
     IMPLICIT NONE
-    CHARACTER(72),intent(IN) :: pattern
+    CHARACTER(255),intent(IN) :: pattern
     integer :: i, nind
 
     nind = 0
@@ -2860,7 +2749,7 @@ SUBROUTINE readdisps()
   INTEGER                                      :: i,j,k,l,ios
   DOUBLE PRECISION,dimension(3*natoms,npoints) :: cgrads,cgeoms
   DOUBLE PRECISION,dimension(nstates,npoints)  :: eners
-  character(72)                                :: filename,infile
+  character(255)                               :: filename,infile
   character(3),dimension(natoms)               :: atoms
   double precision,dimension(natoms)           :: anums,masses
   integer,external  :: PatternNInd

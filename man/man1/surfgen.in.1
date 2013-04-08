@@ -138,7 +138,7 @@ Use -1 for anti-symmetric and 1 for symmetric.
 Controls the level of infomation printed to standard output. 
 0 is lowest and 5 is highest level.
 .It inputfl
-.Sy CHARACTER(72) [\(aqhd.data\(aq]
+.Sy CHARACTER(255) [\(aqhd.data\(aq]
 Name of Hd expansion coefficient input file.  Hd will be initialized using
 these coefficients.  When empty or file not exist, uncoupled surface with 
 constant (but not identical) energies will be used to initialize Hd.
@@ -166,22 +166,22 @@ gradients and coupling data are expected to contain one and two wildcard charact
 \(aq$\(aq which acts as a placeholder for the indices of states.
 .Bl -tag -width VariableNm -compact
 .It SearchPath
-.Sy CHARACTER(72),dimension(100) [\(aq.\(aq,99*\(aq\(aq]
+.Sy CHARACTER(255),dimension(100) [\(aq.\(aq,99*\(aq\(aq]
 Paths of directories where the program should look for sets of input file.  
 Each path should contain all the input information of a group of points.
 Including geometries, energies, and optionally energy gradients and couplings.
 \(aq.\(aq has to be included for the program to search the current path.
 .It noteptn
-.Sy CHARACTER(72),dimension(100) [100*\(aqnote\(aq]
+.Sy CHARACTER(255),dimension(100) [100*\(aqnote\(aq]
 Specifies the filename of the optional file where a brief note is kept to explain
 where the geometries in the current path are and what data are available.  The
 first line of this file will also be printed to standard output when the program
 reads this directory. No wildcard allowed.  Optional.
 .It gmfptn
-.Sy CHARACTER(72),dimension(100) [100*\(aqgeom.all\(aq]
+.Sy CHARACTER(255),dimension(100) [100*\(aqgeom.all\(aq]
 Name of geometry input file.   No wildcard characters allowed.  Required.
 .It enfptn
-.Sy CHARACTER(72),dimension(100) [100*\(aqenergy.all\(aq]
+.Sy CHARACTER(255),dimension(100) [100*\(aqenergy.all\(aq]
 Name of energy input file.  No wildcard characters allowed. Required.  If the file
 does not contain all the state, please add in the first line of the file
 .br
@@ -198,12 +198,12 @@ then the line should be
 .br
 STATES 3 3
 .It grdfptn
-.Sy CHARACTER(72),dimension(100) [100*\(aqcartgrd.drt1.state$.all\(aq]
+.Sy CHARACTER(255),dimension(100) [100*\(aqcartgrd.drt1.state$.all\(aq]
 Pattern for energy gradient input file.  Has 1 wildcard character which holds the
 slot for the index of the state of which the gradients are calculated.  Optional.
 The program will search all the states that has an energy data in energy input file.
 .It cpfptn
-.Sy CHARACTER(72),dimension(100) [100*\(aqcartgrd.drt1.state$.drt1.state$.all\(aq]
+.Sy CHARACTER(255),dimension(100) [100*\(aqcartgrd.drt1.state$.drt1.state$.all\(aq]
 Pattern for derivative coupling input file.  Has 2 wildcard characters which holds the
 slot for the indices of the pair of states between which the couplings are calculated.  
 Optional.
@@ -390,12 +390,12 @@ Threshold for energy difference below which the states will by ordered by gradie
 instead of absolute energy.  This option is ignored when 
 .Em followPrev=.true.
 .It ckl_input
-.Sy CHARACTER(72) [\(aq\(aq]
+.Sy CHARACTER(255) [\(aq\(aq]
 Input file that contains the initial guess of eigenvectors at each data point.  
 When left empty or file not exist, the eigenvectors are initialized by diagonalizing
 initial Hd.
 .It ckl_output
-.Sy CHARACTER(72) [\(aqckl.out\(aq]
+.Sy CHARACTER(255) [\(aqckl.out\(aq]
 Output file that contains the final eigenvectors at each data point.
 .It followPrev
 .Sy LOGICAL [.false.]
@@ -479,13 +479,13 @@ unnecessary degrees of freedom.
 .Sy Input and Output
 .Bl -tag -width VariableNm -compact
 .It restartdir
-.Sy CHARACTER(72) [\(aq\(aq]
+.Sy CHARACTER(255) [\(aq\(aq]
 When not empty, the program will store eigenvectors and coefficients of Hd in this directory.
 .It outputfl
-.Sy CHARACTER(72) [\(aq\(aq]
+.Sy CHARACTER(255) [\(aq\(aq]
 Name of the output file that will store the fit surface.
 .It flheader
-.Sy CHARACTER(72) [\(aq----\(aq]
+.Sy CHARACTER(255) [\(aq----\(aq]
 Header that will be printed into the description field of Hd storage file.
 .It rmsexcl
 .Sy INTEGER [0]
