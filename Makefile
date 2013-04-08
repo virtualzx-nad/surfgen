@@ -15,8 +15,12 @@ OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
             io.o potlib.o
 
+# Objects needed for test programs 
+OBJTf   =  hddata.o  combinatorial.o progdata.o libutil.o libsym.o libinternal.o \
+           io.o testsurfgen.o
+
 # Set surfgen vesion
-SGENVER := 2.2.3
+SGENVER := 2.2.4
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -29,14 +33,18 @@ $(info OS Version: $(OSV))
 # Set up directories
 bindir:= bin
 libdir:= lib
+tstdir:= test
+srcdir:= source
 JDIR  := $(shell pwd)
 BDIR  := $(JDIR)/$(bindir)
 LDIR  := $(JDIR)/$(libdir)
-SDIR  := $(JDIR)/source
+TDIR  := $(JDIR)/$(tstdir)
+SDIR  := $(JDIR)/$(srcdir)
 CDS   := cd $(SDIR);
 
 OBJS  := $(addprefix $(SDIR)/,$(OBJSf))
 OBJSL := $(addprefix $(SDIR)/,$(OBJSLf))
+OBJT  := $(addprefix $(SDIR)/,$(OBJTf))
 
 # Set compiler
 CPLIST := g95 pgf90 /usr/bin/gfortran gfortran 
@@ -50,6 +58,7 @@ endif
 # set up product name
 EXEC  := $(BDIR)/surfgen-$(SGENVER)-$(OS)-$(ARC)
 LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
+TSTX  := $(TDIR)/test
 
 # set debugging flags
 ifeq ($(DEBUGGING_SYMBOLS),YES)
@@ -129,6 +138,7 @@ all  :  surfgen libs
 
 #target for standalone fitting and analysis program
 surfgen  :  $(OBJS) | $(BDIR)
+	@echo ''
 	@echo '-----------------------------------------'
 	@echo '   SURFGEN FITTING PROGRAM '
 	@echo 'Program Version:     $(SGENVER)'
@@ -145,10 +155,10 @@ surfgen  :  $(OBJS) | $(BDIR)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
 	@echo ''
-	@echo ''
 
 #target for runtime interface library
 libs  :  $(OBJSL) | $(LDIR)
+	@echo ''
 	@echo '-----------------------------------------'
 	@echo '  SURFGEN EVALUATION LIBRARY'
 	@echo 'Program Version:     $(SGENVER)'
@@ -160,14 +170,35 @@ libs  :  $(OBJSL) | $(LDIR)
 	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)
 	@echo '-----------------------------------------'
 	@echo ''
-	@echo ''
 
 #
 clean:
-	-$(RM) $(OBJS) $(SDIR)/*.mod $(SDIR)/potlib.o 
+	-$(RM) $(OBJS) $(SDIR)/*.mod $(OBJSL) $(OBJT) 
 	@echo 'Finished cleaning'
 
-#
+# Compile and run test code 
+tests : $(OBJT) | $(TDIR) 
+	@echo '-----------------------------------------'
+	@echo '  SURFGEN TESTING PRGRAMS'
+	@echo 'Program Version:     $(SGENVER)'
+	@echo 'Test Program:        $(TSTX)'
+	@echo 'Execution Directory: $(TDIR)'
+	@echo 'BLAS/LAPACK LIB:     $(LIBS)'
+	@echo 'Debug Flag:          $(DEBUGFLAG)'
+	@echo 'Linking Options:     $(LKOPT)'
+	@echo '-----------------------------------------'
+	@echo 'Building Target: $@'
+	@echo 'Invoking Linkier'
+	cd $(SDIR); $(COMPILER) -o $(TSTX) $(OBJT) $(LIBS) $(LKOPT) $(LDFLAGS)
+	@echo '-----------------------------------------'
+	@echo 'Performing Tests.  Please see test.log for details'
+	@echo ''
+	@cd $(TDIR); $(TSTX) > $(TDIR)/test.log
+	@echo ''
+	@echo 'All tests finished. '
+	@echo '-----------------------------------------'
+
+# Compile source files
 $(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
@@ -175,6 +206,6 @@ $(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Finished building: $<'
 	@echo ' '
 
-$(BDIR) $(LDIR) :
+$(BDIR) $(LDIR) $(TDIR):
 	@echo 'Creating directory $@'
 	@mkdir -p $@

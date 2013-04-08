@@ -1,3 +1,11 @@
+## 2.2.4 (2013-04-08)
+
+* Test program can now be compiled and run with `make` by doing
+
+    $ make tests
+
+* Another fix to error print out
+
 ## 2.2.3 (2013-04-07)
 
 * A test program created to test the consistency and detect problems within subroutines

@@ -1,0 +1,24 @@
+-----------------------------------------------------------
+                                                           
+                     surfgen.global                        
+                                                           
+   * Creates quasi-diabatic Hamiltonian by reproducing     
+   ab initio energy gradients and derivative couplings     
+   with selected data fitted exactly and the rest in a     
+   least-squares sense                                     
+                                                           
+   * Blocks of Hd are expanded as polynomials of scaled    
+   internuclear distance and out-of-plane angle coords     
+   that are well-defined globally.                         
+                                                           
+   * Hd is constructed, using projection operators, so     
+   that the diabats carry certain irreps of CNPI group     
+                                                           
+   Xiaolei Zhu,  2010                                      
+   Department of Chemistry, Johns Hopkins University       
+   based on SURFGEN.X, Michael Schuurman,  2008            
+-----------------------------------------------------------
+
+  jobtype = POTLIB   
+
+
