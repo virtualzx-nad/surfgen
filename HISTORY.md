@@ -1,3 +1,8 @@
+## 2.2.8 (2013-04-10)
+
+* Fixed the input file searching problem when printlvl<2 (Issue #8)
+* Code clean up
+
 ## 2.2.7 (2013-04-10)
 
 * Fixed the DIJ problem in normal equations

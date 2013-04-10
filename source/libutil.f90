@@ -312,9 +312,9 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
   LOGICAL,dimension(nstates,nstates)  :: allowedRot
 
   beta=dble(0)  
-  if(pt%ndeggrp>0.and.printlvl>0)print *,"     Transforming ab initio data for point ",pt%id
+  if(pt%ndeggrp>0.and.printlvl>1)print *,"     Transforming ab initio data for point ",pt%id
   if(printlvl>2.and. pt%ndeggrp>0)then
-    print *,"      Gradients before transformation" 
+    print *,"      Couplings and gradients before transformation" 
     do i=1,nstates
       do j=1,i
         print 1002,i,j
@@ -425,7 +425,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
         else
           print 1000,iter,max_b
         end if!(max_b<toler)
-        print *,"      Gradients after transformation" 
+        print *,"      Couplings and gradients after transformation" 
         do i=1,nstates
           do j=1,i
             write (*,1002) i,j

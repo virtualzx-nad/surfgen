@@ -254,7 +254,7 @@ MODULE makesurfdata
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
 !Exact equations will be sorted by point index
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,wvec)
-    use hddata, only: nblks,blkmap,nstates
+    use hddata, only: blkmap,nstates
     use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
@@ -612,7 +612,7 @@ MODULE makesurfdata
 !-----------------------------------------------------------------------------------
 ! rhs is constructed for diff=.false.
   SUBROUTINE makeNormalEquations(NE,rhs,wt)
-    use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
+    use hddata, only: nblks,nstates,nBasis
     use progdata, only: printlvl
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(neqs),INTENT(IN)                 :: wt
@@ -620,7 +620,7 @@ MODULE makesurfdata
     DOUBLE PRECISION,dimension(nex+ncons),INTENT(OUT)           :: rhs
    
     integer,parameter ::  bars = 80
-    integer           ::  i,j,  pc, pc_last,g ,   nEqPt,nExPt,  neqTot, nexTot
+    integer           ::  i,j,  pc, pc_last, nEqPt,nExPt,  neqTot, nexTot
     double precision,dimension(:,:),allocatable  ::  AMat
     double precision,dimension(:),allocatable    ::  bvec
     integer           ::  LDA
@@ -684,7 +684,6 @@ MODULE makesurfdata
 !Also returns the number of exact and LSE equations for that point
   SUBROUTINE makeCoefMatPt(pt,AMat,LDA,nEqPt,nExPt,wt,bvec)
     use hddata, only: nblks,nstates,RowGrp,ColGrp,offs,grpLen,nBasis
-    use progdata, only: printlvl
     IMPLICIT NONE
     INTEGER,INTENT(IN)                                  :: pt, LDA
     DOUBLE PRECISION,dimension(LDA,ncons),INTENT(OUT)   :: AMat
@@ -1462,19 +1461,18 @@ MODULE makesurfdata
 ! construct new basis and store them for each block 
   do k=1,nblks
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
+    ll = nl(k)
+    rr = nr(k)
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
         allocate(ZBas(k)%List(1,1))     ! just a place holder
-        pv1 = npoints*(1+nvibs)*ll*rr
-        allocate(WMat(k)%List(pv1,nb))
+        allocate(WMat(k)%List(1,1))
         gradNorm(:,:,k) = 0d0
         cycle
     end if
     call system_clock(COUNT=count2)
     if(printlvl>1)write(*,"(A)",advance='no'),"   Evaluating primitive basis... "
-    ll = nl(k)
-    rr = nr(k)
 ! pbas contains the values and gradients of all primitive basis matrices.
 !   row number is the index for surface quantities, looping through blocks>point>energy,each gradient component
 ! pbasw are equations weighed by 
@@ -1653,6 +1651,7 @@ MODULE makesurfdata
 
     if(printlvl>0)print*,"        ncons=",ncons
 
+    print *,"Generating fitting basis"
     call genBasis()
 
     ncon_total = ncons
@@ -1784,7 +1783,7 @@ END SUBROUTINE tranHd
 !---------------------------------------------
 ! Fit Hd according to Ab initio Data
 SUBROUTINE makesurf()
-  use hddata, only: nstates,ncoord,nblks,order,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
+  use hddata, only: nstates,ncoord,getHdvec,nl,nr,writeHd,nBasis,updateHd,&
                     ExtractHd,getFLUnit,EvaluateHd3
   use progdata, only: printlvl,OUTFILE,AU2CM1,natoms,PI
   use makesurfdata
@@ -1793,15 +1792,15 @@ SUBROUTINE makesurf()
   IMPLICIT NONE
   INTEGER                                        :: i,j,k,l,count1,count2,count_rate
   INTEGER                                        :: m, plvl
-  INTEGER                                        :: iter,uerrfl,miter
+  INTEGER                                        :: iter,uerrfl
   DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,dCi2,hvec,bvecP
   DOUBLE PRECISION,dimension(:,:),allocatable    :: jaco,jaco2
   DOUBLE PRECISION,dimension(npoints,nvibs*2)    :: gradtable
   DOUBLE PRECISION,dimension(npoints,2*nstates)  :: enertable
   DOUBLE PRECISION,dimension(:),allocatable      :: grdv1,grdv2,dis0
   DOUBLE PRECISION                               :: adif,nrmener,avgener,lag,gmin,nrmG, dmin, dinc, disp
-  double precision                               :: LSErr,ExErr,LSE0,LSE1,LSE2,beta, denom
-  DOUBLE PRECISION                               :: nrmgrad,avggrad,nrmD,stepl
+  double precision                               :: LSErr,ExErr
+  DOUBLE PRECISION                               :: nrmgrad,avggrad,nrmD
   CHARACTER(4)                                   :: c1,c2
   CHARACTER(16),dimension(npoints)               :: rlabs
   CHARACTER(16),dimension(nvibs*2)               :: clabs
@@ -2388,6 +2387,9 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   double precision,dimension(nstates)          :: en_new
   double precision   ::  shift
 
+  min_err=0d0
+  err1   =0d0
+  best_p =0
   do i=1,fitpt%ndeggrp
     ldeg=fitpt%deg_groups(i,1)
     ndeg=fitpt%deg_groups(i,2)
@@ -2833,8 +2835,8 @@ SUBROUTINE readdisps()
 
     ! read energy data
     infile = trim(SearchPath(i))//'/'//trim(adjustl(enfptn(i)))
-    if(printlvl>1.and.len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
-        print 1001,'- Reading energy input <'//trim(infile)//'>'
+    if(len_trim(enfptn(i))>0.and.PatternNInd(gmfptn(i))==0)then
+        if(printlvl>1)print 1001,'- Reading energy input <'//trim(infile)//'>'
         ptinfile=npoints
         call readEner(infile,ptinfile,nstates,eners,lb,ub)  !k and l specify range of data
         if(ptinfile>nnew)then
