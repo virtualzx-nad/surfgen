@@ -16,7 +16,7 @@
 ! Xiaolei Zhu,  Yarkony group, Johns Hopkins University
 ! April 2013
 program testsurfgen
-    use makesurfdata, only: initMakesurf
+    use makesurfdata, only: initMakesurf 
     implicit none
 
     ! print information
@@ -33,6 +33,7 @@ program testsurfgen
     ! test gradients of Hd and Lagrangian
     call readdisps()
     call initMakesurf
+
     call testHd(10,1D-5)
 
 end program testsurfgen
@@ -189,7 +190,18 @@ SUBROUTINE testHd(ntest,disp)
 
     call getHdvec(hvec_raw,coefmap,ncon_total)
     call tranHd('F',hvec_raw,hvec)   ! convert primitive h expansion to block orthogonal basis expansions
-
+!hvec =0d0
+!hvec(20) = 1d0
+!ckl(1,:,:)=0d0
+!ckl(1,1,1)=1d0
+!ckl(1,2,2)=1d0
+! call updateEigenVec(hvec,.false.)
+!do i=1,20
+! CALL getCGrad(hvec,dCi,dL,lag,jaco)
+! hvec(1300)=hvec(1300)+1d-5
+! call updateEigenVec(hvec,.true.)
+!end do
+!STOP
     prtl = printlvl
     printlvl = 0
     hnorm = dnrm2(ncons,hvec,int(1))

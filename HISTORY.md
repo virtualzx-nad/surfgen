@@ -1,3 +1,8 @@
+## 2.2.6 (2013-04-09)
+
+* Fixed a bug in Lagrangian gradient evaluation where some elements of Dij are used before constructed, causing the program to
+fail the Lagrangian test.  (Issue #7)
+
 ## 2.2.5 (2013-04-08)
 
 * Test program for the gradients of Hd and the Largrangian added to the test program

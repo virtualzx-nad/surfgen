@@ -510,11 +510,9 @@ MODULE makesurfdata
     end do
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints
-
       cklPrev = ckl(i,:,:)
       CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
       ckl(i,:,:)=hmatPt
-
       call DSYEV('V','U',nstates,ckl(i,:,:),nstates,fitE(i,:),scr,5*nstates*nstates,INFO)
       IF(INFO/=0)then
         print *,"Failed to solve eigenvectors at point",i
@@ -1157,6 +1155,33 @@ MODULE makesurfdata
             DIJ(:,J,I)     = -DIJ(:,I,J)
             VIJ(:,:,J,I)   = VIJ(:,:,I,J)
           end if !(J.ne.I)
+          call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+          t3 = t3 + dble(count2-count1)/count_rate
+        end do!J
+      end do!I
+   
+      do ipt=1,ndeg
+        pt = Pd(ipt)
+        I  = Id(ipt)
+        J  = Jd(ipt) 
+        if(abs(DIJ(pt,I,J)).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
+        gvec = fitG(pt,:,I,I)-fitG(pt,:,J,J)
+        hvec = fitG(pt,:,I,J)
+        DIJ(pt,I,J)=(dot_product(VIJ(pt,:,I,I)-VIJ(pt,:,J,J),hvec)+dot_product(gvec,VIJ(pt,:,I,J)))
+        do k=1,nstates
+           if(K==I.or.K==J)cycle
+           DIJ(pt,I,J)  = DIJ(pt,I,J)      &
+                  +     2*DIJ(pt,K,I)*dot_product(hvec,fitG(pt,:,K,I))-2*DIJ(pt,K,J)*dot_product(hvec,fitG(pt,:,K,J))  &
+                  +     DIJ(pt,K,I)*dot_product(gvec,fitG(pt,:,K,J))+DIJ(pt,K,J)*dot_product(gvec,fitG(pt,:,K,I))
+        end do!k
+        DIJ(pt,I,J)=DIJ(pt,I,J) /(4*dot_product(hvec,hvec)-dot_product(gvec,gvec))
+        DIJ(pt,J,I)=-DIJ(pt,I,J)
+      end do! I=1,ndeg
+
+   ! update the wave function dependent part of gradients
+      call system_clock(COUNT=count1,COUNT_RATE=count_rate)
+      do I=1,nstates
+        do J=I,nstates
    ! calculate the second piece of VIJ with DIJ and hIJ(=fitG)
           do igd = 1,nvibs
             UIJ(:,igd,I,J) = VIJ(:,igd,I,J)
@@ -1165,25 +1190,10 @@ MODULE makesurfdata
             end do ! K = 1,nstates
             if(I.ne.J)  UIJ(:,igd,J,I) = UIJ(:,igd,I,J)  !complete lower triangle
           end do!igd=1,nvibs 
-          call system_clock(COUNT=count2,COUNT_RATE=count_rate)
-          t3 = t3 + dble(count2-count1)/count_rate
         end do !J=I,nstates
       end do !I=1,nstates
-      do ipt=1,ndeg
-        pt = Pd(ipt)
-        I  = Id(ipt)
-        J  = Jd(ipt) 
-        if(abs(DIJ(pt,I,J)).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
-        gvec = fitG(pt,:,I,I)-fitG(pt,:,J,J)
-        hvec = fitG(pt,:,I,J)
-        DIJ(pt,I,J)=(dot_product(UIJ(pt,:,I,I)-UIJ(pt,:,J,J),hvec)+dot_product(gvec,UIJ(pt,:,I,J)))&
-                   /(4*dot_product(hvec,hvec)-dot_product(gvec,gvec))
-        DIJ(pt,J,I)=-DIJ(pt,I,J)
-        UIJ(pt,:,I,J) = UIJ(pt,:,I,J) + DIJ(pt,I,J)*gvec
-        UIJ(pt,:,J,I) = UIJ(pt,:,I,J) 
-        UIJ(pt,:,I,I) = UIJ(pt,:,I,I) - DIJ(pt,I,J)*hvec*2
-        UIJ(pt,:,J,J) = UIJ(pt,:,J,J) + DIJ(pt,I,J)*hvec*2
-      end do! I=1,ndeg
+      call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+      t3 = t3 + dble(count2-count1)/count_rate
       call system_clock(COUNT=count1,COUNT_RATE=count_rate)
  ! calculate derivative vector with respect to the current variable
       do ieq = 1,nex + neqs

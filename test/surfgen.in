@@ -1,10 +1,10 @@
 &GENERAL
-printlvl   = 5,
+printlvl   = 3,
 jobtype    = 1, 
 natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
 order      = 3,
-ngrp       = 2,
+ngrp       = 3,
 nSymLineUps= 1
 groupsym(1,1)   = 1,2,2
 groupprty(1,1)  = 1,1,-1
@@ -18,7 +18,7 @@ cntfl      = 'connect.in'
 &MAKESURF
 eshift     =  305.71135743d0
 usefij     = .true.
-deg_cap    = 1D-3
+deg_cap    = 3D-5
 dijscale   = 1d0
 energyT    = 4.5D4, 5.0D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
 highEScale = 5D-1,  2D-1,  5D-2,  1D-2,  1D-3, 1D-4, 1d-5
@@ -33,13 +33,14 @@ ckl_input  = ''
 ckl_output = 'ckl.out'
 rmsexcl    = -2
 npoints    = 100 
-SearchPath = '../examples/phenol/data/s0_min_disp-0.01'
+SearchPath = 'data/s0_min_disp-0.01',
+              'data/mex12_disp-0.01',
 gmfptn  = 30*'geom'
 enfptn  = 30*'energy.all'
 grdfptn = 30*'cartgrd.drt1.state$.sp'
 cpfptn  = 30*'cartgrd.nad.drt1.state$.drt1.state$.sp'
 gcutoff    = 1D-7
-maxiter    = 10 ,
+maxiter    = 20 ,
 followPrev = .true. 
 toler      = 1D-9
 LSETol     = 1.0D-8 

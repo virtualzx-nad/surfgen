@@ -1,0 +1,122 @@
+phenol dzp superlargeCAS CIS (sp separation). Hessian loop around s1 minimum.
+
+geom.1 renamed geom.  energy renamed energy.all with state info added.  cartgrd.all renamed cartgrd.drt1.state2.sp
+
+intcfl
+
+TEXAS                                                                           
+K                   STRE   1    2.        1.
+K                   STRE   2    3.        2.
+K                   STRE   3    4.        3.
+K                   STRE   4    5.        4.
+K                   STRE   5    6.        1.
+K                   STRE   6    6.        5.
+K                   STRE   7    7.        1.
+K                   STRE   8    8.        2.
+K                   STRE   9    9.        3.
+K                   STRE  10   10.        4.
+K                   STRE  11   11.        5.
+K                   STRE  12   12.        6.
+K                   STRE  13   13.        7.
+K          1.0000000BEND  14     6.        2.        1.
+          -0.5000000BEND         1.        3.        2.
+          -0.5000000BEND         2.        4.        3.
+           1.0000000BEND         3.        5.        4.
+          -0.5000000BEND         4.        6.        5.
+          -0.5000000BEND         5.        1.        6.
+K          0.8660254BEND  15     1.        3.        2.
+          -0.8660254BEND         2.        4.        3.
+           0.8660254BEND         4.        6.        5.
+          -0.8660254BEND         5.        1.        6.
+K          1.0000000BEND  16     6.        2.        1.
+          -1.0000000BEND         1.        3.        2.
+           1.0000000BEND         2.        4.        3.
+          -1.0000000BEND         3.        5.        4.
+           1.0000000BEND         4.        6.        5.
+          -1.0000000BEND         5.        1.        6.
+K          1.5000000TORS  17     6.        1.        2.        3.
+          -1.5000000TORS         2.        3.        4.        5.
+           1.5000000TORS         3.        4.        5.        6.
+          -1.5000000TORS         5.        6.        1.        2.
+K         -0.8660254TORS  18     6.        1.        2.        3.
+           1.7320508TORS         1.        2.        3.        4.
+          -0.8660254TORS         2.        3.        4.        5.
+          -0.8660254TORS         3.        4.        5.        6.
+           1.7320508TORS         4.        5.        6.        1.
+          -0.8660254TORS         5.        6.        1.        2.
+K         -2.0000000TORS  19     6.        1.        2.        3.
+           2.0000000TORS         1.        2.        3.        4.
+          -2.0000000TORS         2.        3.        4.        5.
+           2.0000000TORS         3.        4.        5.        6.
+          -2.0000000TORS         4.        5.        6.        1.
+           2.0000000TORS         5.        6.        1.        2.
+K            1.     BEND  20     6.        7.        1.
+            -1.     BEND         2.        7.        1.
+K            1.     OUT   21     7.        6.        2.        1.
+K            1.     BEND  22     1.        8.        2.
+            -1.     BEND         3.        8.        2.
+K            1.     OUT   23     8.        1.        3.        2.
+K            1.     BEND  24     2.        9.        3.
+            -1.     BEND         4.        9.        3.
+K            1.     OUT   25     9.        2.        4.        3.
+K            1.     BEND  26     3.       10.        4.
+            -1.     BEND         5.       10.        4.
+K            1.     OUT   27    10.        3.        5.        4.
+K            1.     BEND  28     4.       11.        5.
+            -1.     BEND         6.       11.        5.
+K            1.     OUT   29    11.        4.        6.        5.
+K            1.     BEND  30     1.       12.        6.
+            -1.     BEND         5.       12.        6.
+K            1.     OUT   31    12.        1.        5.        6.
+K            1.     BEND  32     1.       13.        7.
+K0.7071068   1.     TORS  33    13.        7.        1.        2.
+             1.     TORS        13.        7.        1.        6.
+  0.62E+01  0.56E+01  0.62E+01  0.61E+01  0.63E+01  0.61E+01  0.78E+01  0.55E+01
+  0.55E+01  0.55E+01  0.55E+01  0.55E+01  0.83E+01  0.14E+01  0.14E+01  0.15E+01
+  0.30E+00  0.30E+00  0.40E+00  0.10E+01  0.10E+01  0.10E+01  0.10E+01  0.10E+01
+  0.10E+01  0.10E+01  0.10E+01  0.10E+01  0.10E+01  0.10E+01  0.10E+01  0.10E+01
+  0.72E+00
+
+dirlist
+
+REFPOINT
+CALC.c1.d-0.001
+CALC.c2.d-0.001
+CALC.c3.d-0.001
+CALC.c4.d-0.001
+CALC.c5.d-0.001
+CALC.c6.d-0.001
+CALC.c7.d-0.001
+CALC.c8.d-0.001
+CALC.c9.d-0.001
+CALC.c10.d-0.001
+CALC.c11.d-0.001
+CALC.c12.d-0.001
+CALC.c13.d-0.001
+CALC.c14.d-0.001
+CALC.c15.d-0.001
+CALC.c16.d-0.001
+CALC.c17.d-0.001
+CALC.c18.d-0.001
+CALC.c19.d-0.001
+CALC.c20.d-0.001
+CALC.c21.d-0.001
+CALC.c22.d-0.001
+CALC.c23.d-0.001
+CALC.c24.d-0.001
+CALC.c25.d-0.001
+CALC.c26.d-0.001
+CALC.c27.d-0.001
+CALC.c28.d-0.001
+CALC.c29.d-0.001
+CALC.c30.d-0.001
+CALC.c31.d-0.001
+CALC.c32.d-0.001
+CALC.c33.d-0.001
+
+filelist
+
+GEOMS geom.1
+LISTINGS energy
+GRADIENTS cartgrd.all
+
