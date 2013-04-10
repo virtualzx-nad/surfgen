@@ -788,15 +788,9 @@ MODULE makesurfdata
            WIJ(:,s2,s1)     =  WIJ(:,s1,s2)
            DIJ(:,s2,s1)     = -DIJ(:,s1,s2)
          end if !(s1.ne.s2)
-  ! the Dij Contribution of VIJ
-         do g=1,nvibs
-            do l=1,nstates
-              VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
-            end do
-         end do!g
-         if(s1.ne.s2)VIJ(:,:,s2,s1)=VIJ(:,:,s1,s2)
-       end do !s2
-     end do ! s1
+       end do!s2
+     end do!s1
+
   ! construct DIJ contribution to degenerate points
      if(abs(DijScale*DijScale2)>1D-30)then
         do i=1,ndeg
@@ -809,19 +803,28 @@ MODULE makesurfdata
             dv   = VIJ(:,g,s1,s1)-VIJ(:,g,s2,s2)
             CALL DAXPY(nBas(iBlk),hvec(g),dv,1,DIJ(1,s1,s2),1)
             CALL DAXPY(nBas(iBlk),gvec(g),VIJ(1,g,s1,s2),1,DIJ(1,s1,s2),1)
+            do l=1,nstates
+               if(l==s1.or.l==s2)cycle
+               CALL DAXPY(nBas(iBlk), 2*hvec(g)*fitG(pt,g,l,s1)+gvec(g)*fitG(pt,g,l,s2),DIJ(1,l,s1),1,DIJ(1,s1,s2),1)
+               CALL DAXPY(nBas(iBlk),-2*hvec(g)*fitG(pt,g,l,s2)+gvec(g)*fitG(pt,g,l,s1),DIJ(1,l,s2),1,DIJ(1,s1,s2),1)
+            end do!l
           end do!g
           CALL DSCAL(nBas(iBlk),1/(4*dot_product(hvec,hvec)-dot_product(gvec,gvec)),DIJ(:,s1,s2),1)
           DIJ(:,s2,s1)=-DIJ(:,s1,s2)
-          do g=1,nvibs
-            VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,s1,s2)*gvec(g)
-            VIJ(:,g,s2,s1) = VIJ(:,g,s1,s2) 
-            VIJ(:,g,s1,s1) = VIJ(:,g,s1,s1) - DIJ(:,s1,s2)*hvec(g)*2
-            VIJ(:,g,s2,s2) = VIJ(:,g,s2,s2) + DIJ(:,s1,s2)*hvec(g)*2
-          end do!g
         end do! I=1,ndeg
      end if !DijScale /= 0
+  ! the Dij Contribution of VIJ
+     do s1=1,nstates
+       do s2=s1,nstates
+         do g=1,nvibs
+            do l=1,nstates
+              VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
+            end do
+         end do!g
+         if(s1.ne.s2)VIJ(:,:,s2,s1)=VIJ(:,:,s1,s2)
+       end do !s2
+     end do ! s1
 ! Make AMAT from W and V matrices
-      
      do i=1,nEqPt+nExPt
         s1=ptEqMap(i,1)    ! state index 1
         s2=ptEqMap(i,2)    ! state index 2
@@ -1177,7 +1180,6 @@ MODULE makesurfdata
         DIJ(pt,I,J)=DIJ(pt,I,J) /(4*dot_product(hvec,hvec)-dot_product(gvec,gvec))
         DIJ(pt,J,I)=-DIJ(pt,I,J)
       end do! I=1,ndeg
-
    ! update the wave function dependent part of gradients
       call system_clock(COUNT=count1,COUNT_RATE=count_rate)
       do I=1,nstates
@@ -2469,7 +2471,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   linNegSteps = 0
   dfstart   = 0
   dijscale  = 1d0
-  dijscale2 = 0d0
+  dijscale2 = 1d0
   useIntGrad= .true.
   restartdir= ''
   intGradT  = 1D-3

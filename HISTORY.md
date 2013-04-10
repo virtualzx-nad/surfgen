@@ -1,3 +1,7 @@
+## 2.2.7 (2013-04-10)
+
+* Fixed the DIJ problem in normal equations
+
 ## 2.2.6 (2013-04-09)
 
 * Fixed a bug in Lagrangian gradient evaluation where some elements of Dij are used before constructed, causing the program to

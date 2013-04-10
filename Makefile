@@ -20,7 +20,7 @@ OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
            libsym.o libinternal.o localcoord.o makesurf.o io.o testsurfgen.o
 
 # Set surfgen vesion
-SGENVER := 2.2.6
+SGENVER := 2.2.7
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
