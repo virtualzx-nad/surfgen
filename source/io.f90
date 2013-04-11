@@ -467,7 +467,6 @@ SUBROUTINE initialize(jobtype)
   end do
   call allocateHd(eguess)
   if(inputfl/='')then 
-    if(printlvl>0)print *,"  Reading Hd Coefficients from ",trim(inputfl)
     call readHd(inputfl)
   end if!(inputfl/='')
   call printTitle(jobtype)
@@ -487,24 +486,22 @@ SUBROUTINE printTitle(jobtype)
   CHARACTER(9),dimension(-1:2) :: types = (/'GENSYM   ','POTLIB   ','MAKESURF ',&
                                             'EXTREMA  ' /)
 
+  CHARACTER(72) :: ver
+
+  call getver(ver)
+
   open(unit=OUTFILE,file='surfgen.out',access='sequential',form='formatted')
   write(OUTFILE,1000)'-----------------------------------------------------------'
   write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'                     surfgen.global                        '
+  write(OUTFILE,1000)'                     Surfgen                               '
+  write(OUTFILE,1000)''
+  write(OUTFILE,1000)'   Use the quasi-diabatic Hamiltonian(Hd) approach to'
+  write(OUTFILE,1000)'   construct coupled potential energy surfaces from ab'
+  write(OUTFILE,1000)'    initio data.  '
+  write(OUTFILE,1000)'   Version: '//trim(ver)
   write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'   * Creates quasi-diabatic Hamiltonian by reproducing     '
-  write(OUTFILE,1000)'   ab initio energy gradients and derivative couplings     '
-  write(OUTFILE,1000)'   with selected data fitted exactly and the rest in a     '
-  write(OUTFILE,1000)'   least-squares sense                                     '
-  write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'   * Blocks of Hd are expanded as polynomials of scaled    '
-  write(OUTFILE,1000)'   internuclear distance and out-of-plane angle coords     '
-  write(OUTFILE,1000)'   that are well-defined globally.                         ' 
-  write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'   * Hd is constructed, using projection operators, so     '
-  write(OUTFILE,1000)'   that the diabats carry certain irreps of CNPI group     '
-  write(OUTFILE,1000)'                                                           '
-  write(OUTFILE,1000)'   Xiaolei Zhu,  2010                                      '
+  write(OUTFILE,1000)'   Maintained by Xiaolei Zhu                               '
+  write(OUTFILE,1000)'   (C)  2010-2013 Yarkony Group                            '
   write(OUTFILE,1000)'   Department of Chemistry, Johns Hopkins University       '
   write(OUTFILE,1000)'   based on SURFGEN.X, Michael Schuurman,  2008            '
   write(OUTFILE,1000)'-----------------------------------------------------------'

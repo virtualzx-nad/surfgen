@@ -19,8 +19,11 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
            libsym.o libinternal.o localcoord.o makesurf.o io.o testsurfgen.o
 
+# Objects for version labeling
+OBJVf   =  getver.o
+
 # Set surfgen vesion
-SGENVER := 2.2.8
+SGENVER := 2.2.9
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -45,6 +48,7 @@ CDS   := cd $(SDIR);
 OBJS  := $(addprefix $(SDIR)/,$(OBJSf))
 OBJSL := $(addprefix $(SDIR)/,$(OBJSLf))
 OBJT  := $(addprefix $(SDIR)/,$(OBJTf))
+OBJV  := $(addprefix $(SDIR)/,$(OBJVf))
 
 # Set compiler
 CPLIST := g95 pgf90 /usr/bin/gfortran gfortran 
@@ -137,7 +141,7 @@ all  :  surfgen libs
 	@echo ''
 
 #target for standalone fitting and analysis program
-surfgen  :  $(OBJS) | $(BDIR)
+surfgen  : $(OBJV)  $(OBJS) | $(BDIR)
 	@echo ''
 	@echo '-----------------------------------------'
 	@echo '   SURFGEN FITTING PROGRAM '
@@ -151,13 +155,15 @@ surfgen  :  $(OBJS) | $(BDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'
-	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(LIBS) $(LKOPT) $(LDFLAGS)
+	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(OBJV) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
+	@echo 'Creating symbolic link to the new binary'
+	ln -sf $(EXEC) $(BDIR)/surfgen
 	@echo ''
 
 #target for runtime interface library
-libs  :  $(OBJSL) | $(LDIR)
+libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo ''
 	@echo '-----------------------------------------'
 	@echo '  SURFGEN EVALUATION LIBRARY'
@@ -167,17 +173,21 @@ libs  :  $(OBJSL) | $(LDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building target: $@'
 	@echo 'Archiving the object into library '
-	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)
+	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL) $(OBJV)
 	@echo '-----------------------------------------'
 	@echo ''
 
 #
 clean:
-	-$(RM) $(OBJS) $(SDIR)/*.mod $(OBJSL) $(OBJT) 
+	-$(RM) $(OBJS) $(SDIR)/*.mod $(OBJSL) $(OBJT) $(OBJV) 
 	@echo 'Finished cleaning'
 
+.PHONY : clean
+
+.FORCE :
+
 # Compile and run test code 
-tests : $(OBJT) | $(TDIR) 
+tests : $(OBJV) $(OBJT) | $(TDIR) 
 	@echo '-----------------------------------------'
 	@echo '  SURFGEN TESTING PRGRAMS'
 	@echo 'Program Version:     $(SGENVER)'
@@ -189,7 +199,7 @@ tests : $(OBJT) | $(TDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building Target: $@'
 	@echo 'Invoking Linkier'
-	cd $(SDIR); $(COMPILER) -o $(TSTX) $(OBJT) $(LIBS) $(LKOPT) $(LDFLAGS)
+	cd $(SDIR); $(COMPILER) -o $(TSTX) $(OBJT) $(OBJV) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo '-----------------------------------------'
 	@echo 'Performing Tests.  Please see test.log for details'
 	@echo ''
@@ -198,6 +208,8 @@ tests : $(OBJT) | $(TDIR)
 	@echo 'All tests finished. '
 	@echo '-----------------------------------------'
 
+$(OBJV) : .FORCE
+
 # Compile source files
 $(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
@@ -205,6 +217,15 @@ $(SDIR)/%.o : $(SDIR)/%.f90
 	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS)
 	@echo 'Finished building: $<'
 	@echo ' '
+
+# Compile source file that needs preprocessing
+$(SDIR)/%.o : $(SDIR)/%.F90
+	@echo 'Building file: $<'
+	@echo 'Invoking: Compiler'
+	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS) -fpp -DSGENVER=\"$(SGENVER)\"
+	@echo 'Finished building: $<'
+	@echo ' '
+# Compile version string subroutine
 
 $(BDIR) $(LDIR) $(TDIR):
 	@echo 'Creating directory $@'

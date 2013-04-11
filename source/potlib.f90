@@ -290,7 +290,13 @@ SUBROUTINE prepot
      IMPLICIT NONE
      integer   ::jobtype
 
-     print *,"Initializing surfgen.global"
+     character(72) :: ver
+
+     print *,"Initializing surfgen"
+
+     call getver(ver)
+
+     print "(2A)","Program version: ",trim(ver)
      call readginput(jobtype)
      call initialize(jobtype)
 

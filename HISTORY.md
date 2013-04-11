@@ -1,3 +1,12 @@
+## 2.2.9 (2013-04-10)
+
+* Added version numbers to `surfgen.out`, standard output, and `hd.data` files
+* The eigenvector input file is now processed on a point by point basis.  For undefined points, `updateEigenVec` will be
+used to generate the initial vectors.  This allows Ckl data generated from a smaller point set to be used.  It can also
+be used to manually modify the adiabatic-diabatic transformation at a specific point.
+* When compiling with `make surfgen`, a symbolic link `surfgen` will be created in `lib` directory, pointing to the 
+newest executable.
+
 ## 2.2.8 (2013-04-10)
 
 * Fixed the input file searching problem when printlvl<2 (Issue #8)

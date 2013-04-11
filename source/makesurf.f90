@@ -1356,17 +1356,23 @@ MODULE makesurfdata
     end if
   
     do i=1,npoints
-        write(7421,"(4E32.24)")ckl(i,:,:)
+        write(7421,"(I7,81E32.24)")I,ckl(i,:,:)
     end do!i=1,npoints
     print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
     close(unit=7421)
   END SUBROUTINE writeCkl
 !---------------------------------------------
   SUBROUTINE readCkl(cklfl)
+    use hddata, only: nstates
+    use progdata, only: printlvl
     IMPLICIT NONE
     CHARACTER(255),INTENT(IN) :: cklfl
 
-    integer  ios, i
+    double precision ::  cklbuffer(nstates,nstates)
+    integer  ios, i, pt, ccount
+
+    if(cklfl=='')return
+    print "(A)","  Loading eigenvectors from file "//trim(adjustl(cklfl))
     open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
         status='old',action='read',position='rewind',iostat=ios)
     if(ios/=0)then
@@ -1374,10 +1380,16 @@ MODULE makesurfdata
         return
     end if
 
-    do i=1,npoints
-        read(7421,*)ckl(i,:,:)
+    ios = 0
+    ccount=0
+    do while (ios==0)
+        read(7421,*,iostat=ios) pt,cklbuffer
+        if(ios==0.and.pt<=npoints.and.pt>0)then
+            ckl(pt,:,:)=cklbuffer
+            ccount=ccount+1
+        end if
     end do
-    print *," wave functions loaded from file ",trim(adjustl(cklfl))
+    if(printlvl>1)  print "(3x,I7,A)",ccount," eigenvectors loaded."
     close(unit=7421)
   END SUBROUTINE readCkl
 !---------------------------------------------
@@ -1812,7 +1824,6 @@ SUBROUTINE makesurf()
   integer                     ::  ios, status
   double precision, external  ::  dnrm2
   logical                     ::  diff  !whether differential convergence will be used
-  logical                     ::  loadC !whether initial CKL will be loaded from input file
   DOUBLE PRECISION,dimension(nstates,nstates)            :: hmatPT
   DOUBLE PRECISION,dimension(nvibs,nstates,nstates)      :: dhmatPT
   
@@ -1854,32 +1865,26 @@ SUBROUTINE makesurf()
   ! Begin self-consistent iterations
   !----------------------------------
 !generate initial eigen vectors
-  if(ckl_input/='')then
-    loadC = .false.
-    if(printlvl>0)print 1004
-    call readCkl(ckl_input) 
-    if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
-    do i=1,npoints
-      CALL EvaluateHd3(asol2,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
-      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
-      do k=1,dispgeoms(i)%nvibs
-        fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
-      end do!k=1,dispgeoms(i)%nvibs
-      do k=1,nstates
-        fitE(i,k)= dble(0)
-        do j=1,nstates
-          fitE(i,k)=fitE(i,k)+ckl(i,j,k)*dot_product(ckl(i,:,k),hmatPt(j,:))
-        end do
+  if(printlvl>0)print 1003
+  printlvl=printlvl-1
+  call updateEigenVec(asol2)
+  printlvl=printlvl+1
+  call readCkl(ckl_input) 
+  if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
+  do i=1,npoints
+    CALL EvaluateHd3(asol2,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
+    call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
+    do k=1,dispgeoms(i)%nvibs
+      fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
+    end do!k=1,dispgeoms(i)%nvibs
+    do k=1,nstates
+      fitE(i,k)= dble(0)
+      do j=1,nstates
+        fitE(i,k)=fitE(i,k)+ckl(i,j,k)*dot_product(ckl(i,:,k),hmatPt(j,:))
       end do
-      if(printlvl>1)PRINT "(I6,10(x,F15.4))",I,fitE(i,:)*au2cm1
     end do
-  else
-    loadC = .true.
-    if(printlvl>0)print 1003
-    printlvl=printlvl-1
-    call updateEigenVec(asol2)
-    printlvl=printlvl+1
-  endif!(ckl_input/='')then
+    if(printlvl>1)PRINT "(I6,10(x,F15.4))",I,fitE(i,:)*au2cm1
+  end do
   asol = asol2
   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
   CALL optLag(jaco,nex,dCi,asol,jaco2)
@@ -2274,7 +2279,6 @@ SUBROUTINE makesurf()
 1001 format(a,f7.2,a)
 1002 format(4X,"Hd coefficients solved after ",F8.2," seconds.")
 1003 format(3X,"Generating initial eigenvectors.")
-1004 format(3X,"Loading initial eigenvectors.")
 1005 format(1x,'Iteration',i4,": Delta=",E9.2,", d[g]%=",f7.2,   &
                 ", <d[g]%>=",f7.2,"%, d[E]=",f8.2,", <d[E]>=",f8.2)
 1006 format(/,2x,'Computation Converged after ',i5,' Iterations')

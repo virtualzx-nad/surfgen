@@ -5,8 +5,12 @@ program surfgen
     use progdata
     implicit none
     integer   ::jobtype
+    character(72) :: ver
 
-    print *,"Entering surfgen.global"
+    print *,"Entering surfgen"
+    call getver(ver)
+    print "(A)","Program version: "//trim(ver)
+
     call readinput(jobtype)
     call initialize(jobtype)
 
