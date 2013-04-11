@@ -142,7 +142,6 @@ MODULE makesurfdata
 
 ! scaling factor of dij term.  0 gives old result and 1 gives exact gradients
   double precision            :: DijScale
-  double precision            :: DijScale2
 
 ! index of the iteration to start differential convergence
   integer    :: dfstart
@@ -778,10 +777,10 @@ MODULE makesurfdata
          end do !r= 1, rr
 
          if(s1.ne.s2) then
-           if(abs(DijScale*DijScale2)>1D-30.and.pt/=enfDiab)then
+           if(abs(DijScale)>1D-30.and.pt/=enfDiab)then
   ! construct DIJ from WIJ.  It is non zero only on the off diagonal
   !no rotation for reference point
-             if(abs(ediff(s1,s2))>deg_cap) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale*DijScale2
+             if(abs(ediff(s1,s2))>deg_cap) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale
            end if!Dij/=0 and not enforcing diabat
   ! fill the lower triangle of D and W
            WIJ(:,s2,s1)     =  WIJ(:,s1,s2)
@@ -791,7 +790,7 @@ MODULE makesurfdata
      end do!s1
 
   ! construct DIJ contribution to degenerate points
-     if(abs(DijScale*DijScale2)>1D-30)then
+     if(abs(DijScale)>1D-30)then
         do i=1,ndeg
           s1 = Id(i)
           s2 = Jd(i) 
@@ -839,7 +838,7 @@ MODULE makesurfdata
                   AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
                   if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1)
                 else
-                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)*(1-DijScale*DijScale2)
+                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)*(1-DijScale)
                   if(iBlk==1)bvec(i)=0d0
                 end if 
               end if !s2<0
@@ -1147,7 +1146,7 @@ MODULE makesurfdata
                 Jd(ndeg)=J
                 Pd(ndeg)=ipt
               else
-                DIJ(ipt,I,J)=WIJ(ipt,I,J)/EIJ*DijScale
+                DIJ(ipt,I,J)=WIJ(ipt,I,J)/EIJ
               end if
             end do !ipt=1,npoints
 
@@ -1207,7 +1206,7 @@ MODULE makesurfdata
            if(s1==s2)then
              dQ(ieq) = WIJ(pt,s1,s1)
            else 
-             dQ(ieq) = WIJ(pt,s1,s2)*(1-DijScale)
+             dQ(ieq) = 0 
            end if
          else  !(s2>0)    it is adiabatic energy difference
            dQ(ieq) = WIJ(pt,s1,s1) - WIJ(pt,-s2,-s2)
@@ -2458,7 +2457,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,dijscale,dijscale2,  &
+                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,dijscale,  &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
                       
   npoints   = 0
@@ -2477,7 +2476,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   linNegSteps = 0
   dfstart   = 0
   dijscale  = 1d0
-  dijscale2 = 1d0
   useIntGrad= .true.
   restartdir= ''
   intGradT  = 1D-3

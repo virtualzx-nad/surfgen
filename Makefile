@@ -22,8 +22,12 @@ OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
 # Objects for version labeling
 OBJVf   =  getver.o
 
+# manual pages
+PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf 
+
+
 # Set surfgen vesion
-SGENVER := 2.2.9
+SGENVER := 2.2.10
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -38,17 +42,24 @@ bindir:= bin
 libdir:= lib
 tstdir:= test
 srcdir:= source
+docdir:= pdf
 JDIR  := $(shell pwd)
 BDIR  := $(JDIR)/$(bindir)
 LDIR  := $(JDIR)/$(libdir)
 TDIR  := $(JDIR)/$(tstdir)
 SDIR  := $(JDIR)/$(srcdir)
+DDIR  := $(JDIR)/$(docdir)
+MANDIR:= $(JDIR)/man
 CDS   := cd $(SDIR);
 
 OBJS  := $(addprefix $(SDIR)/,$(OBJSf))
 OBJSL := $(addprefix $(SDIR)/,$(OBJSLf))
 OBJT  := $(addprefix $(SDIR)/,$(OBJTf))
 OBJV  := $(addprefix $(SDIR)/,$(OBJVf))
+PDFPG := $(addprefix $(DDIR)/,$(PDFfl))
+
+PDFsrc := $(PDFfl:.pdf=.1)
+PDFMN  := $(addprefix $(MANDIR)/man1/,$(PDFsrc))
 
 # Set compiler
 CPLIST := g95 pgf90 /usr/bin/gfortran gfortran 
@@ -136,7 +147,7 @@ else
 endif
 
 # build everything
-all  :  surfgen libs
+all  :  surfgen libs man tests
 	@echo 'Finished building surfgen.'
 	@echo ''
 
@@ -175,6 +186,8 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo 'Archiving the object into library '
 	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL) $(OBJV)
 	@echo '-----------------------------------------'
+	@echo 'Creating symbolic link to new library'
+	ln -sf $(LIBF) $(LDIR)/libsurfgen
 	@echo ''
 
 #
@@ -208,7 +221,23 @@ tests : $(OBJV) $(OBJT) | $(TDIR)
 	@echo 'All tests finished. '
 	@echo '-----------------------------------------'
 
+# make sure version subroutines are always updated
 $(OBJV) : .FORCE
+
+.PHONY : man install
+
+# compile man pages into pdf files, and copy man pages to system man page directory
+install : $(PDFMN)
+	@echo 'Copying man pages to /usr/share/man'
+	-cp $(PDFMN) /usr/share/man/man1
+
+$(DDIR)/%.pdf : $(MANDIR)/man1/%.1 | $(DDIR)
+	@echo 'Constructing pdf manual from man page of $(notdir $(basename $<))'
+	@man -M $(MANDIR) $(notdir $(basename $@)) -t > $(notdir $(basename $@)).tmp.ps
+	@ps2pdf $(notdir $(basename $@)).tmp.ps $@
+	@rm $(notdir $(basename $@)).tmp.ps
+
+man : $(PDFPG) 
 
 # Compile source files
 $(SDIR)/%.o : $(SDIR)/%.f90
@@ -227,6 +256,6 @@ $(SDIR)/%.o : $(SDIR)/%.F90
 	@echo ' '
 # Compile version string subroutine
 
-$(BDIR) $(LDIR) $(TDIR):
+$(BDIR) $(LDIR) $(TDIR) $(DDIR):
 	@echo 'Creating directory $@'
 	@mkdir -p $@

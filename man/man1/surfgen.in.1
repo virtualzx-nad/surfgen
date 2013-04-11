@@ -305,8 +305,6 @@ oscillations and should not be enabled if the fit is qualitatively incorrect.
 .br
 It is recommended that when differential convergence is enabled, set
 .Em DijScale=1
-and 
-.Em DijScale2=1
 .It exactTol 
 .Sy DOUBLE PRECISION [1D-12]
 Eigenvalue cutoff when solving constrained normal equations.  This parameter dictates
@@ -347,20 +345,14 @@ direction encounter an immediate increase in the norm of Lagrangian.
 .It DijScale
 .Sy DOUBLE PRECISION [1.]
 This option controls the multiplier of the derivative of eigenvectors with respect
-to the fitting coefficients.  When set to 0, the dependency of eigenvectors on 
-fitting coefficients are ignored.  When set to 1, the first order response of 
-eigenvectors with respect to the change in fitting coefficients is fully implemented.
-This option is used by the construction of normal equations as well as evaluation
-of gradients of the Lagrange multipliers.  It is recommended to have 
+to the fitting coefficients during construction of the normal equations.  
+When set to 0, the dependency of eigenvectors on fitting coefficients are ignored.  
+When set to 1, the first order response of eigenvectors with respect to the change 
+in fitting coefficients is fully implemented.
+It is recommended to have 
 .Em DijScale=1.0 
 in most cases.   It only needs to be turned down when eigenvectors are changing 
 too rapidly and gives oscillations.
-.It DijScale2
-.Sy DOUBLE PRECISION [1.]
-Similar to 
-.Sy DijScale ,
-this option is an additional multiplier that only scales the eigenvector derivatives
-in the normal equations, but does not affect the evaluation of Lagrangian gradients.
 .It scaleEx
 .Sy DOUBLE PRECISION [1.]
 Uniformly scale all exact equations.  Since there is no weight for exact equations,
@@ -391,8 +383,12 @@ instead of absolute energy.  This option is ignored when
 .Em followPrev=.true.
 .It ckl_input
 .Sy CHARACTER(255) [\(aq\(aq]
-Input file that contains the initial guess of eigenvectors at each data point.  
-When left empty or file not exist, the eigenvectors are initialized by diagonalizing
+Input file that contains the initial guess of eigenvectors at selected data points.
+Each line of the file contains the index of a point and the eigenvector of that point.
+Repeating input will be overiden but the one that is last encountered in the file.
+Any points that are not specified in this file will use the diagonalization of initial
+Hd to generate initial eigenvectors.  
+When left empty or file not exist, all the eigenvectors are initialized by diagonalizing
 initial Hd.
 .It ckl_output
 .Sy CHARACTER(255) [\(aqckl.out\(aq]

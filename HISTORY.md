@@ -1,3 +1,11 @@
+## 2.2.10 (2013-04-10)
+
+* Symbolic link `libsurfgen` to most recent library created in `lib` directory when compiling libraries.
+* Parameter `DijScale2` is now deprecated.  Its purpose is now achieved by `DijScale`.  You can still suppress the Dij 
+contributions to normal equations, but you can no longer disable Dij contributions to Lagrangians.
+* pdf documentations are no longer distributed with the repository.  Instead, they can be generated from man pages with
+command `$ make man`.  The man pages can be installed into `/usr/share/man` with command `$ sudo make install`. 
+
 ## 2.2.9 (2013-04-10)
 
 * Added version numbers to `surfgen.out`, standard output, and `hd.data` files
