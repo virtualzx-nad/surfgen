@@ -1,35 +1,41 @@
 POINT SPECIFIC OPTIONS
 KEY111112222233333     ! comments
 wt   0   1    2000
-wt   0    1   34       !  1- 34 loop around s0min
-ag   1    1    1       ! s0min 
-wt   0   35   68       ! 35- 68 s0min hessian
-wt   0   69   76       ! 69- 76 path from s0min to s0sad
-wt   0   69   70       ! 69- 76 path from s0min to s0sad
-wt   0   71   72       ! 69- 76 path from s0min to s0sad
-wt   0   77   110      ! 77-110 loop around s0sad
-wt   0   111  144      !111-144 s1 min hessian   
-wt   1   145  178      !145-178 s1 min disp
-wt   1   145  145      !145-178 s1 min disp
-wt    0  179  199      !179-199 path from s0min to dissociation
-wt   1   200  233      !200-233 s1 sad hessian
-wt   1   234  267      !234-267 s1 sad disp
-wt   1   234  264      !234-267 s1 sad disp
-wt   0   268  273      !268-273 path from s1 sad along negative mode
-wt   1   274  277      !274-277 lic from mex12 to s1min
-wt   1   278  278      !278     MEX12
-Ld  278   2    3
-LG  278   2    3
-wt   1   279  312      !279-312 mex12 disp 0.01
-wt -30   313  378      !313-378 mex12 disp+0.02-0.05
-wt   1   379  382      !379-382 mex12 search path
-wt   0   383  393      !383-393 mex12 displacement along h.(5fine disps and 6 coarse disps)
-wt -999  383  393      !383-393 mex12 displacement along h.(5fine disps and 6 coarse disps)
-wt -99   383  390      !383-393 mex12 displacement along h.(5fine disps and 6 coarse disps)
-wt -6    386  388      !383-393 mex12 displacement along h.(5fine disps and 6 coarse disps)
-wt  1    383  385      !383-393 mex12 displacement along h.(5fine disps and 6 coarse disps)
-wt  0    394  399      !394-399 lic from mex12 to mex01 
-wt  0    400  433      !400-433 loop around mex01
-wt  0    434  437      !434-437 lic from mex01 to diss s0min
-wt  0    438  468      !438-468 s1 diss min hessian
-wt  0    469  499      !469-499 s0 diss min disp-0.01
+wt   1    1   34       !  1- 34 loop around s0min
+lg   1    1    1       ! s0min 
+wt   1   35   68       ! 35- 68 s0min hessian
+wt  1    69   76       ! 69- 76 path from s0min to s0sad
+wt  1    77   110      ! 77-110 loop around s0sad
+wt  1    111  144      !111-144 s1 min hessian   
+wt  1    145  178      !145-178 s1 min disp
+wt  0    179  199      !179-199 path from s0min to dissociation
+wt  1    200  233      !200-233 s1 sad hessian
+wt  1    234  267      !234-267 s1 sad disp
+wt  0    268  273      !268-273 path from s1 sad along negative mode
+wt  1    274  277      !274-277 lic from mex12 to s1min
+wt  1    278  278      !278     MEX12
+ld  278   2    3
+aG  278   2    3
+wt  1    279  312      !279-312 mex12 disp 0.01
+wt  1    313  378      !313-378 mex12 disp+0.02-0.05
+wt  1    379  382      !379-382 mex12 search path
+wt   0   383  392      !383-392 mex12 displacement along h.(5fine disps and 6 coarse disps)
+wt   1   383  384      !383-392 mex12 displacement along h.(5fine disps and 6 coarse disps)
+wt  1    385  392      !383-392 mex12 displacement along h.(5fine disps and 6 coarse disps)
+wt  1    393  393      !393-398 lic from mex12 to mex01 
+wt  1    394  394      !393-398 lic from mex12 to mex01 
+wt -2    395  395      !393-398 lic from mex12 to mex01 
+wt -10   396  396      !393-398 lic from mex12 to mex01 
+wt -79   397  397      !393-398 lic from mex12 to mex01 
+wt -999  398  398      !393-398 lic from mex12 to mex01 
+wt  0    399  432      !399-432 loop around mex01
+aD  399   1    2      
+aG  399   1    2     
+wt  0    433  436      !433-436 lic from mex01 to diss s0min
+wt  0    437  467      !437-467 s1 diss min hessian
+wt  0    468  498      !468-498 s0 diss min disp-0.01
+wt  0    499  503      ! disp from s0 sad to diss
+wt  0    504  508      ! disp from mex01 along h coarse grid
+wt  0    509  512      ! disp from mex01 along h fine grid
+wt  0    513  517      !513-517 mex12 along h fine OLD
+wt  0    518  551      !518-551 hessian loop around s0-sad min(-0.001)

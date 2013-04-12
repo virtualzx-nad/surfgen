@@ -42,7 +42,7 @@ MODULE CNPI
 
 !----CONSTANTS------------------------------------------
  DOUBLE PRECISION,PARAMETER    :: IrrepMatCutOff=1D-7
- DOUBLE PRECISION,PARAMETER    :: MatProjCutOff=1D-5
+ DOUBLE PRECISION,PARAMETER    :: MatProjCutOff=1D-7
 
 !----GLOBAL VARIABLES-----------------------------------
  ! * SYMMETRY PROPERTIES *

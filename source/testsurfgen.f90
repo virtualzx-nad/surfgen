@@ -322,7 +322,7 @@ SUBROUTINE testHd(ntest,disp)
             asol = asol0 - dsol*n
             call updateEigenVec(asol,.true.)
             CALL getCGrad(asol,dCi,dL,lag,jaco)
-            lagval(-n) = -lag
+            lagval(-n) = lag
             DNumL = DNumL - coef(n)*lag
         end do!n=1,ndisp
         DNumL = DNumL/disp
@@ -330,13 +330,13 @@ SUBROUTINE testHd(ntest,disp)
         ! Comparisons with previous largest error
         print "(3(A,E14.7))","   ",DAnaL," - ",DNumL," = ",DNumL-DAnaL
         maxrLag = max(maxrLag,abs((DNumL-DAnaL)/DNumL))
-        print "(A,9E14.7)","Lag:",lagval
+        if(abs(DNumL-DAnaL)/DNumL>1d-4)print "(A,9E14.6)","Shifted Lag:",lagval-lagval(0)
     end do!i=1,ntest
     print "(A,F10.5,A)"," Maximum relative error for Hd gradients: ",maxratio*100,"%"
     print "(A,F10.5,A)"," Maximum relative error for Lagrangian: ",maxrLag*100,"%"
     print *,""
     if(maxratio>1d-6)stop"Hd gradient test failed."
-    if(maxrLag>1d-4) stop"Lagrangian test failed."
+    if(maxrLag>1d-5) stop"Lagrangian test failed."
     print *,"Hd gradient and Lagrangian tests finished."
     printlvl = prtl
 END SUBROUTINE testHd

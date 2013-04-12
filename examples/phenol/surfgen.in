@@ -1,17 +1,15 @@
 &GENERAL
-printlvl   = 2,
+printlvl   = 3,
 jobtype    = 1, 
 natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3
 order      = 3,
-ngrp       = 3,
+ngrp       = 4,
 nSymLineUps= 1
-groupsym(1,1)   = 1,2,2
-groupprty(1,1)  = 1,1,-1
-groupsym(1,2)   = 1,2,1
-groupprty(1,2)  = 1,1,-1
-groupsym(1,3)   = 1,2,1
-groupprty(1,3)  = 1,-1,-1
+groupsym(1,1)   = 1,2,2,1
+groupprty(1,1)  = 1,1,-1,-1
+groupsym(1,2)   = 1,2,2
+groupprty(1,2)  = -1,-1,1
 inputfl    = 'hd.data'
 cntfl      = 'connect.in'
 /
@@ -20,15 +18,15 @@ eshift     =  305.71135743d0
 usefij     = .true.
 deg_cap    = 1D-3
 dijscale   = 1d0
-energyT    = 4.5D4, 5.0D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
+energyT    = 4.8D4, 5.1D4, 5.5D4, 6.0D4, 7D5,  1D6,  1D7 
 highEScale = 5D-1,  2D-1,  5D-2,  1D-2,  1D-3, 1D-4, 1d-5
 useIntGrad = .true.
-maxd       = 2D0 
+maxd       = 3D-1
 dfstart    = 0
 intGradT   = 1D-2
 linSteps   =  0
 intGradS   = 1D-1
-TBas       = 1d-10
+TBas       = 1d-7 
 ckl_input  = ''
 ckl_output = 'ckl.out'
 rmsexcl    = -2
@@ -46,8 +44,9 @@ SearchPath = 'data/s0_min_disp-0.01','data/s0_min_hess-0.001',
              'data/mex01_disp-0.01',
              'data/lic_mex01_to_s0-dissmin',
              'data/s1-diss_min_hessian-0.001',
-             'data/s0-diss_min_disp-0.01',
-             'data/path_s0sad_diss','data/path_mex01_h_coarse'
+             'data/s0-diss_min_disp-0.01'
+             'data/path_s0sad_diss','data/path_mex01_h_coarse','data/path_mex01_h_fine'
+             'data/path_mex12_h_fine_OLD','data/s0_sad_hess-0.001'
 gmfptn  = 30*'geom'
 enfptn  = 30*'energy.all'
 grdfptn = 30*'cartgrd.drt1.state$.sp'
@@ -55,9 +54,9 @@ cpfptn  = 30*'cartgrd.nad.drt1.state$.drt1.state$.sp'
 restartdir = 'restart'
 gcutoff    = 1D-7
 maxiter    = 10 ,
-followPrev = .true. 
-toler      = 1D-9
-LSETol     = 1.0D-8 
+followPrev = .true.
+toler      = 1D-10
+LSETol     = 1.0D-9 
 flattening = 1.0D-9 
 exactTol   = 1.0D-9 
 gorder     = 5000.
@@ -68,8 +67,8 @@ w_grad     = 3D-1
 w_fij      = 3D-1
 nrmediff   = 1D3
 ediffcutoff= 1D2
-nrmediff2  = 1d2
-ediffcutoff2=1d1   
+nrmediff2  = 2d2
+ediffcutoff2=1d2   
 ndstart    = 200
 ndiis      = 2  
 /

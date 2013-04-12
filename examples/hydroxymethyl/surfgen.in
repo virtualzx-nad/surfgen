@@ -1,6 +1,6 @@
 /
 &GENERAL
-printlvl=2
+printlvl=0
 jobtype=1
 natoms=5
 atmgrp=1,2,3,3,4
@@ -12,10 +12,9 @@ order=3
 inputfl='hd.data'
 /
 &MAKESURF
-deg_cap=1D-4
+deg_cap=1D-3
 usefij=.true.
 eshift=114.8486354349
-gScaleMode=0
 dijscale=1d0
 intGradS=1D-1
 useIntGrad=.true.
@@ -23,17 +22,19 @@ intGradT=1D-3
 rmsexcl=-5
 npoints=157
 gcutoff=1D-7
+linSteps = 10
 maxiter=10 
 grdfptn= 'cartgrd.drt1.state$.all'
 cpfptn = 'cartgrd_total.drt1.state$.drt1.state$.all'
 toler=1D-3
-LSETol=1.0D-8
+LSETol=1.0D-9
+flattening = 1d-9
 exactTol=1D-9 
 maxd=1d3 
-tbas=1d-10
+tbas=1d-9 
 ckl_output='ckl.out'
 ckl_input=''
-dfstart=-1
+dfstart= 1
 gorder=5000.
 outputfl='hd.data2'
 flheader='high order tester'
@@ -44,7 +45,7 @@ nrmediff=1D3
 ediffcutoff=1D2
 nrmediff2=1D2
 ediffcutoff2=1d1
-ndstart=100
+ndstart=200
 ndiis=5
 /
 

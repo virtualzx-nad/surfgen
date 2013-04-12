@@ -135,7 +135,6 @@ MODULE makesurfdata
   integer,dimension(:),allocatable           :: npb  ! number of primitive basis for each block
   integer,dimension(:),allocatable           :: nbas ! number of reconstructed basis for each block
   double precision                           :: TBas ! theshold for eigenvalue cutoff of the primitive basis overlap matrix (linear dependency)
-  double precision                           :: MaxRot  ! maximum rotation of eigenvector of Schrodingers equations at a point between iterations    
   double precision                           :: ecutoff  ! energy threshold above which data will be excluded from basis construction
   double precision                           :: egcutoff ! energy threshold above which gradients will no longer be used in fit
   type(T2DDList),dimension(:),allocatable    :: ZBas ! transformation from primitive to the reconstructed basis for each block
@@ -175,7 +174,7 @@ MODULE makesurfdata
     use hddata, only: nstates
     use progdata, only: printlvl
     IMPLICIT NONE
-    INTEGER i,s1,s2
+    INTEGER i,j,s1,s2
 
     if(printlvl>0)print *,"Processing data inclusion/exclusion/exact fit data"
     if(allocated(incgrad))deallocate(incgrad)
@@ -204,14 +203,20 @@ MODULE makesurfdata
           incener(i,s1,s1)=hasEner(i,s1)
           if(i==enfDiab)incener(i,:,:)=.true.
         end do!s1=1,nstates
-      end if
-    end do
+        ! add off-diagonal elements between states within degeneracy groups
+        do j=1,dispgeoms(i)%ndeggrp
+          s1 = dispgeoms(i)%deg_groups(j,1)
+          s2 = s1-1+dispgeoms(i)%deg_groups(j,2)
+ ! If all energies are available in the degeneracy group, add off-diagonal elements to the fitting set
+ ! because these states are subject to rotations to form intersection adapted coordinates 
+          if(all(hasEner(i,s1:s2)))  incener(i,s1:s2,s1:s2)=.true.
+        end do !j
+      end if!pWeights(i)>1D-8
+    end do!i=1,npoints
     do i=1,exclEner%length
-      do s1=exclEner%List(i)%i,exclEner%List(i)%j
-        do s2=exclEner%List(i)%i,exclEner%List(i)%j
-          incener(exclEner%List(i)%point,s1,s2)=.false.
-        end do
-      end do
+      s1=exclEner%List(i)%i
+      s2=exclEner%List(i)%j
+      incener(exclEner%List(i)%point,s1:s2,s1:s2)=.false.
     end do
     do i=1,exclGrad%length
       incgrad(exclGrad%List(i)%point,exclGrad%List(i)%i,exclGrad%List(i)%j)=.false.
@@ -798,7 +803,9 @@ MODULE makesurfdata
          if(s1.ne.s2)WIJ(:,s2,s1)=WIJ(:,s1,s2)
          do g=1,nvibs
             do l=1,nstates
-              VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
+              if(l.ne.s1) call DAXPY(nBas(iBlk),fitG(pt,g,l,s2),DIJ(1,l,s1),1,VIJ(1,g,s1,s2),1)
+              if(l.ne.s2) call DAXPY(nBas(iBlk),fitG(pt,g,l,s1),DIJ(1,l,s2),1,VIJ(1,g,s1,s2),1)
+      !        VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
             end do
          end do!g
          if(s1.ne.s2)VIJ(:,:,s2,s1)=VIJ(:,:,s1,s2)
@@ -1103,10 +1110,12 @@ MODULE makesurfdata
 
    ! get the values of W and V
               ind1 = ((L-1)*nK+K-1)*npoints*(nvibs+1)+1
-              WIJ(:,I,J) = WIJ(:,I,J)+cc*WMat(iBlk)%List(ind1:ind1+(npoints-1)*(nvibs+1):nvibs+1,iBasis)
+              !call DAXPY(npoints,cc,WMat(iBlk)%List(ind1,iBasis),nvibs+1,WIJ(1,I,J),1)
+               WIJ(:,I,J) = WIJ(:,I,J)+cc*WMat(iBlk)%List(ind1:ind1+(npoints-1)*(nvibs+1):nvibs+1,iBasis)
    ! construct the Hamiltonian contribution of VIJ 
               do igd=1,nvibs
                 ind1 = ind1+1
+   !             call DAXPY(npoints,cc,WMat(iBlk)%List(ind1,iBasis),nvibs+1,VIJ(1,igd,I,J),1)
                 VIJ(:,igd,I,J) = VIJ(:,igd,I,J) + cc * WMat(iBlk)%List(ind1:ind1+(npoints-1)*(nvibs+1):nvibs+1,iBasis)
               end do!igd
               call system_clock(COUNT=count1,COUNT_RATE=count_rate)      
@@ -1143,13 +1152,15 @@ MODULE makesurfdata
       do I=1,nstates
         do J=I,nstates
           do k=1,nstates
-            WIJ(:,I,J) = WIJ(:,I,J)+DIJ(:,K,I)*fitE(:,K,J)+DIJ(:,K,J)*fitE(:,K,I)
+            if(k.ne.i) WIJ(:,I,J) = WIJ(:,I,J)+DIJ(:,K,I)*fitE(:,K,J)
+            if(k.ne.j) WIJ(:,I,J) = WIJ(:,I,J)+DIJ(:,K,J)*fitE(:,K,I)
           end do
           if(I.ne.J) WIJ(:,J,I)=WIJ(:,I,J)
    ! calculate the second piece of VIJ with DIJ and hIJ(=fitG)
           do igd = 1,nvibs
             do K = 1,nstates
-              VIJ(:,igd,I,J) = VIJ(:,igd,I,J) + DIJ(:,K,I)*fitG(:,igd,K,J) + DIJ(:,K,J)*fitG(:,igd,K,I)
+              if(k.ne.i)VIJ(:,igd,I,J) = VIJ(:,igd,I,J) + DIJ(:,K,I)*fitG(:,igd,K,J)
+              if(k.ne.j)VIJ(:,igd,I,J) = VIJ(:,igd,I,J) + DIJ(:,K,J)*fitG(:,igd,K,I)
             end do ! K = 1,nstates
             if(I.ne.J)  VIJ(:,igd,J,I) = VIJ(:,igd,I,J)  !complete lower triangle
           end do!igd=1,nvibs 
@@ -2440,7 +2451,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,maxRot,dijscale,  &
+                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,dijscale,  &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
                       
   npoints   = 0
@@ -2451,7 +2462,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   ecutoff   = 1d0
   egcutoff  = 6d-1
   TBas      = 1D-6
-  maxRot    = 0D0
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
@@ -2467,7 +2477,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   maxd      = 1D0
   energyT   = 1D30
   highEScale = 1D0
-  gScaleMode = 2
+  gScaleMode = 0
   toler     = 1D-3
   gorder    = 1D-3
   gcutoff   = 1D-14

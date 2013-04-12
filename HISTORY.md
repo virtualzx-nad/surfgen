@@ -1,4 +1,9 @@
-## 2.3.0  (2013-04-11)
+## 2.3.1 (2013-04-12)
+
+* Performance improvement for Lagrangian gradient and normal equations constructions. 
+* Examples updated for the newest version.
+
+## 2.3.0 (2013-04-11)
 
 * The energies are structured as matrices with off-diagonal elements are explicitly stored for situations where intersection 
 adapted coordinates instead of Schrodinger equations are used to determine some of the states.  In these cases, the off-diagonal
