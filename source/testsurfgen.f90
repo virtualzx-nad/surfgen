@@ -34,7 +34,7 @@ program testsurfgen
     call readdisps()
     call initMakesurf
 
-    call testHd(10,1D-5)
+    call testHd(10,1D-4)
 
 end program testsurfgen
 !---------------------------------------------
@@ -173,7 +173,7 @@ SUBROUTINE testHd(ntest,disp)
     DOUBLE PRECISION, INTENT(IN)                  :: disp
     INTEGER,INTENT(IN)                            :: ntest
     double precision  :: hvec(ncons+nex),hvec_raw(ncon_total)
-    integer           ::  i,  n, j, k, prtl
+    integer           ::  i,  n, j, k, l, prtl
     double precision  ::  Ea(nstates), dHa(3*natoms,nstates,nstates)   ,&
     hmat(nstates,nstates), dcgrads(3*natoms,nstates,nstates)
     double precision,dimension(3*natoms) ::  cgeom,dgeom,cgeom0
@@ -187,7 +187,8 @@ SUBROUTINE testHd(ntest,disp)
     double precision, dimension(nex,ncons)                      :: jaco
     integer, parameter:: ndisp=4
     double precision  :: coef(ndisp)=(/ 4/5D0 , -1/5D0, 4/105D0, -1/280D0 /)
-
+    double precision  :: lagval(-ndisp:ndisp)
+!    double precision  :: h0, ckl_sum(npoints,nstates,nstates), ckl_store(npoints,nstates,nstates),dij(nstates,nstates)
     call getHdvec(hvec_raw,coefmap,ncon_total)
     call tranHd('F',hvec_raw,hvec)   ! convert primitive h expansion to block orthogonal basis expansions
 !hvec =0d0
@@ -195,11 +196,28 @@ SUBROUTINE testHd(ntest,disp)
 !ckl(1,:,:)=0d0
 !ckl(1,1,1)=1d0
 !ckl(1,2,2)=1d0
+!PRINTLVL = 0
+!ckl_sum = 0d0
+!h0 = hvec(1300)
 ! call updateEigenVec(hvec,.false.)
-!do i=1,20
+! ckl_store = ckl
 ! CALL getCGrad(hvec,dCi,dL,lag,jaco)
-! hvec(1300)=hvec(1300)+1d-5
+!do i=1,ndisp
+! hvec(1300)=h0+i*1d-5
 ! call updateEigenVec(hvec,.true.)
+! ckl_sum = ckl_sum+coef(i)*ckl
+! hvec(1300)=h0-i*1d-5
+! call updateEigenVec(hvec,.true.)
+! ckl_sum = ckl_sum-coef(i)*ckl
+!end do
+!ckl_sum=ckl_sum/1d-5
+!do i=1,npoints
+!  do k=1,nstates
+!    do l=1,nstates
+!  dij(k,l)=dot_product(ckl_store(i,:,k),ckl_sum(i,:,l))
+!   end do
+!  end do
+!  PRINT "(A,I3,A,9F18.10)","DIJNUM #",i,": ",dij
 !end do
 !STOP
     prtl = printlvl
@@ -216,7 +234,7 @@ SUBROUTINE testHd(ntest,disp)
         ! Hd is initialized as a random offset from existing Hd
         call random_number(asol0)
         asol0 = asol0-5d-1
-        asol0 = asol0/dnrm2(ncons,asol0,int(1))*hnorm*5D-2+hvec
+        asol0 = asol0/dnrm2(ncons,asol0,int(1))*hnorm*5D-3+hvec
         ! geometry is taken as a random offset from a random data point
         call random_number(cgeom0)
         cgeom0=(cgeom0-5d-1)*1d-1
@@ -254,6 +272,7 @@ SUBROUTINE testHd(ntest,disp)
         ! analytical evaluation of Lag gradients
         call updateEigenVec(asol0,.false.)
         CALL getCGrad(asol0,dCi,dL,lag,jaco)
+        lagval(0) = lag
         DAnaL = dot_product(dsol(1:ncons),dCi)
         DAnaL = DAnaL/disp
 
@@ -298,10 +317,12 @@ SUBROUTINE testHd(ntest,disp)
             asol = asol0 + dsol*n
             call updateEigenVec(asol,.true.)
             CALL getCGrad(asol,dCi,dL,lag,jaco)
+            lagval(n) = lag
             DNumL = DNumL + coef(n)*lag
             asol = asol0 - dsol*n
             call updateEigenVec(asol,.true.)
             CALL getCGrad(asol,dCi,dL,lag,jaco)
+            lagval(-n) = -lag
             DNumL = DNumL - coef(n)*lag
         end do!n=1,ndisp
         DNumL = DNumL/disp
@@ -309,6 +330,7 @@ SUBROUTINE testHd(ntest,disp)
         ! Comparisons with previous largest error
         print "(3(A,E14.7))","   ",DAnaL," - ",DNumL," = ",DNumL-DAnaL
         maxrLag = max(maxrLag,abs((DNumL-DAnaL)/DNumL))
+        print "(A,9E14.7)","Lag:",lagval
     end do!i=1,ntest
     print "(A,F10.5,A)"," Maximum relative error for Hd gradients: ",maxratio*100,"%"
     print "(A,F10.5,A)"," Maximum relative error for Lagrangian: ",maxrLag*100,"%"

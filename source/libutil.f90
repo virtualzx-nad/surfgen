@@ -2,20 +2,19 @@
 ! Group states into minimal sets so that the energy difference between any two states
 ! from different groups is greater than de. Input energies are supposed to be sorted.
 ! Energy groups are only generated for the range state1 to state2
-SUBROUTINE genEnerGroups(pt,de,st1,st2)
+SUBROUTINE genEnerGroups(pt,de)
   use progdata, only: abpoint
   IMPLICIT NONE
-  type(abpoint),INTENT(INOUT)              :: pt
-  DOUBLE PRECISION,INTENT(IN)              :: de
-  INTEGER,INTENT(IN)                       :: st1,st2
+  type(abpoint),INTENT(INOUT)     :: pt
+  DOUBLE PRECISION,INTENT(IN)     :: de
 
-  integer                           :: i,ngrp,cnt
-  integer,dimension(st2,2) :: deg_table
+  integer                         :: i,ngrp,cnt
+  integer,dimension(pt%ub,2)      :: deg_table
 
   ngrp=0
   cnt=1
-  do i=st1+1,st2
-    if(pt%energy(i)-pt%energy(i-1)>de)then
+  do i=pt%lb+1,pt%ub
+    if(pt%energy(i,i)-pt%energy(i-1,i-1)>de)then
       if(cnt>1)then
         ngrp=ngrp+1
         deg_table(ngrp,2)=cnt
@@ -28,7 +27,7 @@ SUBROUTINE genEnerGroups(pt,de,st1,st2)
   if(cnt>1)then
     ngrp=ngrp+1
     deg_table(ngrp,2)=cnt
-    deg_table(ngrp,1)=st2-cnt+1
+    deg_table(ngrp,1)=pt%ub-cnt+1
   end if
 
   if(allocated(pt%deg_groups))deallocate(pt%deg_groups)
@@ -305,6 +304,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
   integer           ::  igrp,i,j,iter,ldeg,udeg
   integer           ::  mi,mj  !location of maximum rotation
   double precision, dimension(pt%nvibs,nstates,nstates) :: newgrad
+  double precision, dimension(nstates,nstates)          :: newener 
   double precision, dimension(nstates,nstates)          :: beta   !required rotation 
   double precision           :: max_b,t, c,s
   ! allowedRot stores the infomation whether rotation between two specific states 
@@ -375,26 +375,24 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
     do while(iter<maxiter.and.max_b>toler)
       iter=iter+1
       t=beta(mi,mj)
-!      jacobi=dble(0)  !construct Givens rotation matrix
-!      do i=1,nstates
-!        jacobi(i,i)=dble(1)
-!      end do
-!      jacobi(mi,mi)=cos(t)
-!      jacobi(mj,mj)=jacobi(mi,mi)
-!      jacobi(mi,mj)=sin(t)
-!      jacobi(mj,mi)=-jacobi(mi,mj)
       c = cos(t)
       s = sin(t)
 ! Gnew = J^T.G.J.   Gnew_ij=Jki*Gkl*Jlj
       newgrad = pt%grads(:pt%nvibs,:,:)
+      newener = pt%energy
       do i=1,nstates
         newgrad(:,i,mi)=pt%grads(:pt%nvibs,i,mi)*c-pt%grads(:pt%nvibs,i,mj)*s
         newgrad(:,i,mj)=pt%grads(:pt%nvibs,i,mj)*c+pt%grads(:pt%nvibs,i,mi)*s
+        newener(i,mi)=pt%energy(i,mi)*c-pt%energy(i,mj)*s
+        newener(i,mj)=pt%energy(i,mj)*c+pt%energy(i,mi)*s
       end do
       pt%grads(:pt%nvibs,:,:) = newgrad
+      pt%energy               = newener
       do i=1,nstates
         pt%grads(:pt%nvibs,mi,i)=newgrad(:,mi,i)*c-newgrad(:,mj,i)*s
         pt%grads(:pt%nvibs,mj,i)=newgrad(:,mj,i)*c+newgrad(:,mi,i)*s 
+        pt%energy(mi,i)=newener(mi,i)*c-newener(mj,i)*s
+        pt%energy(mj,i)=newener(mj,i)*c+newener(mi,i)*s 
       end do
       !update rotation angles
       do i=mj+1,udeg
@@ -425,6 +423,10 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
         else
           print 1000,iter,max_b
         end if!(max_b<toler)
+        print *,"      Energies after transformation" 
+        do i=1,nstates
+          print "(20F12.7)",pt%energy(i,:)
+        end do
         print *,"      Couplings and gradients after transformation" 
         do i=1,nstates
           do j=1,i

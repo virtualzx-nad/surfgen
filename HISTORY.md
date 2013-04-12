@@ -1,3 +1,13 @@
+## 2.3.0  (2013-04-11)
+
+* The energies are structured as matrices with off-diagonal elements are explicitly stored for situations where intersection 
+adapted coordinates instead of Schrodinger equations are used to determine some of the states.  In these cases, the off-diagonal
+will be a small but non-zero number.   The treatment is now exact even when intersection adapted coordinates are used for 
+points that are not strictly degenerate (which will always be the case)
+* The evaluation of Dij now use the same degeneracy groups that are used to construct intersectin adapted coordinates
+* The Dij are solved with a set of linear equations which should exactly reflect the derivatives in an arbitrary groups of 
+degeneracies among arbitrary number of states.  
+
 ## 2.2.10 (2013-04-10)
 
 * Symbolic link `libsurfgen` to most recent library created in `lib` directory when compiling libraries.

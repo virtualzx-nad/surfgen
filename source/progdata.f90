@@ -39,15 +39,18 @@ module progdata
 ! deg_groups INTEGER,dimension(ndeggrp,2)
 !            Stores the index of the first state and number of states for each
 !            degenerate group            
+! lb,ub      INTEGER
+!            Specifies the index range between which ab initio data is available
   TYPE abpoint
    INTEGER                                       :: id
    DOUBLE PRECISION,dimension(:),allocatable     :: cgeom
    DOUBLE PRECISION,dimension(:),allocatable     :: igeom
-   DOUBLE PRECISION,dimension(:),allocatable     :: energy
+   DOUBLE PRECISION,dimension(:,:),allocatable   :: energy
    DOUBLE PRECISION,dimension(:),allocatable     :: eval
    DOUBLE PRECISION,dimension(:,:,:),allocatable :: grads
    DOUBLE PRECISION,dimension(:,:),allocatable   :: hessian
    DOUBLE PRECISION,dimension(:),allocatable     :: freqs
+   INTEGER                                       :: lb,ub
 
    INTEGER                                       :: nvibs
    DOUBLE PRECISION,dimension(:,:),allocatable   :: bmat

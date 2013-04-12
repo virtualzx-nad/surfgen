@@ -167,7 +167,7 @@ MODULE makesurfdata
 
 !Hd predictions for all data points
   DOUBLE PRECISION,dimension(:,:,:,:),allocatable   :: fitG
-  DOUBLE PRECISION,dimension(:,:),allocatable       :: fitE
+  DOUBLE PRECISION,dimension(:,:,:),allocatable     :: fitE
  CONTAINS
 
   ! determine if each equation will be include / excluded / fitted exactly
@@ -338,7 +338,7 @@ MODULE makesurfdata
                       wvec(nEqs)=ptWeights(i)*w_grad
                     end if
                     k = 0 
-                    do while(dispgeoms(i)%energy(s1)>energyT(k+1))  !  determine the bracket of current energy
+                    do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))  !  determine the bracket of current energy
                       k = k+1
                       if(k==10)exit
                     end do
@@ -352,14 +352,14 @@ MODULE makesurfdata
                       wvec(nEqs)=ptWeights(i)*w_fij
                     end if
                     k = 0
-                    do while(dispgeoms(i)%energy(s1)+dispgeoms(i)%energy(s2)> 2*energyT(k+1))
+                    do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
                                  !  determine the bracket of current energy
                       k = k+1
                       if(k==10)exit
                     end do
                     if(k>0) wvec(nEqs) =  wvec(nEqs)*highEScale(k)
                     if(nrmediff>0)then
-                      ediff=abs(dispgeoms(i)%energy(s1)-dispgeoms(i)%energy(s2))*AU2CM1
+                      ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
                       ediff=(ediff+ediffcutoff)/nrmediff
                       wvec(nEqs)=wvec(nEqs)/ediff
                     end if!(nrmediff>0)
@@ -413,19 +413,19 @@ MODULE makesurfdata
                 lseMap(nEqs,:)=(/i,s1,s2,0/)
                 wvec(nEqs)=ptWeights(i)*w_energy
                 k=0
-                do while(dispgeoms(i)%energy(s1)>energyT(k+1))
+                do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))
                   k=k+1
                   if(k==10)exit
                 end do 
                 if(k>0)   wvec(nEqs) =  wvec(nEqs)*highEScale(k)
                 if(s1==s2 .and. s2>0 .and. nrmediff2>0)then
                   if(s1>1)then
-                    ediff=abs(dispgeoms(i)%energy(s1)-dispgeoms(i)%energy(s1-1))*AU2CM1
+                    ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s1-1,s1-1))*AU2CM1
                     ediff=(ediff+ediffcutoff2)/nrmediff2
                     if(ediff<1D0)wvec(nEqs)=wvec(nEqs)/ediff
                   end if
                   if(s1<nstates)then
-                    ediff=abs(dispgeoms(i)%energy(s1+1)-dispgeoms(i)%energy(s1))*AU2CM1
+                    ediff=abs(dispgeoms(i)%energy(s1+1,s1+1)-dispgeoms(i)%energy(s1,s1))*AU2CM1
                     ediff=(ediff+ediffcutoff2)/nrmediff2
                     if(ediff<1D0)wvec(nEqs)=wvec(nEqs)/ediff
                   end if!(s1<nstates)
@@ -486,13 +486,14 @@ MODULE makesurfdata
     logical                                          :: folPrev
     double precision,dimension(nstates,nstates)      :: cklPrev
     integer,dimension(:,:),allocatable               :: pmtList
+    double precision,dimension(nstates)              :: eval
 
     allocate(pmtList(factl(nstates),nstates))
     pmtList=Permutation(nstates,factl(nstates))
     folPrev = .false.
     if(present(follow))folPrev=follow
     if(printlvl>0) print *,"     Updating wave functions"
-    allocate(fitpt%energy(nstates))
+    allocate(fitpt%energy(nstates,nstates))
     allocate(fitpt%grads(nvibs,nstates,nstates))
     if(printlvl>1) print *,"      Making phase list"
     !making permutation list for grad ordering
@@ -510,9 +511,11 @@ MODULE makesurfdata
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints
       cklPrev = ckl(i,:,:)
+      fitpt%lb = dispgeoms(i)%lb
+      fitpt%ub = dispgeoms(i)%ub
       CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
       ckl(i,:,:)=hmatPt
-      call DSYEV('V','U',nstates,ckl(i,:,:),nstates,fitE(i,:),scr,5*nstates*nstates,INFO)
+      call DSYEV('V','U',nstates,ckl(i,:,:),nstates,eval,scr,5*nstates*nstates,INFO)
       IF(INFO/=0)then
         print *,"Failed to solve eigenvectors at point",i
         print *,"INFO=",info
@@ -523,11 +526,12 @@ MODULE makesurfdata
       do k=1,dispgeoms(i)%nvibs
         fitpt%grads(k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
       end do!k=1,dispgeoms(i)%nvibs
-      fitpt%energy=fitE(i,:)
+      fitE(i,:,:)=matmul(transpose(ckl(i,:,:)),matmul(hmatPt,ckl(i,:,:)))
+      fitpt%energy=fitE(i,:,:)
       do k=1,enfGO%Length
         if(enfGO%List(k)%point==i)then
           do j=enfGO%List(k)%i+1,enfGO%List(k)%j
-            fitpt%energy(j)=fitpt%energy(enfGO%List(k)%i)
+            fitpt%energy(j,j)=fitpt%energy(enfGO%List(k)%i,enfGO%List(k)%i)
           end do!j=enfGO%List(k)%i+1,enfGO%List(k)%j
         end if!(enfGO%List(k)%point==i)
       end do!k=1,enfGO%Length
@@ -540,19 +544,14 @@ MODULE makesurfdata
         fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
       else
 ! determine ordering and phase by comparing with ab initio data
-        call genEnerGroups(fitpt,gorder/AU2CM1,1,nstates)
+        call genEnerGroups(fitpt,gorder/AU2CM1)
         call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad)
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
                  dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
         fitG(i,:,:,:)=fitpt%grads
       end if !folPrev
-      do k=1,nstates
-        fitE(i,k)= dble(0)
-        do j=1,nstates
-          fitE(i,k)=fitE(i,k)+ckl(i,j,k)*dot_product(ckl(i,:,k),hmatPt(j,:))
-        end do
-      end do
+      fitE(i,:,:)=matmul(transpose(ckl(i,:,:)),matmul(hmatPt,ckl(i,:,:)))
     end do!i=1,npoints
     deallocate(fitpt%energy)
     deallocate(fitpt%grads)
@@ -706,13 +705,7 @@ MODULE makesurfdata
     if(enfDiab.ne.pt)then
       do s1=1,nstates
         do s2=s1+1,nstates
-          ediff(s1,s2) = fitE(pt,s2)-fitE(pt,s1)
-          if(abs(ediff(s1,s2))<deg_cap)then
-            ndeg = ndeg + 1
-            if(ndeg>nstates**2)STOP"TOO MANY DEGENERATE POINTS"
-            Id(ndeg)=s1
-            Jd(ndeg)=s2
-          end if
+          ediff(s1,s2) = fitE(pt,s2,s2)-fitE(pt,s1,s1)
         end do
       end do
     end if
@@ -780,7 +773,7 @@ MODULE makesurfdata
            if(abs(DijScale)>1D-30.and.pt/=enfDiab)then
   ! construct DIJ from WIJ.  It is non zero only on the off diagonal
   !no rotation for reference point
-             if(abs(ediff(s1,s2))>deg_cap) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale
+             if(dispgeoms(pt)%ndeggrp==0) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale
            end if!Dij/=0 and not enforcing diabat
   ! fill the lower triangle of D and W
            WIJ(:,s2,s1)     =  WIJ(:,s1,s2)
@@ -790,30 +783,19 @@ MODULE makesurfdata
      end do!s1
 
   ! construct DIJ contribution to degenerate points
-     if(abs(DijScale)>1D-30)then
-        do i=1,ndeg
-          s1 = Id(i)
-          s2 = Jd(i) 
-          if(dnrm2(nBas(iBlk),DIJ(1,s1,s2),1).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
-          gvec = fitG(pt,:,s1,s1)-fitG(pt,:,s2,s2)
-          hvec = fitG(pt,:,s1,s2)
-          do g=1,nvibs
-            dv   = VIJ(:,g,s1,s1)-VIJ(:,g,s2,s2)
-            CALL DAXPY(nBas(iBlk),hvec(g),dv,1,DIJ(1,s1,s2),1)
-            CALL DAXPY(nBas(iBlk),gvec(g),VIJ(1,g,s1,s2),1,DIJ(1,s1,s2),1)
-            do l=1,nstates
-               if(l==s1.or.l==s2)cycle
-               CALL DAXPY(nBas(iBlk), 2*hvec(g)*fitG(pt,g,l,s1)+gvec(g)*fitG(pt,g,l,s2),DIJ(1,l,s1),1,DIJ(1,s1,s2),1)
-               CALL DAXPY(nBas(iBlk),-2*hvec(g)*fitG(pt,g,l,s2)+gvec(g)*fitG(pt,g,l,s1),DIJ(1,l,s2),1,DIJ(1,s1,s2),1)
-            end do!l
-          end do!g
-          CALL DSCAL(nBas(iBlk),1/(4*dot_product(hvec,hvec)-dot_product(gvec,gvec)),DIJ(:,s1,s2),1)
-          DIJ(:,s2,s1)=-DIJ(:,s1,s2)
-        end do! I=1,ndeg
+     if(abs(DijScale)>1D-30.and.dispgeoms(pt)%ndeggrp>0)then
+        do l=1,nBas(iBlk)
+          call getDegDij(pt,WIJ(l,:,:),VIJ(l,:,:,:),DIJ(l,:,:))
+        end do
      end if !DijScale /= 0
   ! the Dij Contribution of VIJ
      do s1=1,nstates
        do s2=s1,nstates
+         do l=1,nstates
+            if(abs(fitE(pt,l,s2))>1d-20)WIJ(:,s1,s2)=WIJ(:,s1,s2)+DIJ(:,l,s1)*fitE(pt,l,s2)
+            if(abs(fitE(pt,l,s1))>1d-20)WIJ(:,s1,s2)=WIJ(:,s1,s2)+DIJ(:,l,s2)*fitE(pt,l,s1)
+         end do
+         if(s1.ne.s2)WIJ(:,s2,s1)=WIJ(:,s1,s2)
          do g=1,nvibs
             do l=1,nstates
               VIJ(:,g,s1,s2) = VIJ(:,g,s1,s2) + DIJ(:,l,s1)*fitG(pt,g,l,s2) + DIJ(:,l,s2)*fitG(pt,g,l,s1)     
@@ -832,13 +814,13 @@ MODULE makesurfdata
             do r=1,GrpLen(ColGrp(iblk))
               if(s2<0) then! equation for energy difference
                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s1)-WIJ(:,-s2,-s2)
-                 if(iBlk==1) bvec(i)=dispgeoms(pt)%energy(s1)-dispgeoms(pt)%energy(-s2)
+                 if(iBlk==1) bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
               else         ! equation for energy 
                 if(s1==s2)then
                   AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
-                  if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1)
+                  if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1,s1)
                 else
-                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)*(1-DijScale)
+                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
                   if(iBlk==1)bvec(i)=0d0
                 end if 
               end if !s2<0
@@ -876,14 +858,15 @@ MODULE makesurfdata
       if(g==0)then !is an energy
         if(s2>0)then !its adiabatic energy or adiabatic off diagonal terms(0)
           if(s1==s2)then
-            bvec(i)=dispgeoms(pt)%energy(s1)
-            if(diff)bvec(i)=bvec(i)-fitE(pt,s1)
+            bvec(i)=dispgeoms(pt)%energy(s1,s1)
+            if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s1)
           else 
-            bvec(i)=dble(0)
+            bvec(i)=dispgeoms(pt)%energy(s1,s2)
+            if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s2)
           end if
         else  !it is adiabatic energy difference
-          bvec(i)=dispgeoms(pt)%energy(s1)-dispgeoms(pt)%energy(-s2)
-          if(diff)bvec(i)=bvec(i)-fitE(pt,s1)+fitE(pt,-s2)
+          bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
+          if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s1)+fitE(pt,-s2,-s2)
         end if
       else !is gradient
         bvec(i)=dispgeoms(pt)%grads(g,s1,s2)
@@ -929,8 +912,8 @@ MODULE makesurfdata
        do k = 1,nstates
          do l=k,nstates
            if(hasGrad(j,k,l).and.l>k.and.(incgrad(j,k,l).or.incgrad(j,l,k)))then
-             de1 = max(abs(dispgeoms(j)%energy(k)-dispgeoms(j)%energy(l)),1D-7 )
-             de2 = max(abs(fitE(j,k)-fitE(j,l)),1D-7 )
+             de1 = max(abs(dispgeoms(j)%energy(k,k)-dispgeoms(j)%energy(l,l)),1D-7 )
+             de2 = max(abs(fitE(j,k,k)-fitE(j,l,l)),1D-7 )
              inc_cp=inc_cp+1
              dcp    =  dot_product(  &
                    dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2, &
@@ -951,15 +934,15 @@ MODULE makesurfdata
              dG_exact=dG_exact+dgrd
              NEx_grd=NEx_grd+1
            end if
+           if(e_exact(j,k,l).and.hasEner(j,k).and.hasEner(j,l))then
+             dE_exact= dE_exact + (dispgeoms(j)%energy(k,l)-fitE(j,k,l))**2
+             NEx_e = NEx_e+1
+           end if!e_exact(j,k,l)
          end do!l
-         if(e_exact(j,k,k).and.hasEner(j,k))then
-           dE_exact= dE_exact + (dispgeoms(j)%energy(k)-fitE(j,k))**2
-           NEx_e = NEx_e+1
-         end if!e_exact(j,k,k)
-         if(dispgeoms(j)%energy(k)<energyT(1))then
+         if(dispgeoms(j)%energy(k,k)<energyT(1))then
            if(hasEner(j,k))then
-             nrmener = nrmener +    (dispgeoms(j)%energy(k)-fitE(j,k))**2
-             avgener = avgener + abs(dispgeoms(j)%energy(k)-fitE(j,k))
+             nrmener = nrmener +    (dispgeoms(j)%energy(k,k)-fitE(j,k,k))**2
+             avgener = avgener + abs(dispgeoms(j)%energy(k,k)-fitE(j,k,k))
              inc_e=inc_e+1
            end if
            if(hasGrad(j,k,k))then
@@ -1015,7 +998,7 @@ MODULE makesurfdata
 !  V^IJ_i =<f^I|del W_i|f^J>
 !  U^IJ_i = V^IJ_i + sum_K[D^KI_i*h^KJ+D^KJ_i*h^KI]
     DOUBLE PRECISION,dimension(:,:,:),allocatable   ::  WIJ,  DIJ
-    DOUBLE PRECISION,dimension(:,:,:,:),allocatable ::  VIJ,  UIJ
+    DOUBLE PRECISION,dimension(:,:,:,:),allocatable ::  VIJ
 
 ! PmQ is a vector that contain differences between desired values and fit predictions,
 ! for exact and least squares equations in the first and second section respectively, 
@@ -1041,7 +1024,7 @@ MODULE makesurfdata
     INTEGER    ::  pt, s1, s2, g,ind1
     INTEGER    ::  I,J,K,L,K0,nK, L0,nL,Id(npoints),Jd(npoints),ndeg,Pd(npoints)
 !  other local variables
-    DOUBLE PRECISION :: EIJ,diffsq
+    DOUBLE PRECISION :: diffsq
 !  used to store g and h vectors for degenerate case
     DOUBLE PRECISION :: gvec(nvibs),hvec(nvibs)
 !  external BLAS subroutine
@@ -1053,7 +1036,6 @@ MODULE makesurfdata
 ! Initialization of parameters
     allocate(WIJ(npoints,nstates,nstates))
     allocate(VIJ(npoints,nvibs,nstates,nstates))
-    allocate(UIJ(npoints,nvibs,nstates,nstates))
     allocate(DIJ(npoints,nstates,nstates))
     dCi     = dble(0)
     dLambda = dble(0)
@@ -1070,12 +1052,13 @@ MODULE makesurfdata
       if(g==0)then !is an energy
        if(s2>0)then !its adiabatic energy or adiabatic off diagonal terms(0)
          if(s1==s2)then
-           PmQ(ieq) = dispgeoms(pt)%energy(s1) - fitE(pt,s1)
+           PmQ(ieq) = dispgeoms(pt)%energy(s1,s1) - fitE(pt,s1,s1)
          else
-           PmQ(ieq) = dble(0)
+           PmQ(ieq) = dispgeoms(pt)%energy(s1,s2) - fitE(pt,s1,s2)
          end if
        else  !(s2>0)    it is adiabatic energy difference
-         PmQ(ieq) = dispgeoms(pt)%energy(s1)-dispgeoms(pt)%energy(-s2)-fitE(pt,s1)+fitE(pt,-s2)
+         PmQ(ieq) = dispgeoms(pt)%energy(s1,s1) - dispgeoms(pt)%energy(-s2,-s2) - &
+                            ( fitE(pt,s1,s1) - fitE(pt,-s2,-s2) )
        end if !(s2>0)
      else !(g==0)   is gradient
        PmQ(ieq) = dispgeoms(pt)%grads(g,s1,s2) - fitG(pt,g,s1,s2)
@@ -1099,7 +1082,6 @@ MODULE makesurfdata
       nK = GrpLen(RowGrp(iblk))
       L0 = offs(ColGrp(iblk))
       nL = GrpLen(ColGrp(iblk))
-      UIJ = dble(0)
       WIJ = dble(0)
       VIJ = dble(0)
       DIJ = dble(0)
@@ -1136,20 +1118,10 @@ MODULE makesurfdata
           if(J.ne.I) then 
    ! construct DIJ from WIJ.  It is non zero only on the off diagonal
             do ipt=1,npoints
-              if (ipt==enfDiab) cycle
-              EIJ = fitE(ipt,J)-fitE(ipt,I)
-              if(abs(EIJ).le.deg_cap)then 
-                DIJ(ipt,I,J)=0
-                ndeg = ndeg + 1
-                if(ndeg>npoints)STOP"TOO MANY DEGENERATE POINTS"
-                Id(ndeg)=I
-                Jd(ndeg)=J
-                Pd(ndeg)=ipt
-              else
-                DIJ(ipt,I,J)=WIJ(ipt,I,J)/EIJ
-              end if
+              if (ipt==enfDiab) cycle           ! point has forced eigenvectors
+              if(dispgeoms(ipt)%ndeggrp>0)cycle ! point has degeneracy
+              DIJ(ipt,I,J)=WIJ(ipt,I,J)/(fitE(ipt,J,J)-fitE(ipt,I,I))
             end do !ipt=1,npoints
-
 
    ! fill the lower triangle of D and W
             WIJ(:,J,I)     = WIJ(:,I,J)
@@ -1160,35 +1132,26 @@ MODULE makesurfdata
           t3 = t3 + dble(count2-count1)/count_rate
         end do!J
       end do!I
-   
-      do ipt=1,ndeg
-        pt = Pd(ipt)
-        I  = Id(ipt)
-        J  = Jd(ipt) 
-        if(abs(DIJ(pt,I,J)).gt.1D-10)STOP "DIJ CONSTRUCTION FOR DEG POINT INCONSISTENT"
-        gvec = fitG(pt,:,I,I)-fitG(pt,:,J,J)
-        hvec = fitG(pt,:,I,J)
-        DIJ(pt,I,J)=(dot_product(VIJ(pt,:,I,I)-VIJ(pt,:,J,J),hvec)+dot_product(gvec,VIJ(pt,:,I,J)))
-        do k=1,nstates
-           if(K==I.or.K==J)cycle
-           DIJ(pt,I,J)  = DIJ(pt,I,J)      &
-                  +     2*DIJ(pt,K,I)*dot_product(hvec,fitG(pt,:,K,I))-2*DIJ(pt,K,J)*dot_product(hvec,fitG(pt,:,K,J))  &
-                  +     DIJ(pt,K,I)*dot_product(gvec,fitG(pt,:,K,J))+DIJ(pt,K,J)*dot_product(gvec,fitG(pt,:,K,I))
-        end do!k
-        DIJ(pt,I,J)=DIJ(pt,I,J) /(4*dot_product(hvec,hvec)-dot_product(gvec,gvec))
-        DIJ(pt,J,I)=-DIJ(pt,I,J)
-      end do! I=1,ndeg
-   ! update the wave function dependent part of gradients
+  
       call system_clock(COUNT=count1,COUNT_RATE=count_rate)
+   ! construct DIJ for points that have degeneracies 
+      do ipt=1,npoints
+        if(ipt==enfDiab.or.dispgeoms(ipt)%ndeggrp==0)cycle
+        call getDegDij(ipt,WIJ(ipt,:,:),VIJ(ipt,:,:,:),DIJ(ipt,:,:))
+      end do! ipt
+   ! update the wave function dependent part of Wij and Vij
       do I=1,nstates
         do J=I,nstates
+          do k=1,nstates
+            WIJ(:,I,J) = WIJ(:,I,J)+DIJ(:,K,I)*fitE(:,K,J)+DIJ(:,K,J)*fitE(:,K,I)
+          end do
+          if(I.ne.J) WIJ(:,J,I)=WIJ(:,I,J)
    ! calculate the second piece of VIJ with DIJ and hIJ(=fitG)
           do igd = 1,nvibs
-            UIJ(:,igd,I,J) = VIJ(:,igd,I,J)
             do K = 1,nstates
-              UIJ(:,igd,I,J) = UIJ(:,igd,I,J) + DIJ(:,K,I)*fitG(:,igd,K,J) + DIJ(:,K,J)*fitG(:,igd,K,I)
+              VIJ(:,igd,I,J) = VIJ(:,igd,I,J) + DIJ(:,K,I)*fitG(:,igd,K,J) + DIJ(:,K,J)*fitG(:,igd,K,I)
             end do ! K = 1,nstates
-            if(I.ne.J)  UIJ(:,igd,J,I) = UIJ(:,igd,I,J)  !complete lower triangle
+            if(I.ne.J)  VIJ(:,igd,J,I) = VIJ(:,igd,I,J)  !complete lower triangle
           end do!igd=1,nvibs 
         end do !J=I,nstates
       end do !I=1,nstates
@@ -1206,13 +1169,13 @@ MODULE makesurfdata
            if(s1==s2)then
              dQ(ieq) = WIJ(pt,s1,s1)
            else 
-             dQ(ieq) = 0 
+             dQ(ieq) = WIJ(pt,s1,s2) 
            end if
          else  !(s2>0)    it is adiabatic energy difference
            dQ(ieq) = WIJ(pt,s1,s1) - WIJ(pt,-s2,-s2)
          end if !(s2>0)
        else !(g==0)   is gradient
-         dQ(ieq) = UIJ(pt,g,s1,s2)
+         dQ(ieq) = VIJ(pt,g,s1,s2)
        end if!(g==0)
       end do !ieq
       call system_clock(COUNT=count2,COUNT_RATE=count_rate)
@@ -1233,7 +1196,6 @@ MODULE makesurfdata
     deallocate(WIJ)
     deallocate(VIJ)
     deallocate(DIJ)
-    deallocate(UIJ)
 
     call system_clock(COUNT=count2)
     if(printlvl>0)then
@@ -1243,7 +1205,94 @@ MODULE makesurfdata
       print "(6F8.2)",dble(count2-count0)/count_rate,t1,t2,t3,t4,t5
     end if
   END SUBROUTINE getCGrad
-! 
+!------------------------------------------------------------------
+! Get the Dij at a point of degeneracy by solving linear equations
+! The subroutine suppose that the d^I.H.d^J is already correctly stored in fitE
+! and the fit gradients in fitG.  
+! WIJ and VIJ for the point for the coefficient also needs to be provided.
+  SUBROUTINE getDegDij(pt,WIJ,VIJ,DIJ) 
+    use hddata, only:  nstates
+    IMPLICIT NONE
+    INTEGER,intent(IN)          :: pt
+    DOUBLE PRECISION,intent(IN) :: WIJ(nstates,nstates),VIJ(nvibs,nstates,nstates)
+    DOUBLE PRECISION,intent(OUT):: DIJ(nstates,nstates)
+    integer :: nDij
+    double precision :: EMat(nstates*(nstates-1)/2,nstates*(nstates-1)/2), RVec(nstates*(nstates-1)/2) 
+    integer :: i,j,k,l,lb,ub
+    integer :: grpind(nstates)  ! specifies which degeneracy group a state belongs to
+    integer :: smap(nstates,nstates),dmap(nstates*(nstates-1)/2,2)  !mapping between dij and state indices 
+    integer :: sgn(nstates,nstates)
+    double precision,dimension (nvibs) :: gvec, hvec
+    integer :: INFO, IPIV(nstates*(nstates-1)/2)
+
+    nDij = nstates*(nstates-1)/2
+    grpind = 0
+    ! construct state groupings index table
+    do i=1,dispgeoms(pt)%ndeggrp
+      lb = dispgeoms(pt)%deg_groups(i,1)
+      ub = dispgeoms(pt)%deg_groups(i,2)+lb-1
+      grpind(lb:ub) = i
+    end do!i=1,dispgeoms(pt)%ndeggrp
+    ! construct maps between dij and state indices
+    smap = 0
+    sgn  = 0
+    k    = 0
+    do i=1,nstates
+      do j=i+1,nstates
+        k=k+1
+        dmap(k,1) = i
+        dmap(k,2) = j
+        sgn(i,j)  = 1
+        smap(i,j) = k
+        sgn(j,i)  = -1
+        smap(j,i) = k
+      end do!j
+    end do!i
+
+    ! construct linear equations for dij
+    EMat = 0d0
+    do k=1,nDij
+      i=dmap(k,1)
+      j=dmap(k,2)
+      if(grpind(i)==grpind(j).and.grpind(i).ne.0)then
+        hvec = fitG(pt,:,I,J)
+        gvec = fitG(pt,:,J,J)-fitG(pt,:,I,I)
+        rvec(k) = dot_product(VIJ(:,I,J),gvec) + &
+                  dot_product(VIJ(:,J,J)-VIJ(:,I,I),hvec)
+!        EMat(k,k)=dot_product(gvec,gvec)-4*dot_product(hvec,hvec)
+        do l=1,nstates
+          !if(l==i.or.l==j)cycle
+          if(l/=i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+sgn(l,i)*(  &
+                -dot_product(fitG(pt,:,l,j),gvec)+2*dot_product(fitG(pt,:,l,i),hvec))
+          if(l/=j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+sgn(l,j)*(  &
+                -dot_product(fitG(pt,:,l,i),gvec)-2*dot_product(fitG(pt,:,l,j),hvec))  
+        end do!l
+      else!i and j are in same degeneracy group
+        rvec(k) = - WIJ(i,j) 
+        do l=1,nstates
+           if(l.ne.i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+fitE(pt,l,j)*sgn(l,i)
+           if(l.ne.j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+fitE(pt,l,i)*sgn(l,j)
+        end do
+      end if!i and j are in same degeneracy group
+    end do!k
+
+    !solve the Dij values
+    CALL DGESV(nDij,1,EMat,nDij,IPIV,rvec,nDij,INFO)
+    if(INFO/=0)then
+       print *,"Failed to solve linear equations in getDegDij"
+       print *,"INFO=",info
+       stop
+    end if
+    
+    ! pack the solution into Dij matrix
+    DIJ = 0D0
+    do k=1,nDij
+      i=dmap(k,1)
+      j=dmap(k,2)
+      DIJ(i,j) = rvec(k)
+      DIJ(j,i) = - rvec(k)
+    end do!k 
+  END SUBROUTINE getDegDij
 
 !------------------------------------------------------------------
 ! Try to obtain the best values of Lagrange multipliers
@@ -1500,7 +1549,7 @@ MODULE makesurfdata
      CALL EvaluateVal(pbas(n1,1),npoints*(nvibs+1),k,nvibs,dispgeoms(i)%bmat)
 ! create weighed data matrix
      j=0
-     do while(dispgeoms(i)%energy(1)>energyT(j+1))
+     do while(dispgeoms(i)%energy(1,1)>energyT(j+1))
        j=j+1
        if(j==10)exit
      end do
@@ -1646,7 +1695,7 @@ MODULE makesurfdata
     allocate(ckl(npoints,nstates,nstates))
     if(allocated(fitE))deallocate(fitE)
     if(allocated(fitG))deallocate(fitG)
-    allocate(fitE(npoints,nstates))
+    allocate(fitE(npoints,nstates,nstates))
     allocate(fitG(npoints,nvibs,nstates,nstates))
 
 
@@ -1695,48 +1744,6 @@ MODULE makesurfdata
   END SUBROUTINE initMakesurf
 
 END MODULE
-!---------------------------------------------
-! convert angle and determinant to 2x2 matrix
-SUBROUTINE PutAngle(ckl,theta,sg)
-  IMPLICIT NONE
-  DOUBLE PRECISION,intent(INOUT) :: ckl   (2,2)
-  DOUBLE PRECISION,intent(IN)    :: theta 
-  INTEGER         ,intent(IN)    :: sg   
-
-  ckl(1,1) = cos(theta)
-  ckl(2,2) = ckl(1,1)
-  ckl(2,1) = sin(theta)
-  ckl(1,2) = -ckl(2,1)
-  if(sg<0) ckl(:,2)=-ckl(:,2)
-END SUBROUTINE PutAngle
-!---------------------------------------------
-! convert an 2x2 orthogonal matrix into angles
-SUBROUTINE GetAngles(ckl,npoints,theta,sg)
-  IMPLICIT NONE
-  INTEGER,intent(IN)          :: npoints
-  DOUBLE PRECISION,intent(IN) :: ckl   (npoints,2,2)
-  DOUBLE PRECISION,intent(OUT):: theta (npoints)
-  INTEGER         ,intent(OUT):: sg    (npoints)
-  integer i
-  do i=1,npoints
-    if(ckl(i,1,1)*ckl(i,2,2)-ckl(i,1,2)*ckl(i,2,1)<0)then
- ! eigenvector matrix has a determinant of -1
-      sg(i) = -1
-      if(ckl(i,2,1)>0)then
-        theta(i)  = acos(ckl(i,1,1))
-      else
-        theta(i)  = -acos(ckl(i,1,1))
-      end if
-    else ! special orthogonal
-      sg(i) = 1
-      if(ckl(i,2,1)>0)then
-        theta(i)  = acos(ckl(i,1,1))
-      else
-        theta(i)  = -acos(ckl(i,1,1))
-      end if
-    end if
-  end do
-END SUBROUTINE GetAngles
 !---------------------------------------------
 ! Transform Hd with a block-by-block transformation ZBas
 ! This is used by the null-space to do both forward and backward transformation.
@@ -1876,13 +1883,8 @@ SUBROUTINE makesurf()
     do k=1,dispgeoms(i)%nvibs
       fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
     end do!k=1,dispgeoms(i)%nvibs
-    do k=1,nstates
-      fitE(i,k)= dble(0)
-      do j=1,nstates
-        fitE(i,k)=fitE(i,k)+ckl(i,j,k)*dot_product(ckl(i,:,k),hmatPt(j,:))
-      end do
-    end do
-    if(printlvl>1)PRINT "(I6,10(x,F15.4))",I,fitE(i,:)*au2cm1
+    fitE(i,:,:) = matmul(transpose(ckl(i,:,:)),matmul(hmatPt,ckl(i,:,:)))
+    if(printlvl>1)PRINT "(I6,10(x,F15.4))",I,(fitE(i,k,k)*au2cm1,k=1,nstates)
   end do
   asol = asol2
   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
@@ -1900,7 +1902,6 @@ SUBROUTINE makesurf()
   adif=toler+1
   diff = .false.
   ! ----------  MAIN LOOP ---------------
-  call GetAngles(ckl,npoints,theta(0,:),sg(0,:))
   do while(iter<maxiter.and.adif>toler)
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
@@ -2033,25 +2034,6 @@ SUBROUTINE makesurf()
    nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-   call GetAngles(ckl,npoints,theta(iter,:),sg(iter,:))
-   theta2 = theta(iter,:) - theta(iter-1,:)
-   PRINT *,"Maximum allowed change in diabatrization angle is ",maxRot
-   do i=1,npoints
-     if(theta2(i)>PI)theta2(i)=theta2(i)-2*PI
-     if(theta2(i)<-PI)theta2(i)=theta2(i)+2*PI
-     if(abs(theta2(i))>maxRot.or.sg(iter,i).ne.sg(iter-1,i))then
-       if(abs(theta2(i))>1d-1) &
-            print "(A,I5,A,2F10.2,A,SP,F7.3,SS,A,L1)"," point ",I,",E1,2=", (dispgeoms(i)%energy(1:2))*au2cm1,  &
-                   ", rotation =",theta2(i),", change=",sg(iter,i).ne.sg(iter-1,i)
-       if(maxRot>1D-30) then
-         theta(iter,i) = theta(iter-1,i)+sign(maxRot,theta2(i))
-         if(maxRot>0) sg(iter,i)=sg(iter-1,i)
-         print *,"BEFORE:",ckl(i,:,:)
-         call PutAngle(ckl(i,:,:),theta(iter,i),sg(iter,i))
-         print *,"AFTER :",ckl(i,:,:)
-       end if
-     end if
-   end do!i=1,npoints (printing diabatrization angles)
    if(printlvl>1)print *,"  Pushing coefficients into DIIS data set."
    CALL pushDIISg(asol,dCi,asol1)
    if(printlvl>1)print *,"  Size of change through DIIS procedure :" ,dnrm2(ncons,asol1-asol,1)
@@ -2149,8 +2131,8 @@ SUBROUTINE makesurf()
           gradtable(k,2*m)   = fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j)
           if(m<=dispgeoms(l)%nvibs)then
             errGrad(l,i,j)=errGrad(l,i,j)+((&
-                      fitG(l,m,i,j)/abs(fitE(l,j)-fitE(l,i))- &
-                      dispgeoms(l)%grads(m,i,j)/abs(dispgeoms(l)%energy(j)-dispgeoms(l)%energy(i))   &
+                      fitG(l,m,i,j)/abs(fitE(l,j,j)-fitE(l,i,i))- &
+                      dispgeoms(l)%grads(m,i,j)/abs(dispgeoms(l)%energy(j,j)-dispgeoms(l)%energy(i,i))   &
                       )  )**2!*dispgeoms(l)%scale(m)
             errGradh(l,i,j)=errGradh(l,i,j)+&
                  (fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j))**2!*dispgeoms(l)%scale(m)
@@ -2182,8 +2164,8 @@ SUBROUTINE makesurf()
   do j = 1,npoints
    do k = 1,nstates
     if(hasEner(j,k))then
-        enertable(j,2*k-1) = (dispgeoms(j)%energy(k))*AU2CM1
-        enertable(j,2*k)   = fitE(j,k)*AU2CM1 - enertable(j,2*k-1)
+        enertable(j,2*k-1) = (dispgeoms(j)%energy(k,k))*AU2CM1
+        enertable(j,2*k)   = fitE(j,k,k)*AU2CM1 - enertable(j,2*k-1)
     else
         enertable(j,2*k-1) = NaN
         enertable(j,2*k)   = NaN
@@ -2205,7 +2187,7 @@ SUBROUTINE makesurf()
     do k=1,nstates
       dener(k,k)=1D0
       do l=k+1,nstates
-        dener(k,l)= abs(dispgeoms(i)%energy(k)-dispgeoms(i)%energy(l))
+        dener(k,l)= abs(dispgeoms(i)%energy(k,k)-dispgeoms(i)%energy(l,l))
         dener(l,k)= dener(k,l)
       end do
     end do
@@ -2241,7 +2223,7 @@ SUBROUTINE makesurf()
   do i=1,npoints
     do j=1,nstates
       if(hasEner(i,j))then
-        write(uerrfl,"(E15.7)",advance='no')  fitE(i,j)-(dispgeoms(i)%energy(j))
+        write(uerrfl,"(E15.7)",advance='no')  fitE(i,j,j)-(dispgeoms(i)%energy(j,j))
       else
         write(uerrfl,"(E15.7)",advance='no')  0d0
       end if
@@ -2384,10 +2366,10 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
 
   integer :: i,j,ldeg,udeg,ndeg, pmt, best_p, m
   double precision :: min_err, err, err1
-  DOUBLE PRECISION,DIMENSION(nstates,nstates)  :: ckl_new
+  DOUBLE PRECISION,DIMENSION(nstates,nstates)       :: ckl_new
   DOUBLE PRECISION,DIMENSION(abpt%nvibs)            :: diff
   DOUBLE PRECISION,DIMENSION(abpt%nvibs,nstates,nstates) :: gradnew
-  double precision,dimension(nstates)          :: en_new
+  double precision,dimension(nstates,nstates)       :: en_new
   double precision   ::  shift
 
   min_err=0d0
@@ -2398,7 +2380,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     ndeg=fitpt%deg_groups(i,2)
     udeg=ldeg+ndeg-1
     if(hasEner(ptid,ldeg).and.hasEner(ptid,udeg))then
-        shift = -(fitpt%energy(ldeg)+fitpt%energy(udeg)-abpt%energy(ldeg)-abpt%energy(udeg))/2
+        shift = -(fitpt%energy(ldeg,ldeg)+fitpt%energy(udeg,udeg)-abpt%energy(ldeg,ldeg)-abpt%energy(udeg,udeg))/2
     else
         shift = 0d0
     end if
@@ -2411,7 +2393,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
           err=err+dot_product(diff,diff*abpt%scale(:abpt%nvibs))*w_grd
         end if
         if(hasEner(ptid,j).and.(incener(ptid,j,j).or.e_exact(ptid,j,j)))  &
-                    err=err+ (fitpt%energy(m)-abpt%energy(j)+shift)**2 *w_en
+                    err=err+ (fitpt%energy(m,m)-abpt%energy(j,j)+shift)**2 *w_en
       end do!j=ldeg,udeg
       if(pmt==1)then
         min_err=err
@@ -2427,17 +2409,18 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     gradnew=fitpt%grads(:abpt%nvibs,:,:)
     do j=ldeg,udeg
       m=pmtList(best_p,j-ldeg+1)+ldeg-1
-      ckl_new(:,j)=ckl(:,m)
-      en_new(j)   = fitpt%energy(m)
-      gradnew(:,:,j)=fitpt%grads(:abpt%nvibs,:,m)
+      ckl_new(:,j)   =ckl(:,m)
+      en_new(:,j)    = fitpt%energy(:,m)
+      gradnew(:,:,j) =fitpt%grads(:abpt%nvibs,:,m)
     end do
     if(printlvl>0.and.best_p/=1)print 1000,ptid,ldeg,&
                     ldeg+ndeg-1,sqrt(err1),sqrt(min_err)
     fitpt%grads(:abpt%nvibs,:,:)=gradnew
     fitpt%energy=en_new
     do j=ldeg,udeg
-      m=pmtList(best_p,j-ldeg+1)+ldeg-1
+      m             =pmtList(best_p,j-ldeg+1)+ldeg-1
       gradnew(:,j,:)=fitpt%grads(:abpt%nvibs,m,:)
+      en_new(j,:)   =fitpt%energy(m,:)
     end do
     ckl=ckl_new
     fitpt%grads(:abpt%nvibs,:,:)=gradnew
@@ -2724,9 +2707,12 @@ SUBROUTINE printDisps(type,npts)
   NaN = 0
   NaN = NaN/NaN
   do j=1,npts
-    enbuffer = dispgeoms(j)%energy*AU2CM1
     do k=1,nstates
-      if(.not. hasEner(j,k))enbuffer(k)=NaN
+      if(.not. hasEner(j,k))then
+        enbuffer(k)=NaN
+      else
+        enbuffer(k) = dispgeoms(j)%energy(k,k)*AU2CM1
+      end if
     end do
     write(OUTFILE,'(6x,i5,'//trim(str)//'F14.2)')j,enbuffer
   end do  
@@ -2784,7 +2770,7 @@ SUBROUTINE readdisps()
   do j = 1,npoints
      allocate(dispgeoms(j)%cgeom(3*natoms))
      allocate(dispgeoms(j)%igeom(ncoord))
-     allocate(dispgeoms(j)%energy(nstates))
+     allocate(dispgeoms(j)%energy(nstates,nstates))
      allocate(dispgeoms(j)%grads(3*natoms,nstates,nstates))
      dispgeoms(j)%grads=NaN
      allocate(dispgeoms(j)%bmat(ncoord,3*natoms))
@@ -2853,15 +2839,14 @@ SUBROUTINE readdisps()
         end if
         if(printlvl>3.or.(printlvl>1.and.ptinfile<nnew))print 1002,"found ",ptinfile," energy data entries."
         do j = 1,ptinfile
-            ! put in dummy energies for non-present data just for grouping purpose
-            do k=lb-1,1,-1
-               eners(k,j)=eners(k+1,j)-100
+            dispgeoms(j+npts)%energy = NaN
+            dispgeoms(j+npts)%energy(lb:ub,lb:ub) = 0d0 
+            do k=lb,ub
+                dispgeoms(j+npts)%energy(k,k) = eners(k,j)+eshift
             end do
-            do k=ub+1,nstates
-                eners(k,j)=eners(k-1,j)+100
-            end do
-            dispgeoms(j+npts)%energy(lb:ub) = eners(lb:ub,j)+eshift
-            call genEnerGroups(dispgeoms(j+npts),deg_cap,lb,ub)
+            dispgeoms(j+npts)%lb = lb
+            dispgeoms(j+npts)%ub = ub
+            call genEnerGroups(dispgeoms(j+npts),deg_cap)
             hasEner(j+npts,lb:ub)=.true.
         enddo
     else !invalid energy file name
