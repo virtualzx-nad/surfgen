@@ -154,8 +154,8 @@ MODULE makesurfdata
 ! number of exact equations
   integer    :: nex
 
-! number of linear steps to search along positive and negative direction
-  integer    :: linSteps, linNegSteps
+! number of linear steps 
+  integer    :: linSteps
 
 ! Total norm of gradients by all basis function for physical gradient component
 ! at each specific data point
@@ -1753,7 +1753,146 @@ MODULE makesurfdata
     ! allocate spaces for arrays and matrices
     if((neqs+nex)<ncons.and.printlvl>0)print *,"    Warning: neqs<ncons, data set might be inadequate."
   END SUBROUTINE initMakesurf
+!---------------------------------------------
+! Take linear step along vector dvec, then acoording to the new gradients,
+! refine the estimation of the optimal step length along this line.  
+! Repeat the procedure for a fixed number of times or until the point with
+! minimum Lagrangian norm is found
+! [ Arguments ]
+! hvec  [in/out] DOUBLE PRECISION,dimension(ncons)
+!       On input: Current Hd coefficient vector
+!       On output: Updated Hd coefficient vector
+! dvec  [in/out] DOUBLE PRECISION,dimension(ncons)
+!       On input: initial dispacement vector for hvec
+!       On output: estimated best displacement vec
+! nStep [in] INTEGER
+!       Number of linear steps to take
+! maxd  [in] DOUBLE PRECISION
+!       Maximum allowed step size
+! dCi   [in/out] DOUBLE PRECISION,dimension(ncons)
+!       On input: Coefficient part of the Lagrangian gradient at the 
+!       initial Hd
+!       On output: Coefficient part of the Lagragian gradient after linear
+!       steps
+! dLam  [in/out] DOUBLE PRECISION,dimension(nex)
+!       On input: Lagrange multipliers part of the Lagrangian gradients 
+!       of the initial Hd (lambda)
+!       On output: Lagrange multipliers part of the Lagrangian gradients
+!       of the Hd after linear steps.
+  SUBROUTINE takeLinStep(hvec, dvec, nStep, maxd, dCi, dLam)
+    use progdata, only: printlvl
+    IMPLICIT NONE
+    DOUBLE PRECISION,intent(INOUT)       ::  hvec(ncons),dvec(ncons)
+    INTEGER,intent(IN)                   ::  nStep
+    DOUBLE PRECISION,intent(IN)          ::  maxd
+    DOUBLE PRECISION,intent(INOUT)       ::  dCi(ncons),dLam(nex)
+ 
+    double precision,dimension(ncons)    :: dCi2, dCiNew, ddCi
+    double precision,dimension(ncons+nex):: hnew 
+    double precision,dimension(nex)      :: dLam2, dLamNew, ddLam
+    double precision :: jaco(nex,ncons),jaco2(nex,ncons)
+! An linear two point extrapolation is used to refine steps. The subroutine stores
+! the best two hd vectors and their Lagrangian norms. The two best ones will be
+! used to do the interpolation/extrapolation
+    double precision :: gbest,g2nd,gnew, d1,d2,dnew,lag, denorm
+    integer    ::  i, plvl
+    double precision :: nrmener, avgener, nrmgrad, avggrad, LSErr,ExErr
+    double precision,external  :: dnrm2
 
+! initialization to have initial point and initial displacement set up to be the
+! best two points.
+    plvl = printlvl
+    printlvl = 0
+    dCi2  = dCi
+    dLam2 = dLam
+    d2    = 0d0
+    g2nd  = sqrt(dot_product(dCi,dCi)+dot_product(dLam,dLam))
+    hnew(1:ncons)  = hvec+dvec
+    hnew(ncons+1)  = 0d0
+    call evaluateError(hnew,weight,LSErr,ExErr)
+    CALL getError(nrmener,avgener,nrmgrad,avggrad)
+    CALL getCGrad(hnew,dCi,dLam,lag,jaco)
+    CALL optLag(jaco,nex,dCi,hnew,jaco2)
+    d1    = 1d0
+    gbest= sqrt(dot_product(dCi,dCi)+dot_product(dLam,dLam))
+    if(plvl>1)print "(A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)",&
+                "   Initial dnrm=",dnrm2(ncons,dvec,1),": evalEr=",LSErr,ExErr,&
+                ",getEr=",nrmener,nrmgrad,",GLag=",gbest
+    if(g2nd<gbest)then  ! swap these two sets of data
+      gnew = gbest
+      gbest= g2nd
+      g2nd = gnew
+      dCiNew = dCi
+      dCi    = dCi2
+      dCi2   = dCiNew
+      dLamNew= dLam
+      dLam   = dLam2
+      dLam2  = dLamNew
+      dnew   = d1
+      d1     = d2
+      d2     = dnew
+    end if ! stepped point is worse. swap these two
+
+    ! perform nSteps refines of the linear displacement
+    do i=1,nStep
+      ddLam = dLam2-dLam
+      ddCi  = dCi2 -dCi
+      denorm=dot_product(ddLam,ddLam)+dot_product(ddCi,ddCi)
+      if(denorm>1d-10)then
+        dnew =dot_product(ddLam,d1*dLam2-d2*dLam)+dot_product(ddCi,d1*dCi2-d2*dCi) 
+        dnew =dnew/denorm
+      else
+        dnew = (d1+d2)/2
+      end if
+      if(abs(dnew)>maxd)then
+        if(abs(d1)>=maxd-1d-30.or.abs(d2)>=maxd-1d-30)then
+          dvec = dvec*d1
+          hvec = hvec+dvec
+          printlvl=plvl
+          if(plvl>1)print *,"Maximum step length reached.  Stopped refining linear steps."
+          return
+        else
+          dnew = sign(maxd,dnew)
+        end if
+      end if
+      hnew(1:ncons) = hvec+dnew*dvec
+      hnew(ncons+1:)= 0d0
+      call evaluateError(hnew,weight,LSErr,ExErr)
+      CALL getError(nrmener,avgener,nrmgrad,avggrad)
+      CALL getCGrad(hnew,dCiNew,dLamNew,lag,jaco)
+      CALL optLag(jaco,nex,dCiNew,hnew,jaco2)
+      gnew = sqrt(dot_product(dCiNew,dCiNew)+dot_product(dLamNew,dLamNew))
+      if(gnew<gbest)then
+        g2nd = gbest
+        dCi2 = dCi
+        dLam2= dLam
+        d2   = d1
+        gbest= gnew
+        dCi  = dCiNew
+        dLam = dLamNew
+        d1   = dnew
+      else if(gnew<g2nd)then
+        g2nd = gnew
+        dCi2 = dCiNew
+        dLam2= dLamNew
+        d2   = dnew
+      else
+        ! refinement fails.  quit the procedure
+        dvec = dvec*d1
+        hvec = hvec+dvec
+        printlvl=plvl
+        if(plvl>1)print *,"Error increasing.  Stopped refining linear steps."
+        return
+      end if 
+      if(plvl>1)print "(A,I3,A,F8.5,A,2E12.5,A,2E12.5,A,E16.9)",&
+                        "    refine#",i,"dnew=",dnew,": evalEr=",LSErr,ExErr,&
+               ",getEr=",nrmener,nrmgrad,",GLag=",gnew
+    end do!i
+    dvec = dvec*d1
+    hvec = hvec+dvec
+    printlvl=plvl
+ 
+  END SUBROUTINE takeLinStep
 END MODULE
 !---------------------------------------------
 ! Transform Hd with a block-by-block transformation ZBas
@@ -1820,14 +1959,14 @@ SUBROUTINE makesurf()
   use DIIS
   IMPLICIT NONE
   INTEGER                                        :: i,j,k,l,count1,count2,count_rate
-  INTEGER                                        :: m, plvl
+  INTEGER                                        :: m
   INTEGER                                        :: iter,uerrfl
-  DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,dCi2,hvec,bvecP
+  DOUBLE PRECISION,dimension(:),allocatable      :: bvec,asol,asol1,asol2,dsol,dCi,dLambda,hvec
   DOUBLE PRECISION,dimension(:,:),allocatable    :: jaco,jaco2
   DOUBLE PRECISION,dimension(npoints,nvibs*2)    :: gradtable
   DOUBLE PRECISION,dimension(npoints,2*nstates)  :: enertable
-  DOUBLE PRECISION,dimension(:),allocatable      :: grdv1,grdv2,dis0
-  DOUBLE PRECISION                               :: adif,nrmener,avgener,lag,gmin,nrmG, dmin, dinc, disp
+  DOUBLE PRECISION,dimension(:),allocatable      :: grdv1,grdv2,dgrdv
+  DOUBLE PRECISION                               :: adif,nrmener,avgener,lag,gmin, dmin, dinc, disp
   double precision                               :: LSErr,ExErr
   DOUBLE PRECISION                               :: nrmgrad,avggrad,nrmD
   CHARACTER(4)                                   :: c1,c2
@@ -1844,9 +1983,7 @@ SUBROUTINE makesurf()
   DOUBLE PRECISION,dimension(nstates,nstates)            :: hmatPT
   DOUBLE PRECISION,dimension(nvibs,nstates,nstates)      :: dhmatPT
   
-  double precision,dimension(0:maxiter,npoints)   ::   theta  ! rotation angle
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
-  double precision,dimension(npoints)   ::   theta2
   double precision  :: NaN
 
   if(printlvl>0)print *,"Entering makesurf"
@@ -1857,18 +1994,16 @@ SUBROUTINE makesurf()
   print 1001,"    Memory required to store coefficient matrix:",(neqs+nex)*ncons*7.62939453125D-6," MB"
   allocate(hvec(ncon_total))               ! Hd coefficients vector in original form
   allocate(bvec(neqs+nex))                 !rhs for exact and LSE equations
-  allocate(bvecP(neqs+nex))                !rhs for exact and LSE equations from previous iteration
   allocate(asol(ncons+nex))                ! solution vector
   allocate(asol1(ncons+nex))               ! old solution vector
   allocate(asol2(ncons+nex))               ! old solution vector
   allocate(dsol(ncons))                    ! change of solution vector
-  allocate(grdv1(ncons))                   ! gradients of Lagrangian of the last iteration 
-  allocate(grdv2(ncons))                   ! gradients of Lagrangian(with respect to coefficients)
-  allocate(dis0(ncons))                    ! displacement of the previous iteration 
+  allocate(grdv1(ncons+nex))               ! gradients of Lagrangian of the last iteration 
+  allocate(grdv2(ncons+nex))               ! gradients of Lagrangian(with respect to coefficients)
+  allocate(dgrdv(ncons+nex))               ! Change in Lagrangian gradients 
   allocate(jaco(nex,ncons))                ! second derivatives of Lagrangian for exact-LSE jacobian block
   allocate(jaco2(nex,ncons))
   allocate(dCi(ncons))
-  allocate(dCi2(ncons))
   allocate(dLambda(nex))
   allocate(NEL(ncons+nex,ncons+nex),STAT=status)
   if(status/=0) stop 'makesurf  :  failed to allocate memory for NEL'
@@ -1900,9 +2035,6 @@ SUBROUTINE makesurf()
   asol = asol2
   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
   CALL optLag(jaco,nex,dCi,asol,jaco2)
-  nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-  grdv1 = 0d0
-  grdv2 =-dCi
   print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
 
@@ -1978,71 +2110,16 @@ SUBROUTINE makesurf()
        dsol=dsol*maxD/nrmD
        nrmD = maxD
    end if 
-   if(linSteps+linNegSteps<=0)then
-       asol(1:ncons)=asol2(1:ncons)+dsol
+   if(linSteps<=0)then
+      asol(1:ncons)=asol2(1:ncons)+dsol
+      call evaluateError(asol,weight,LSErr,ExErr)
+      CALL getError(nrmener,avgener,nrmgrad,avggrad)
+      CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+      CALL optLag(jaco,nex,dCi,asol,jaco2)
    else !linsteps<=0
-       dmin = 0d0
-       disp = 0d0
-       dinc = 1d0
-       gmin = nrmG 
-       plvl=printlvl
-       printlvl=0
-       print *,"  Performing ",linSteps," positive displacements."
-       do i=1,linSteps
-         disp = disp+dinc
-         asol(1:ncons)=asol2(1:ncons)+dsol*disp
-         call evaluateError(asol,weight,LSErr,ExErr)
-         CALL getError(nrmener,avgener,nrmgrad,avggrad)
-         CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-         CALL optLag(jaco,nex,dCi,asol,jaco2)
-         nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-         if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
-               ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
-         if(nrmG<gmin)then
-           gmin = nrmG
-           dmin = disp
-         else if(i<linSteps)then
-           !roll back and shrink steps
-           disp = disp - dinc 
-           dinc = dinc / (1+linSteps-i)
-         end if
-     end do
-!  Negative displacements
-     disp = 0d0
-     dinc =-1d0
-     print *,"  Performing ",linNegSteps," negative displacements."   
-     do i=1,linNegSteps
-         disp = disp+dinc
-         asol(1:ncons)=asol2(1:ncons)+dsol*disp
-         call evaluateError(asol,weight,LSErr,ExErr)
-         CALL getError(nrmener,avgener,nrmgrad,avggrad)
-         CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-         CALL optLag(jaco,nex,dCi,asol,jaco2)
-         nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-         if(plvl>1)print "(A,I3,A,E14.7,A,2E12.5,A,2E12.5,A,E16.9)","    #",i," d=",disp*nrmD,": evalEr=",LSErr,ExErr,&
-               ",getEr=",nrmener,nrmgrad,",GLag=",nrmG
-         if(nrmG<gmin)then
-           gmin = nrmG
-           dmin = disp
-         else if(i<linSteps)then
-           !roll back and shrink steps
-           disp = disp - dinc
-           dinc = dinc / (1+linSteps-i)
-         end if
-     end do
-
-     if(plvl>1)print "(2(A,E12.5))","   optimal step length:",dmin,", norm of grad=",gmin
-     asol(1:ncons)=asol2(1:ncons)+dsol*dmin
-     printlvl=plvl
-   end if!linSteps<=0
-
-   ! make new eigenvectors
-   call updateEigenVec(asol,followPrev)
-   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-   CALL optLag(jaco,nex,dCi,asol,jaco2)
-   grdv1 = grdv2
-   grdv2 = -dCi
-   nrmG = sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
+     asol(1:ncons)=asol2(1:ncons)
+     call takeLinStep(asol,dsol,linSteps,2d0,dCi,dLambda)
+   end if
    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    if(printlvl>1)print *,"  Pushing coefficients into DIIS data set."
@@ -2066,11 +2143,6 @@ SUBROUTINE makesurf()
   else
    write(OUTFILE,1007)
   endif
-  if(printlvl>0) print *,"Points where diabatrization angles are changing significantly"
-  do i=1,npoints
-    if(maxval(theta(0:iter,I))-minval(theta(0:iter,I))>1d-1) &
-         print "(I5,15F7.3)",I,theta(iter-min(iter,10):iter,I)
-  end do
 
   !------------------------------------------------------------
   ! Write coefficients of final surface to file
@@ -2451,7 +2523,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx,linNegSteps, ckl_output,ckl_input,dijscale,  &
+                      energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
                       
   npoints   = 0
@@ -2466,7 +2538,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   ckl_input = ''
   ckl_output= 'ckl.out'
   linSteps  = 0
-  linNegSteps = 0
   dfstart   = 0
   dijscale  = 1d0
   useIntGrad= .true.
@@ -2523,7 +2594,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   if(NSearchPaths==0) STOP "Empty search path list.  No data to fit."
 
   ! round up inappropriate option values and do unit changes
-  if(linNegSteps<0) linNegSteps=0
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
   if(nstates>nstates.or.nstates<1)nstates=nstates

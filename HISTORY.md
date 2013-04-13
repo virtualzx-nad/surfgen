@@ -1,3 +1,8 @@
+## 2.3.2 (2013-04-12)
+
+* Improved linear search algorithm
+* LinNegSteps is now deprecated
+
 ## 2.3.1 (2013-04-12)
 
 * Performance improvement for Lagrangian gradient and normal equations constructions. 
