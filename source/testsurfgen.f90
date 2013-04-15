@@ -191,35 +191,7 @@ SUBROUTINE testHd(ntest,disp)
 !    double precision  :: h0, ckl_sum(npoints,nstates,nstates), ckl_store(npoints,nstates,nstates),dij(nstates,nstates)
     call getHdvec(hvec_raw,coefmap,ncon_total)
     call tranHd('F',hvec_raw,hvec)   ! convert primitive h expansion to block orthogonal basis expansions
-!hvec =0d0
-!hvec(20) = 1d0
-!ckl(1,:,:)=0d0
-!ckl(1,1,1)=1d0
-!ckl(1,2,2)=1d0
-!PRINTLVL = 0
-!ckl_sum = 0d0
-!h0 = hvec(1300)
-! call updateEigenVec(hvec,.false.)
-! ckl_store = ckl
-! CALL getCGrad(hvec,dCi,dL,lag,jaco)
-!do i=1,ndisp
-! hvec(1300)=h0+i*1d-5
-! call updateEigenVec(hvec,.true.)
-! ckl_sum = ckl_sum+coef(i)*ckl
-! hvec(1300)=h0-i*1d-5
-! call updateEigenVec(hvec,.true.)
-! ckl_sum = ckl_sum-coef(i)*ckl
-!end do
-!ckl_sum=ckl_sum/1d-5
-!do i=1,npoints
-!  do k=1,nstates
-!    do l=1,nstates
-!  dij(k,l)=dot_product(ckl_store(i,:,k),ckl_sum(i,:,l))
-!   end do
-!  end do
-!  PRINT "(A,I3,A,9F18.10)","DIJNUM #",i,": ",dij
-!end do
-!STOP
+
     prtl = printlvl
     printlvl = 0
     hnorm = dnrm2(ncons,hvec,int(1))
@@ -330,13 +302,19 @@ SUBROUTINE testHd(ntest,disp)
         ! Comparisons with previous largest error
         print "(3(A,E14.7))","   ",DAnaL," - ",DNumL," = ",DNumL-DAnaL
         maxrLag = max(maxrLag,abs((DNumL-DAnaL)/DNumL))
-        if(abs(DNumL-DAnaL)/DNumL>1d-4)print "(A,9E14.6)","Shifted Lag:",lagval-lagval(0)
+        if(abs(DNumL-DAnaL)/DNumL>1d-4)then
+            print *,"Lagrangian has large error."
+            DNumL = -lagval(-3)/60+lagval(-2)*3/20-lagval(-1)*3/4 + &
+                     lagval(3)/60 -lagval(2) *3/20+lagval(1) *3/4
+            DNumL = DNumL/disp
+            print "(A,E14.7)","6 instead of 8 order numerical gradients:",DNumL
+        end if
     end do!i=1,ntest
     print "(A,F10.5,A)"," Maximum relative error for Hd gradients: ",maxratio*100,"%"
     print "(A,F10.5,A)"," Maximum relative error for Lagrangian: ",maxrLag*100,"%"
     print *,""
     if(maxratio>1d-6)stop"Hd gradient test failed."
-    if(maxrLag>1d-5) stop"Lagrangian test failed."
+    if(maxrLag>1d-4) stop"Lagrangian test failed."
     print *,"Hd gradient and Lagrangian tests finished."
     printlvl = prtl
 END SUBROUTINE testHd

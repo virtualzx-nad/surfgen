@@ -55,7 +55,7 @@
       debugDocumentVersioning = "YES"
       allowLocationSimulation = "YES">
       <PathRunnable
-         FilePath = "/Users/xzhu/Documents/workspace/surfgen/bin/surfgen-2.2.5-Darwin-x86_64">
+         FilePath = "/Users/xzhu/Documents/workspace/surfgen/bin/surfgen">
       </PathRunnable>
       <AdditionalOptions>
       </AdditionalOptions>

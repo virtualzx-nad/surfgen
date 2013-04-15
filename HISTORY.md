@@ -1,3 +1,8 @@
+## 2.3.4 (2013-04-14)
+
+* Cleaned up `testsurfgen`.
+* Updated project settings for XCode
+
 ## 2.3.3 (2013-04-14)
 
 * Gradient following method implemented.  A diagonal approximation is used for the coef-coef block of Lagrangian hessian.

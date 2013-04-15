@@ -27,13 +27,14 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.3.3
+SGENVER := 2.3.4
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
 OS    := $(word 1,$(UNAME))
 OSV   := $(word 3,$(UNAME))
 ARC   := $(shell uname -m)
+PS2PDF:= ps2pdf
 $(info Operating system: $(OS))
 $(info OS Version: $(OSV))
 
@@ -101,6 +102,7 @@ ifndef LIBS
      #on mac, use frameworks
      LIBS := -framework vecLib
      $(info Using vecLib framework for Mac OS X)
+     PS2PDF := /sw/bin/ps2pdf
   else
      $(info BLAS_LIB not set.  Trying to determine LAPACK link options...)
      #BLAS_LIB is not set.  check LD_LIBRARY_PATH for mkl
@@ -234,7 +236,7 @@ install : $(PDFMN)
 $(DDIR)/%.pdf : $(MANDIR)/man1/%.1 | $(DDIR)
 	@echo 'Constructing pdf manual from man page of $(notdir $(basename $<))'
 	@man -M $(MANDIR) $(notdir $(basename $@)) -t > $(notdir $(basename $@)).tmp.ps
-	@ps2pdf $(notdir $(basename $@)).tmp.ps $@
+	@$(PS2PDF) $(notdir $(basename $@)).tmp.ps $@
 	@rm $(notdir $(basename $@)).tmp.ps
 
 man : $(PDFPG) 

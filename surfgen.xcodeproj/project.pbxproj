@@ -106,6 +106,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		223BEC94171B81010097A027 /* linsteps.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = linsteps.f90; path = source/linsteps.f90; sourceTree = "<group>"; };
+		223BEC95171B810B0097A027 /* getver.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = getver.F90; path = source/getver.F90; sourceTree = "<group>"; };
 		22489C7716F9008100F2007F /* combinatorial.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = combinatorial.f90; path = source/combinatorial.f90; sourceTree = "<group>"; };
 		22489C7816F9008100F2007F /* diis.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = diis.f90; path = source/diis.f90; sourceTree = "<group>"; };
 		22489C7916F9008100F2007F /* hddata.f90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = hddata.f90; path = source/hddata.f90; sourceTree = "<group>"; };
@@ -163,6 +165,8 @@
 		22489C7616F9001600F2007F /* Source Code */ = {
 			isa = PBXGroup;
 			children = (
+				223BEC95171B810B0097A027 /* getver.F90 */,
+				223BEC94171B81010097A027 /* linsteps.f90 */,
 				22C7543E1712F3620040A5B7 /* testsurfgen.f90 */,
 				22489C7716F9008100F2007F /* combinatorial.f90 */,
 				22489C7816F9008100F2007F /* diis.f90 */,
@@ -399,7 +403,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2.3.3;
+				CURRENT_PROJECT_VERSION = 2.3.4;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -432,7 +436,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2.3.3;
+				CURRENT_PROJECT_VERSION = 2.3.4;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
@@ -476,7 +480,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 2.3.3;
+				CURRENT_PROJECT_VERSION = 2.3.4;
 				EXECUTABLE_EXTENSION = "";
 				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
@@ -497,7 +501,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
-				CURRENT_PROJECT_VERSION = 2.3.3;
+				CURRENT_PROJECT_VERSION = 2.3.4;
 				EXECUTABLE_EXTENSION = "";
 				EXECUTABLE_SUFFIX = "";
 				MALLOC_PERMIT_INSANE_REQUESTS = YES;
