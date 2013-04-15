@@ -34,7 +34,7 @@ program testsurfgen
     call readdisps()
     call initMakesurf
 
-    call testHd(10,1D-4)
+    call testHd(5 ,1D-4)
 
 end program testsurfgen
 !---------------------------------------------

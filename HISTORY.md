@@ -1,3 +1,12 @@
+## 2.3.3 (2013-04-14)
+
+* Gradient following method implemented.  A diagonal approximation is used for the coef-coef block of Lagrangian hessian.
+This prevents the construction and factorization of normal equations, which is the most memory and CPU intensive step.
+* Linear search algorithm reworked.  The program now use a more robust algorithm to sample along the step direction and 
+use linear gradient extrapolation to find better step length.  Each pair of adjacent points are chosen and the pair that
+give the best predicted improvements are used. 
+* Fixed a flag issue which made version subroutine fail to compile with `gfortran`
+
 ## 2.3.2 (2013-04-12)
 
 * Improved linear search algorithm

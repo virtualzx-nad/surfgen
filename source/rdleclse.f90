@@ -93,14 +93,14 @@ CONTAINS
 
     ! Perform symmetric eigenvalue decomposition
     CALL allocArrays(1,1,0,0)
-    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex,i,eval,&
+    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex/1d6,i,eval,&
           evec,nx,ISUPPZ,WORK,int(-1),IWORK,int(-1),INFO)
     IF(INFO/=0)STOP "solve:  DSYEVR workspace query failed."
     CALL allocArrays(int(WORK(1)),IWORK(1),0,0)
     PRINT 1004,(LWORK*dble(2)+LIWORK)/262144.
-    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex,i,eval,&
+    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex/1d6,i,eval,&
           evec,nx,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
-    IF(INFO/=0)STOP "solve:  DSYEVR failed for NELEVD."
+    IF(INFO/=0)STOP "solve:  DSYEVR failed for solve()."
     ! WORK=U**T.y'
     CALL allocArrays(nx,0,0,0)
     CALL DGEMV('T',nx,nx,dble(1),evec,nx,rhs,int(1),&

@@ -9,7 +9,7 @@
 
 # Objects needed for standalone fitting program
 OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
-            libsym.o libinternal.o localcoord.o makesurf.o io.o surfgen.o 
+            libsym.o libinternal.o localcoord.o makesurf.o io.o linsteps.o surfgen.o 
 
 # Objects needed for runtime interface library
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
@@ -17,7 +17,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
 
 # Objects needed for test programs 
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
-           libsym.o libinternal.o localcoord.o makesurf.o io.o testsurfgen.o
+           libsym.o libinternal.o localcoord.o makesurf.o linsteps.o io.o testsurfgen.o
 
 # Objects for version labeling
 OBJVf   =  getver.o
@@ -27,7 +27,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.3.2
+SGENVER := 2.3.3
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -76,7 +76,7 @@ LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
 TSTX  := $(TDIR)/test
 
 # set debugging flags
-ifeq ($(DEBUGGING_SYMBOLS),YES)
+ifdef ($(DEBUGGING_SYMBOLS))
   ifndef DEBUGFLAG
    ifneq ($(findstring gfortran,$(COMPILER)),)
     DEBUGFLAG = -g -fbounds-check -fbacktrace -Wall -Wextra
@@ -251,7 +251,7 @@ $(SDIR)/%.o : $(SDIR)/%.f90
 $(SDIR)/%.o : $(SDIR)/%.F90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS) -fpp -DSGENVER=\"$(SGENVER)\"
+	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS) -DSGENVER=\"$(SGENVER)\"
 	@echo 'Finished building: $<'
 	@echo ' '
 # Compile version string subroutine

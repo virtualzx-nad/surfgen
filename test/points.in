@@ -1,0 +1,9 @@
+POINT SPECIFIC OPTIONS
+KEY111112222233333     ! comments
+lg   1    1    1       ! s0min 
+le   1    1    1
+wt   1   36  1000
+ld  35    2    3
+le  35    2    3
+lG  35    2    3
+wt  1    35   35
