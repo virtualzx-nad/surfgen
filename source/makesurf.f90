@@ -2205,8 +2205,7 @@ SUBROUTINE makesurf()
           gradtable(k,2*m-1) = dispgeoms(l)%grads(m,i,j)
           gradtable(k,2*m)   = fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j)
           if(m<=dispgeoms(l)%nvibs)then
-            errGrad(l,i,j)=errGrad(l,i,j)+((fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j))&
-                    /abs(dispgeoms(l)%energy(j,j)-dispgeoms(l)%energy(i,i)) ) **2
+            errGrad(l,i,j)=errGrad(l,i,j)+(fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j))**2
             errGradh(l,i,j)=errGradh(l,i,j)+&
                  (fitG(l,m,i,j)-dispgeoms(l)%grads(m,i,j))**2
             errGradh(l,j,i)=errGradh(l,j,i)+&
@@ -2214,7 +2213,7 @@ SUBROUTINE makesurf()
                  dispgeoms(l)%grads(m,i,i)+dispgeoms(l)%grads(m,j,j))**2
           end if!(m<=dispgeoms(l)%nvibs)
         enddo !m=1,dispgeoms(i)%nvibs
-        errGrad(l,i,j)=sqrt(errGrad(l,i,j))
+        errGrad(l,i,j)=sqrt(errGrad(l,i,j)) 
         errGrad(l,j,i)=errGrad(l,i,j)
         errGradh(l,i,j)=sqrt(errGradh(l,i,j))
         errGradh(l,j,i)=sqrt(errGradh(l,j,i))/2
@@ -2255,7 +2254,7 @@ SUBROUTINE makesurf()
   print trim(fmt)," PT ","  WT  ",(("   ErrG  ",k=1,j),j=1,nstates),&
                            ((" Ab Grd  ",k=1,j),j=1,nstates)
   fmt=""
-  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(X,E11.4))")'),(nstates+1)*nstates
+  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(2(X,E11.4),2x))")'),(nstates+1)*nstates/2
   do i=1,npoints
     do k=1,nstates
       dener(k,k)=1D0
@@ -2264,21 +2263,25 @@ SUBROUTINE makesurf()
         dener(l,k)= dener(k,l)
       end do
     end do
-    print trim(fmt),i,ptWeights(i),((errGrad(i,j,k),k=1,j),j=1,nstates),&
-           ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,k),int(1))/dener(k,j),k=1,j),j=1,nstates)
+    print trim(fmt),i,ptWeights(i),(  &
+          ([errGrad(i,j,k),dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,k),1)]/dener(j,k),k=1,j) &
+                               ,j=1,nstates)
   end do
 
   print *,""
-  print *,"Gradients and their errors of hij instead of fij(g:err,ab,fit;h:err,ab,fit)"
+  print *,"Fit and and ab initio g and h vectors between each pairs of states and their errors"
   fmt=""
-  write(fmt,'("(I5,2X,",I2,"(X,E11.4))")'),(nstates-1)*nstates*3
+  write(fmt,'("(I5,2X,",I2,"(3(X,E11.4),2X))")'),(nstates-1)*nstates/2
+  print *,"h vector: (err,fit,ab)"
   do i=1,npoints
     print trim(fmt),i,( (errGradh(i,j,k),k=1,j-1) ,j=1,nstates),&
        ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,k),int(1)), &
           k=1,j-1),j=1,nstates), &
        ((dnrm2(dispgeoms(i)%nvibs,fitG(i,:,j,k),int(1)), &
-          k=1,j-1),j=1,nstates), &
-                      ( (errGradh(i,k,j),k=1,j-1) ,j=1,nstates),&
+          k=1,j-1),j=1,nstates)
+  end do
+  do i=1,npoints
+    print trim(fmt),i,( (errGradh(i,k,j),k=1,j-1) ,j=1,nstates),&
        ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,j)-dispgeoms(i)%grads(:,k,k),int(1))/2, &
           k=1,j-1),j=1,nstates),  &
        ((dnrm2(dispgeoms(i)%nvibs,fitG(i,:,j,j)-fitG(i,:,k,k),int(1))/2, &
@@ -2328,7 +2331,6 @@ SUBROUTINE makesurf()
   deallocate(bvec)
   deallocate(ckl)
   if(printlvl>0)print *,"Exiting makesurf()"
-STOP
 1000 format(/,2X,"  ITERATION ",I3)
 1001 format(a,f7.2,a)
 1002 format(4X,"Hd coefficients solved after ",F8.2," seconds.")

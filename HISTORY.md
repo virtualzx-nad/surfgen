@@ -1,3 +1,7 @@
+## 2.3.5 (2013-04-15)
+
+* Cleaning up fitting output
+
 ## 2.3.4 (2013-04-14)
 
 * Cleaned up `testsurfgen`.
