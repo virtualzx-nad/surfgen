@@ -1,3 +1,8 @@
+## 2.3.6 (2013-04-17)
+
+* Changed form of long range distance scalings (mode=4) to make it more useful.
+* Fixed redundant gradient/couplings error output.
+
 ## 2.3.5 (2013-04-15)
 
 * Cleaning up fitting output

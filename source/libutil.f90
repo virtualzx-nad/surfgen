@@ -45,7 +45,7 @@ SUBROUTINE orthgh(n,g,h,beta)
   double precision :: denom,num
   num=dot_product(g,h)*2
   denom=-dot_product(g,g)+dot_product(h,h)
-  if(abs(denom)<1D-16)then
+  if(abs(denom)<1D-10)then
 PRINT *,"DENORM VERY SMALL.  NO ROTATION IS PERFORMED"
       beta=0D0
   else

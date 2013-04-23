@@ -2056,11 +2056,13 @@ SUBROUTINE makesurf()
 
    ! get errors 
    if(printlvl>0)then
+     printlvl=printlvl-10
      call makebvec(bvec,.true.)
      print "(5x,A)","RMS Errors of Fitting Equations"
      print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
                              ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
                              ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
+     printlvl=printlvl+10
    end if
 
    call system_clock(COUNT=count1)
@@ -2109,15 +2111,12 @@ SUBROUTINE makesurf()
    else !linsteps<=0
      asol(1:ncons)=asol1(1:ncons)
      call takeLinStep(asol,dsol,linSteps,dCi,dLambda,jaco2,dconv)
+     CALL getError(nrmener,avgener,nrmgrad,avggrad)
    end if
    ! Print out error analysis
    !-------------------------------------------------------------
    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-   !if(printlvl>1)print *,"  Pushing coefficients into DIIS data set."
-   !CALL pushDIISg(asol,dCi,asol1)
-   !if(printlvl>1)print *,"  Size of change through DIIS procedure :" ,dnrm2(ncons,asol1-asol,1)
-   CALL getError(nrmener,avgener,nrmgrad,avggrad)
    adif=DNRM2(ncons,asol-asol1,int(1))
    asol1=asol
    ! write iteration information to output file

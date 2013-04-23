@@ -448,10 +448,11 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
       w    =  g/(fval+1D-40)
       dwdR = -bval*w*(coef(1)+1/(fval+1D-40))
 
-    !  Long range term of screened Columb  Exp(-r/c2)*(r/c2)**c1
+    !  Long range term of screened Columb w=Exp[c1*(c2-x)]*(x/c2)^(c1*c2)
+    !  its derivative: w*c1*(c2-x)/x*x'
     case(4)
-      w    = exp(1-fval/coef(2))*(fval/coef(2))**coef(1)
-      dwdR = bval*w*(coef(1)/fval-1/coef(2))
+      w    = exp(coef(1)*(coef(2)-fval))*(fval/coef(2))**(coef(1)*coef(2))
+      dwdR = bval*w*coef(1)*(coef(2)-fval)/fval
 
     !  Lennard Jones functions (c2/r)**c1
     case(5)
