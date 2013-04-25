@@ -1,3 +1,7 @@
+## 2.3.6.1 (2013-04-25)
+
+* Updated documentation for the changes in internal coordinate definition for type=0 mode=4
+
 ## 2.3.6 (2013-04-17)
 
 * Changed form of long range distance scalings (mode=4) to make it more useful.
