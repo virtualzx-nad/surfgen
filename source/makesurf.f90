@@ -829,13 +829,8 @@ MODULE makesurfdata
                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s1)-WIJ(:,-s2,-s2)
                  if(iBlk==1) bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
               else         ! equation for energy 
-                if(s1==s2)then
-                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
-                  if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1,s1)
-                else
-                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
-                  if(iBlk==1)bvec(i)=0d0
-                end if 
+                AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
+                if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1,s2)
               end if !s2<0
             end do!r
           end do!l
@@ -870,13 +865,8 @@ MODULE makesurfdata
       g =eqmap(i,4)
       if(g==0)then !is an energy
         if(s2>0)then !its adiabatic energy or adiabatic off diagonal terms(0)
-          if(s1==s2)then
-            bvec(i)=dispgeoms(pt)%energy(s1,s1)
-            if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s1)
-          else 
             bvec(i)=dispgeoms(pt)%energy(s1,s2)
             if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s2)
-          end if
         else  !it is adiabatic energy difference
           bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
           if(diff)bvec(i)=bvec(i)-fitE(pt,s1,s1)+fitE(pt,-s2,-s2)
@@ -2015,7 +2005,17 @@ SUBROUTINE makesurf()
       fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
     end do!k=1,dispgeoms(i)%nvibs
     fitE(i,:,:) = matmul(transpose(ckl(i,:,:)),matmul(hmatPt,ckl(i,:,:)))
-    if(printlvl>1)PRINT "(I6,10(x,F15.4))",I,(fitE(i,k,k)*au2cm1,k=1,nstates)
+    if(printlvl>1)then
+      print "(A,I5)","POINT #",i
+      print *,"Hd Matrix"
+      do k=1,nstates
+        print "(10(x,F15.4))",hmatPt(:,k)
+      end do
+      print *,"Fit Energy Matrix"
+      do k=1,nstates
+        print "(10(x,F15.4))",fitE(i,:,k)
+      end do
+    end if
   end do
   asol = asol1
   CALL getCGrad(asol,dCi,dLambda,lag,jaco)

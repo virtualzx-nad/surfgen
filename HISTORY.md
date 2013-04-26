@@ -1,3 +1,7 @@
+## 2.3.7 (2013-04-26)
+
+* Fixed a bug that off-diagonal are not being properly added during the normal equation construction when partial diagonalization is performed. 
+
 ## 2.3.6.1 (2013-04-25)
 
 * Updated documentation for the changes in internal coordinate definition for type=0 mode=4
