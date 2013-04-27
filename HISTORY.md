@@ -1,3 +1,8 @@
+## 2.4.1 (2013-04-27)
+
+* Fixed an array deallocation problem upon termination.
+
+
 ## 2.4.0 (2013-04-27)
 
 * Block symmetry analysis: the program now try to detect blocks that exhibit the same symmetry properties.   

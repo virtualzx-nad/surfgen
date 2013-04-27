@@ -535,11 +535,15 @@ SUBROUTINE cleanup()
   if(allocated(nSubPerm))deallocate(nSubPerm)
   if(allocated(coordPerm))deallocate(coordPerm)
   if(allocated(sgnCPerm))deallocate(sgnCPerm)
-
+ 
+  if(printlvl>3)print *,"cleaning irrep data"
   CALL deallocIrreps()
+  if(printlvl>3)print *,"cleaning permutation cycle data"
   call deallocPCycle()
+  if(printlvl>3)print *,"cleaning Hd data"
   CALL cleanHdData
   
+  if(printlvl>3)print *,"cleaning coord set data"
   if(allocated(CoordSet))then
     do i=1,nCoordSets
       if(allocated(CoordSet(i)%iCoord))deallocate(CoordSet(i)%iCoord)

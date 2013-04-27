@@ -827,16 +827,13 @@ MODULE makesurfdata
             do r=1,GrpLen(ColGrp(iblk))
               if(s2<0) then! equation for energy difference
                  AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s1)-WIJ(:,-s2,-s2)
-                 if(iBlk==1) bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
               else         ! equation for energy 
-                AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
-                if(iBlk==1)bvec(i)=dispgeoms(pt)%energy(s1,s2)
+                 AMat(i,offset+1:offset+nBas(iBlk))=WIJ(:,s1,s2)
               end if !s2<0
             end do!r
           end do!l
         else                                      ! equation for energy gradients or derivative couplings
           AMat(i,offset+1:offset+nBas(iBlk))=VIJ(:,g,s1,s2)
-          if(iBlk==1)bvec(i)=dispgeoms(pt)%grads(g,s1,s2)
         end if!if(eqMap(i,4)==0)
      end do!i=1,nEqPt+nExPt
      offset=offset+nBas(iBlk)
@@ -845,6 +842,21 @@ MODULE makesurfdata
      deallocate(WIJ)
      deallocate(DIJ)
     end do! iblk
+    ! construct bvec
+    do i=1,nEqPt+nExPt
+        s1=ptEqMap(i,1)    ! state index 1
+        s2=ptEqMap(i,2)    ! state index 2
+        g =ptEqMap(i,3)    ! gradient component index
+        if(g==0)then !iGrad==0  => its an energy fit
+          if(s2<0) then! equation for energy difference
+            bvec(i)=dispgeoms(pt)%energy(s1,s1)-dispgeoms(pt)%energy(-s2,-s2)
+          else         ! equation for energy 
+            bvec(i)=dispgeoms(pt)%energy(s1,s2)
+          end if !s2<0
+        else            ! equation for energy gradients or derivative couplings
+          bvec(i)=dispgeoms(pt)%grads(g,s1,s2)
+        end if!g==0
+    end do!i
     ! scale with weight factors
     do i=1,nEqPt
       CALL DSCAL(ncons,wtv(i),AMat(i+nExPt,1),LDA)

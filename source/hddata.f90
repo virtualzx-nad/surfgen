@@ -967,7 +967,7 @@ CONTAINS
    IMPLICIT NONE
    type(TMTabBasis),pointer :: pM,pNext
    type(TTermDef),pointer   :: pT,pNextT
-   integer  ::  i,j,status
+   integer  ::  i,j,status,k
    ! CLEAN UP MAPPINGS BETWEEN BLOCKS AND STATES
    if(allocated(GrpLen))deallocate(GrpLen)
    if(allocated(RowGrp))deallocate(RowGrp)
@@ -989,6 +989,11 @@ CONTAINS
    if(allocated(maptab))then
      do i=lbound(maptab,1),ubound(maptab,1)
        do j=lbound(maptab,2),ubound(maptab,2)
+         if(.not.associated(maptab(i,j)%handle))cycle
+         do k=lbound(maptab,2),ubound(maptab,2)
+           if (k==j)cycle
+           if(associated(maptab(i,j)%handle,maptab(i,k)%handle))nullify(maptab(i,k)%handle)
+         end do
          pM=>maptab(i,j)%handle
          do while(associated(pM))
            if(allocated(pM%coef))deallocate(pM%coef)
