@@ -211,14 +211,12 @@ CONTAINS
         allocate(dval(m,i,j)%List(maptab(i,j)%nBasis,ll,rr))
       end do
     end if
-!PRINT *,"BLOCK",I,J,"ALLOCATED"
     pM=>maptab(i,j)%handle
     do f=1,maptab(i,j)%nBasis
       vsum = 0d0
       dsum = 0d0
       pM=>pM%pNext
       do v=1,pM%nTerms
-!PRINT *,"F,V=",F,V
         pT=>pM%term(v)%p
         MCoef=pM%coef(:,:,v)
         vsum = vsum + MCoef*pT%val
@@ -826,6 +824,23 @@ CONTAINS
       coefs(i)=Hd(ordr,iblk)%List(iBss)
    end do
  END SUBROUTINE extractHd
+
+ !***********************************************************************
+ ! Link entries in maptab from one block to another.
+ ! This is used to clone blocks with identical symmetry properties
+ ! The links to the handle will simply be copied over.  The last pointer
+ ! will not be copied since the cloned tree is not intended to be modified. 
+ SUBROUTINE lnBlock(fromBlk,toBlk)
+   IMPLICIT NONE
+   INTEGER, intent(IN)  :: fromBlk,toBlk
+   integer  :: i
+   do i=0,order
+     if(associated(maptab(i,toBlk)%handle))deallocate(maptab(i,toBlk)%handle)
+     maptab(i,toBlk)%handle  => maptab(i,fromBlk)%handle
+     maptab(i,toBlk)%nBasis  =  maptab(i,fromBlk)%nBasis
+     nullify(maptab(i,toBlk)%last)
+   end do
+ END SUBROUTINE lnBlock
 
  !***********************************************************************
  ! Clear and initialize all global constructs, including Hd, termList and

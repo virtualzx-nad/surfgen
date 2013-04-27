@@ -402,7 +402,6 @@ SUBROUTINE readIrreps()
     if(printlvl>2)print '(7x,"Irrep #",I2," : ",a)',i,trim(adjustl(comment))
     read(IRREPFL,*)  d,ordr
     irrep(i)%Dim   = d
-    irrep(i)%Order = ordr
     write(tpStr,'(I3)') d
     allocate(irrep(i)%RepMat(ordr,d,d))
     do j=1,ordr
@@ -458,6 +457,8 @@ SUBROUTINE initialize(jobtype)
   if(printlvl>0)print *,"  Partitioning term list"
   Call PartitionTerms()
 
+  if(printlvl>0)print *,"  Examining block symmetry"
+  call getBlockSym()
   if(printlvl>0)print *,"  Generating Maptab"
   call genMaptab()
 

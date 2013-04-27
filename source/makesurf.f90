@@ -1451,7 +1451,8 @@ MODULE makesurfdata
 ! Generate the basis for the fit using linear combinations of primitive basis functions
 !   * Values and gradients of primitive functions are evaluated at each data point and put into inter-
 !     mediate structures basisVal and basisGrad.  They will later be released.
-!   * Basis are generated separately for each block.
+!   * Basis are generated separately for each symmetry unique block.  The constructed basis are linked
+!     to non-unique blocks with pointers.
 !   * Linear combinations that define fitting basis is chosen to be the eigenvectors of the dot-product
 !     matrix of primitive functions in the space spanned by all values and gradient data.   
 !   * In a one state fitting procedure with equal weights assigned, this generates a orthonormal basis 
@@ -1464,8 +1465,9 @@ MODULE makesurfdata
   SUBROUTINE genBasis()
   use hddata, only: T3DDList,nl,nr,nblks,nBasis,EvalRawTerms,EvaluateBasis2,deallocDVal,EvaluateVal
   use progdata, only: printlvl
+  use cnpi,only: blockSymLs,blockSymId, NBlockSym
   IMPLICIT NONE
-  integer  :: i,j,k,count1,count2,count_rate,pv1,n1,n2
+  integer  :: i,j,k,l,count1,count2,count_rate,pv1,n1,n2, broot
   integer  :: ll,rr,p,nb
   double precision,allocatable,dimension(:)   :: WORK, eval
   double precision,allocatable,dimension(:,:) :: evec, pbas, dmat, pbasw 
@@ -1526,7 +1528,12 @@ MODULE makesurfdata
   if(printlvl>0) print "(/,A,/,A,E15.7)"," Generating preconditioned basis free of d-independent linear dependencies.",&
                      "     Eigenvalue cutoff=",TBas
 ! construct new basis and store them for each block 
-  do k=1,nblks
+!**************************************************
+!*   First construct symmetry unique blocks       *
+!**************************************************
+  if(printlvl>0) print *,"Generating basis for symmetry unique blocks."
+  do l=1,NBlockSym
+    k = blockSymLs(l)
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
     ll = nl(k)
     rr = nr(k)
@@ -1680,7 +1687,20 @@ MODULE makesurfdata
     if(printlvl>1) print "(3x,A,E12.5,A,I6,A)","Total norm of contribution zeroed out:",sqrt(gn0)," over ",ng0," equations"
     call system_clock(COUNT=count2)
     if(printlvl>1)print 1001, "     Total contribution to each equation generated in ",dble(count2-count1)/count_rate," s"
-  end do! k=1,nblks
+  end do! l=1,NBlockSym
+!**************************************************
+!*   Clone pointers to basis to nonunique blocks  *
+!**************************************************
+  print *,"Linking basis storage to non-unique blocks"
+  do l=1,nblks
+    broot = blockSymLs(blockSymId(l))
+    if(broot.eq.l)cycle ! it is a unique block.  skipping linking
+    ZBas(l)%List =>  ZBas(broot)%List
+    WMat(l)%List =>  WMat(broot)%List
+    npb(l)       =   npb(broot)
+    nbas(l)      =   nbas(broot)
+    gradNorm(:,:,l) = gradNorm(:,:,broot)
+  end do!l
   1001 format(a,f7.2,a)
   END SUBROUTINE genBasis!
 !---------------------------------------------

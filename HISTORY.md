@@ -1,3 +1,8 @@
+## 2.4.0 (2013-04-27)
+
+* Block symmetry analysis: the program now try to detect blocks that exhibit the same symmetry properties.   
+Irrep matrices for *blocks* between all possible pairs of state irreps are constructed and compared.   
+Expansions(`maptab`) and basis generation (AKA null space removal, performed in subroutine `genBasis`) are only performed for blocks with unique symmetries.  
 ## 2.3.7 (2013-04-26)
 
 * Fixed a bug that off-diagonal are not being properly added during the normal equation construction when partial diagonalization is performed. 

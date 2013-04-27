@@ -8,6 +8,11 @@ MODULE CNPI
  use progdata, only: printlvl,T2DList
  use combinatorial
 
+ !----CONSTANTS------------------------------------------
+ DOUBLE PRECISION,PARAMETER    :: IrrepMatCutOff=1D-7
+ DOUBLE PRECISION,PARAMETER    :: MatProjCutOff=1D-7
+ INTEGER,PARAMETER             :: MaxParents = 100
+
  !----DERIVED TYPES------------------------------------------
  ! derived type for permutation cycle
  type TPermCycle
@@ -26,23 +31,28 @@ MODULE CNPI
 
  ! derived type for list of cycles
  type TPCycleList
-   integer                                  ::  nCycle=0
-   type(TPermCycle),pointer                 ::  handle
-   type(TPermCycle),pointer                 ::  last
+   integer                                ::  nCycle=0
+   type(TPermCycle),pointer               ::  handle
+   type(TPermCycle),pointer               ::  last
  end type
 
- ! derived type for irredicible representations.
+ ! derived type for irredicible representations of state groups.
  ! Dim is dimensionality of irrep and Order is order of the group
  ! RepMat contains all representation matrices
  type TIrrep
-   INTEGER                                        ::  Dim
-   INTEGER                                        ::  Order
-   DOUBLE PRECISION,DIMENSION(:,:,:),allocatable  ::  RepMat
+   INTEGER                                      ::  Dim
+   DOUBLE PRECISION,DIMENSION(:,:,:),allocatable::  RepMat
  end type
 
-!----CONSTANTS------------------------------------------
- DOUBLE PRECISION,PARAMETER    :: IrrepMatCutOff=1D-7
- DOUBLE PRECISION,PARAMETER    :: MatProjCutOff=1D-7
+ ! irrep matrix type for symmetry blocks of Hd
+ ! NParents: Number of parent state pairs that can generate this irrep mat
+ ! parents:  List of parent state pairs that can generate this irrep mat
+ type TBlkRepMat
+   integer                                      :: NParents
+   integer,dimension(MaxParents,2)              :: parents      
+   integer                                      :: ldim,rdim     ! dim of state irrep
+   double precision,dimension(:,:,:),allocatable:: RepMat       !irrep matrix
+ end type 
 
 !----GLOBAL VARIABLES-----------------------------------
  ! * SYMMETRY PROPERTIES *
@@ -71,6 +81,15 @@ MODULE CNPI
 
 ! term definitions
  type(TPCycleList),dimension(:),allocatable   ::  permCycle
+
+! identical block symmetry list
+! The program will try to detect blocks that carry the same group structure.
+! NBlockSym is the number of blocks that have unique symmetry.
+! Two lists will be made, one consists of the list of block symmetries each point
+! to a block that have unique symmetry properties.
+! The second list maps each of the blocks to an entry in the first list.
+ INTEGER                                :: NBlockSym
+ INTEGER, DIMENSION(:),allocatable      :: blockSymLs,blockSymId
 
 !----SUBROUTINES--------------------------------------------
 CONTAINS
@@ -433,7 +452,7 @@ CONTAINS
         end if
         pTPmt=>pTPmt%icTerm(coordPerm(i,pT%coord(j)))%p
         sgn=sgn*sgnCPerm(i,pT%coord(j))
-      end do!j=1,pT%order
+      end do!j=1,pT%ord
       if(pTPmt%val>0)then        !new term encountered
         pC%nTerms=pC%nTerms+1
         tmpV(pC%nTerms)=i
@@ -475,25 +494,35 @@ CONTAINS
  !***********************************************************************
  !Generating the list of symmetrized polynomial basis for each block
  subroutine genMaptab()
-  use hddata, only:nl, nr, RowGrp, ColGrp, nBasis
+  use hddata, only:nl, nr, RowGrp, ColGrp, nBasis, lnBlock
   use progdata
   implicit none
-  INTEGER                          ::  ord,iCyc,i,ntotal
+  INTEGER                          ::  ord,iCyc,ntotal,iblk,broot,i
   type(TPermCycle),pointer         ::  pC
-  if(printlvl>0)print *,"    starting genMaptab..."
+  if(printlvl>0)print *,"    Entering genMaptab..."
   ntotal=0
   do ord=0,order
     if(printlvl>1)print "(A,10X,A,I3)","  ","Order ",ord
-    do i=1,nblks
+ !construct blocks with unique symmetry 
+    do i=1,NBlockSym 
+      iblk = blockSymLs(i)
       pC=>permCycle(ord)%handle
       do iCyc=1,permCycle(ord)%nCycle
         pC=>pC%pNext
-        CALL MatProj(ord,i,pC,nl(i)*nr(i))
+        CALL MatProj(ord,iblk,pC,nl(iblk)*nr(iblk))
       end do !iCyc=1,permCycle(ord)%nCycle
-      if(printlvl>1)print 1000,i, nBasis(ord,i)
-      ntotal=ntotal+nBasis(ord,i)
-    end do !i=0,nblks
+      if(printlvl>1)print 1000,iblk, nBasis(ord,iblk)
+    end do !i=1,NBlockSym
   end do !do ord=1,order
+ !copy basis to symmetry blocks with repeating symmetry
+  if(printlvl>1)print *,"     Cloning basis for blocks with nonunique symmetry"
+  do iblk=1,nblks
+    broot = blockSymLs(blockSymId(iblk))
+    if(broot.ne.iblk) call lnBlock(broot,iblk)
+    do ord=0,order
+      ntotal = ntotal + nBasis(ord,iblk)
+    end do
+  end do!iblk
   if(printlvl>0)print *,"    Maptab generated. nBasis=",ntotal
  1000 format(("  ",12X,"blk",I3," has ",I9," matrices"))
  END SUBROUTINE !genMapTab
@@ -632,4 +661,230 @@ CONTAINS
      deallocate(irrep)
    end if!(allocated(irrep))
  END SUBROUTINE deallocIrreps
+
+! this subroutine identifies the blocks that have unique symmetry and the ones
+! that have identical symmetry properties.   
+! This is complicated by the existence of multiple symmetry line-ups. The
+! subroutine maintains a list of representation matrices of blocks in terms of
+! permutation 
+ SUBROUTINE getBlockSym()
+   USE hddata, only: nblks,nstates,RowGrp,ColGrp
+   IMPLICIT NONE
+   ! variable definitions
+   integer                                      :: NBlkIrrep
+   type(TBlkRepMat),dimension(nirrep*nirrep)    :: BlkIrrep
+   integer :: i,j,k,id
+   integer,dimension(nblks,NSymLineUps)   :: BPerm,BPrty
+   integer,dimension(nstates*nstates)     ::tmpBlkLs
+
+   if(allocated(blockSymLs))deallocate(blockSymLs)
+   if(allocated(blockSymId))deallocate(blockSymId)
+   allocate(blockSymId(nblks))
+   ! get all the permutational irrep mats for blocks
+   NBlkIrrep = 0
+   do i=1,nSymLineUps
+     do j=1,nblks
+       call addBlkIrrep(GrpSym(RowGrp(j),i),GrpSym(ColGrp(j),i),NBlkIrrep,BlkIrrep)
+     end do
+   end do!i=1,nSymLineUps
+
+   if(printlvl>1)then
+     print "(A,I4)","   Number of Possible Representations for Blocks:",NBlkIrrep
+     do i=1,NBlkIrrep
+       print "(A,I4)","   Matrices for Representation #",i
+       do j=1,nPmt
+         print "(A,I4)","     Permutation operation #",j 
+         do k=1,BlkIrrep(i)%ldim*BlkIrrep(i)%rdim
+           print "(6x,50F10.7)",BlkIrrep(i)%RepMat(j,k,:)
+         end do!k
+       end do!j
+       print *,"     Parent pairs:"
+       do j=1,BlkIrrep(i)%NParents
+         print "(6x,'L:',I3,'   R:',I3)",BlkIrrep(i)%parents(j,:)
+       end do!j
+    end do!i
+  end if!printlvl>1
+
+  ! get the irrep of each block under each symmetry line-up
+  do i=1,nblks
+    do j=1,nSymLineUps
+      call seekBlockIrrep(GrpSym(RowGrp(i),j),GrpSym(ColGrp(i),j),BPerm(i,j),&
+                NBlkIrrep,BlkIrrep)
+      BPrty(i,j) = GrpPrty(RowGrp(i),j)*GrpPrty(ColGrp(i),j)
+    end do!j
+  end do!i
+
+PRINT *,"BEFORE"
+DO I=1,NSYMLINEUPS
+  PRINT *,"SYMMETRY LINEUP :",i
+  PRINT "(A,20I3)","PERM:",BPerm(:,i)
+  PRINT "(A,20I3)","PRTY:",BPrty(:,i)
+END DO
+
+   call sortBlkSymLists(nblks,nSymLineUps,BPerm,BPrty)
+
+PRINT *,"AFTER"
+DO I=1,NSYMLINEUPS
+  PRINT *,"SYMMETRY LINEUP :",i
+  PRINT "(A,20I3)","PERM:",BPerm(:,i)
+  PRINT "(A,20I3)","PRTY:",BPrty(:,i)
+END DO
+
+   NBlockSym = 0
+   do i=1,nblks
+     id=0
+     do j=1,NBlockSym
+       if(any(BPerm(tmpBlkLs(j),:).ne.BPerm(i,:)))cycle
+       if(any(BPrty(tmpBlkLs(j),:).ne.BPrty(i,:)))cycle
+       id = j
+       exit    
+     end do
+     if(id==0)then
+       NBlockSym=NBlockSym+1
+       tmpBlkLs(NBlockSym) = i
+       id = NBlockSym
+     end if!(id.ne.0)then
+     blockSymID(i) = id    
+   end do
+
+   allocate(blockSymLs(NBlockSym))
+   blockSymLs = tmpBlkLs(1:NBlockSym)
+
+   if(printlvl>1)then
+     print "(A,I4)","    Number of existing block symmetries :",NBlockSym
+     print *,"    Symmetry to block mappings:" 
+     print "(6x,20I3)",blockSymLs
+     print *,"    Block to symmetry mappings:" 
+     print "(6x,20I3)",blockSymId
+   end if
+
+   do i=1,NBlkIrrep
+     deallocate(BlkIrrep(i)%RepMat)
+   end do
+ END SUBROUTINE getBlockSym
+!--------------------------------------------------------------------------
+! Sort irrep matrix list for each block to canonical order to enable comparison
+ SUBROUTINE sortBlkSymLists(nblk,nsym,BPerm,BPrty)
+   IMPLICIT NONE
+   INTEGER,intent(IN)             :: nblk,nsym
+   INTEGER,dimension(nblks,nsym)  :: BPerm,BPrty
+   integer ::  i,j,k, tmpPerm,tmpPrty
+   do i=1,nblk
+   ! repeat any repeating items to 0
+     do j=1,nsym-1
+       if(BPerm(i,j)==0)cycle
+       do k=j+1,nsym
+         if(BPerm(i,j)==BPerm(i,k).and.BPrty(i,j)==BPrty(i,k))then
+           BPerm(i,k) = 0
+           BPrty(i,k) = 0
+         end if
+       end do!k
+     end do!j
+   ! sort the list
+     do j=1,nsym-1
+       do k=nsym,j+1,-1
+         if(BPerm(i,k)*BPrty(i,k)>BPerm(i,k-1)*BPrty(i,k-1))then
+           tmpPerm = BPerm(i,k) 
+           tmpPrty = BPrty(i,k) 
+           BPerm(i,k) = BPerm(i,k-1)
+           BPrty(i,k) = BPrty(i,k-1)
+           BPerm(i,k-1) = tmpPerm 
+           BPrty(i,k-1) = tmpPrty
+         end if!
+       end do!k
+     end do!j
+   end do
+ END SUBROUTINE sortBlkSymLists
+!--------------------------------------------------------------------------
+! Seek the block irrep matrix table for a pair of parent states
+ SUBROUTINE seekBlockIrrep(lstate,rstate,ind,NBlkIrrep,BlkIrrep)
+   IMPLICIT NONE
+   INTEGER, intent(IN)                          :: lstate,rstate
+   INTEGER,intent(IN)                           :: NBlkIrrep
+   type(TBlkRepMat),dimension(*),intent(IN)     :: BlkIrrep
+   INTEGER, intent(OUT)                         :: ind
+   integer  ::  i,j
+   ind = 0
+   do i=1,NBlkIrrep
+     do j=1,BlkIrrep(i)%NParents
+       if(BlkIrrep(i)%parents(j,1).ne.lstate)cycle
+       if(BlkIrrep(i)%parents(j,2).ne.rstate)cycle
+       ind = i
+       return
+     end do !j=1,BlkIrrep(i)%NParents
+   end do !i=1,NBlkIrrep
+ END SUBROUTINE seekBlockIrrep
+!--------------------------------------------------------------------------
+! generate block irrep matrix using state irrep matrix.  Seek the group irreps
+! list and if it already exists, add the state pair to its parent list.   If the
+! irrep matrix is new, create a new entry.
+!
+! Arguments
+! ---------
+! lstate,rstate [in] INTEGER
+!               Index of irrep for the left and right parent state.
+! NBlkIrrep     [in/out] INTEGER
+!               Number of unique irrep matrices for symmetry blocks.
+! BlkIrrep      [in/out] TBlkRepMat,dimension(*)
+!               List of irrep matrices for the symmetry blocks of Hd
+ SUBROUTINE addBlkIrrep(lstate,rstate,NBlkIrrep,BlkIrrep)
+   IMPLICIT NONE
+   INTEGER,intent(IN)           :: lstate,rstate
+   INTEGER,intent(INOUT)        :: NBlkIrrep
+   type(TBlkRepMat),dimension(*):: BlkIrrep
+   
+   integer  :: i,j,k,s1,s2,l,r,ll,rr,id
+   double precision,dimension(:,:,:),allocatable  ::  RepMat 
+  
+   call seekBlockIrrep(lstate,rstate,id,NBlkIrrep,BlkIrrep)
+   if(id.ne.0)return  !l,r pair already in the list. exiting
+ 
+   ll = irrep(lstate)%dim
+   rr = irrep(rstate)%dim
+   allocate(RepMat(nPmt,ll*rr,ll*rr))
+  
+   ! construct the irrep matrices
+   do i=1,nPmt
+    l=0
+    do j=1,ll
+     do k=1,rr 
+      l=l+1
+      r=0
+      do s1=1,ll
+       do s2=1,rr
+        r=r+1
+        RepMat(i,l,r) = irrep(lstate)%RepMat(i,j,s1)*irrep(rstate)%RepMat(i,k,s2)
+       end do !s2=1,rr
+      end do!s1=1,ll
+     end do! k=1,rr 
+    end do!j=1,ll
+   end do
+   ! seek existing irrep table for this new sets of matrices
+   id = 0
+   do i=1,NBlkIrrep 
+     if(BlkIrrep(i)%ldim.ne.ll .or. BlkIrrep(i)%rdim.ne.rr)cycle
+     if(maxval((BlkIrrep(i)%RepMat-RepMat)**2)>MatProjCutoff**2)cycle
+     id = i
+     exit
+   end do
+   ! check if repmat is new
+   if(id==0)then  ! it is a new representation
+     NBlkIrrep = NBlkIrrep+1
+     BlkIrrep(NBlkIrrep)%ldim = ll
+     BlkIrrep(NBlkIrrep)%rdim = rr
+     BlkIrrep(NBlkIrrep)%NParents = 1
+     BlkIrrep(NBlkIrrep)%parents(1,1) = lstate
+     BlkIrrep(NBlkIrrep)%parents(1,2) = rstate
+     allocate(BlkIrrep(NBlkIrrep)%RepMat(nPmt,ll*rr,ll*rr))
+     BlkIrrep(NBlkIrrep)%RepMat = RepMat
+   else!if(id==0) ! located as old
+     BlkIrrep(id)%NParents = BlkIrrep(id)%NParents+1
+     if(BlkIrrep(id)%NParents>MaxParents)  &
+        stop "addBlkIrrep: number of parent state pairs exceeding the limit."
+     BlkIrrep(id)%parents(BlkIrrep(id)%NParents,1)=lstate
+     BlkIrrep(id)%parents(BlkIrrep(id)%NParents,2)=rstate
+   end if!(id==0)then
+   
+   deallocate(RepMat)
+ END SUBROUTINE addBlkIrrep
 END MODULE CNPI 
