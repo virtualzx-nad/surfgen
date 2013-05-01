@@ -1,3 +1,7 @@
+## 2.4.3 (2013-04-30)
+
+* Fixed the `enfDiab` not working bug.  
+
 ## 2.4.2 (2013-04-30)
 
 **IMPORTANT** : You have to updated your `coord.in` file after updating to this version!

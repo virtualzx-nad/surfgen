@@ -521,10 +521,22 @@ MODULE makesurfdata
     end do
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints
-      cklPrev = ckl(i,:,:)
+      CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
+      if(i==enfDiab)then
+        ckl(i,:,:)=0d0
+        do k=1,nstates
+          ckl(i,k,k) = 1d0
+        end do!k
+        fitG(i,:,:,:)=dhmatPt
+        fitE(i,:,:) = hmatPt
+        fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
+        call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitG(i,1:dispgeoms(i)%nvibs,:,:),&
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
+        cycle
+      end if!i==enfDiab
       fitpt%lb = dispgeoms(i)%lb
       fitpt%ub = dispgeoms(i)%ub
-      CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
+      cklPrev = ckl(i,:,:)
       ckl(i,:,:)=hmatPt
       call DSYEV('V','U',nstates,ckl(i,:,:),nstates,eval,scr,5*nstates*nstates,INFO)
       IF(INFO/=0)then
@@ -781,7 +793,7 @@ MODULE makesurfdata
          end do !r= 1, rr
 
          if(s1.ne.s2) then
-           if(abs(DijScale)>1D-30.and.pt/=enfDiab)then
+           if(abs(DijScale)>1D-10.and.pt/=enfDiab)then
   ! construct DIJ from WIJ.  It is non zero only on the off diagonal
   !no rotation for reference point
              if(dispgeoms(pt)%ndeggrp==0) DIJ(:,s1,s2)=WIJ(:,s1,s2)/ediff(s1,s2)*DijScale
@@ -794,7 +806,7 @@ MODULE makesurfdata
      end do!s1
 
   ! construct DIJ contribution to degenerate points
-     if(abs(DijScale)>1D-30.and.dispgeoms(pt)%ndeggrp>0)then
+     if(abs(DijScale)>1D-10.and.dispgeoms(pt)%ndeggrp>0.and.pt/=enfDiab)then
         do l=1,nBas(iBlk)
           call getDegDij(pt,WIJ(l,:,:),VIJ(l,:,:,:),DIJ(l,:,:))
         end do
@@ -1411,10 +1423,11 @@ MODULE makesurfdata
 !---------------------------------------------
 ! store ckl to a file
   SUBROUTINE writeCkl(cklfl)
+    use hddata, only: nstates
     IMPLICIT NONE
     CHARACTER(255),INTENT(IN) :: cklfl
 
-    integer  ios, i
+    integer  ios, i,j
     open(unit=7421,file=trim(adjustl(cklfl)),access='sequential',form='formatted',&
        status='replace',action='write',position='rewind',iostat=ios)
     if(ios/=0)then
@@ -1423,7 +1436,10 @@ MODULE makesurfdata
     end if
   
     do i=1,npoints
-        write(7421,"(I7,81E32.24)")I,ckl(i,:,:)
+        write(7421,"(I7)")I
+        do j=1,nstates
+           write(7421,"(81E32.24)"),ckl(i,:,J)
+        end do!j
     end do!i=1,npoints
     print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
     close(unit=7421)
@@ -2032,7 +2048,7 @@ SUBROUTINE makesurf()
   if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
   do i=1,npoints
     CALL EvaluateHd3(asol1,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
-    call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
+    if(i.ne.enfDiab)call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
     do k=1,dispgeoms(i)%nvibs
       fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
     end do!k=1,dispgeoms(i)%nvibs
