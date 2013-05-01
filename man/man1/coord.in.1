@@ -86,10 +86,9 @@ though some are not used.
 .br
 The fourth line is present for type-scaling mode combinations
 that require scaling parameter input.  This line contains two floating point or
-scientific numbers that will be used to define the coordinates.  When scaling
-parameters are not needed, this field should
-.Em NOT
-be present.
+scientific numbers that will be used to define the coordinates.  This line should
+.Sy ALWAYS
+be present no matter coefficients are taken or not. 
 .Pp
 See the following section for details about the available coordinate types and
 scaling modes and the number of scaling parameters needed for each combination.
@@ -153,7 +152,7 @@ Scaling functions for all supported scaling modes of distance coordinates (
 (All modes require 2 scaling parameters except for unscaled distance):
 .Bl -tag -width xxxxxx
 .It 0 
-Unscaled
+.Sy w=(r-c2)*c1
 .It 1
 Morse functions  
 .Sy w= exp(-c1*(r-c2))
@@ -173,6 +172,9 @@ Lennard Jones potentials
 .It 6
 Shifted(chasmless) Yukawa 
 .Sy w=exp(-c1*(r-c2))/(r+c2)
+.It 7
+Smooth step function
+.Sy w=tanh((r-c2)/c1)
 .El
 .Pp
 .Em Scaling Modes for Angle Bends
@@ -182,8 +184,8 @@ Supported scaling modes for angle bends (
 ) are
 .Bl -tag -width xxxxx
 .It 0 
-Unscaled 
-.Sy w=t .  
+Unscaled
+.Sy w=(t-c2)*c1 .  
 No scaling parameters.
 .It 1
 Cosine scaling 

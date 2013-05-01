@@ -429,8 +429,8 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
   select case(scaling)
     !  no scalings
     case(0)
-      w    = fval
-      dwdR = bval
+      w    = (fval-coef(2))*coef(1)
+      dwdR = bval*coef(1)
 
     !  Morse functions   Exp(-c1*(r-c2))
     case(1)
@@ -465,7 +465,11 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
       w    =  g/(fval+coef(2))
       dwdR = -bval*w*(coef(1)+1/(fval+coef(2)))
 
-   
+    ! segmentation function tanh
+    case(7)
+      w    = tanh((fval-coef(2))/coef(1))
+      dwdR = bval/(cosh((fval-coef(2))/coef(1))**2*coef(1))
+
     case default
       print *,"scaling = ",scaling
       stop "Unsupported bond distance scaling method."
@@ -663,6 +667,8 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 ! calculate the three scaling factors and their derivatives
 ! scaled distances for the three bonds A1-A2, A1-A3 and A1-A4 are used
   dwdR = 0d0
+  coef(1)   = 1d0
+  coef(2)   = 0d0
   do i=2,4
 ! scaling mode=0   (unscaled).  unscaled distances are produced here
      call calcwij(int(0),atms(1),atms(i),coef,cgeom,w(i-1),dw)
@@ -814,12 +820,12 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
         bval = dp
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-!       Raw angle.
+!       Raw angle. scaled by `scale` and shifted by `factor`
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !  obtained as acos(p).    d acos(p)= - dp / Sqrt(1-p^2)
     case ( 0 )
-        qval = acos(p)
-        bval = -dp/sqrt(1-p**2)
+        qval = (acos(p)-factor)*scale
+        bval = -dp/sqrt(1-p**2)*scale
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !       Scaled cosine, p/( 1+exp[c1*(d1^2+d2^2-c2^2)] )
@@ -852,6 +858,7 @@ SUBROUTINE dot4(natoms,atms,cgeom,fval,bval,coef,scal)
   double precision,dimension(12) ::b, w12,w34 ! gradients of f, r12 and r34
   double precision,dimension(3)  ::d12, d34  !d12=a1-a2, d34=d3-d4
   double precision  :: w(4) , dwdR(12,4)  , prod
+  double precision  :: coef2(2)
   integer           :: i,j,k
 
   d12 = cgeom(:,atms(1))-cgeom(:,atms(2))
@@ -864,13 +871,15 @@ SUBROUTINE dot4(natoms,atms,cgeom,fval,bval,coef,scal)
   b(10:12) =-d12
 
   w12 = 0d0
-  call calcwij(0,atms(1),atms(2),coef,cgeom,r12,w12)
+  coef2(1)  = 1d0
+  coef2(2)  = 0d0
+  call calcwij(0,atms(1),atms(2),coef2,cgeom,r12,w12)
   if(abs(r12)<1D-30) r12=sign(1D-30,r12)
   f = f/r12
   b = b/r12 -f/r12*w12
   
   w34 = 0d0
-  call calcwij(0,atms(3),atms(4),coef,cgeom,r34,w34)
+  call calcwij(0,atms(3),atms(4),coef2,cgeom,r34,w34)
   if(abs(r34)<1D-30) r34=sign(1D-30,r34)
   f = f/r34
   b = b/r34

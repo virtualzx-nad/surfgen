@@ -58,6 +58,11 @@ SUBROUTINE readCoords()
     end if!(CoordSet(i)%Order==0.or.CoordSet(i)%Order>order)
     if(printlvl>0)Print '(5x,"set ",I4," type=",I4 ," scaling=",I4," max order=",I4," note:",A)',&
             i,CoordSet(i)%Type,CoordSet(i)%Scaling,CoordSet(i)%Order,trim(comment)
+    ! load scaling factor
+    if(allocated(CoordSet(i)%Coef))deallocate(CoordSet(i)%Coef)
+    allocate(CoordSet(i)%Coef(2))
+    read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
+    if(ios/=0)stop "Error reading coord set definitions."
 
     select case(CoordSet(i)%Type)
 
@@ -106,15 +111,6 @@ SUBROUTINE readCoords()
         CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
 
-        ! read scaling coefficients
-        allocate(CoordSet(i)%Coef(2))
-        if(CoordSet(i)%Scaling.ne.0)then
-            read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef(:)
-            if(ios/=0)stop "Error reading coord set definitions."
-        else
-            CoordSet(i)%Coef= 0d0
-        end if !(CoordSet(i)%Scaling.ne.0)
-
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !                   Out of plane angle coordinate
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -151,11 +147,6 @@ SUBROUTINE readCoords()
         allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
         CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
-
-        ! load scaling factor
-        allocate(CoordSet(i)%Coef(2))
-        read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
-        if(ios/=0)stop "Error reading coord set definitions."
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !           4 center Dot product coordinates and their scalings 
@@ -196,14 +187,6 @@ SUBROUTINE readCoords()
         allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
         CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
-! load scaling factors
-        allocate(CoordSet(i)%Coef(2))
-        if(CoordSet(i)%Scaling/=0)then
-          read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
-          if(ios/=0)stop "Error reading coord set definitions."
-        else
-          CoordSet(i)%Coef =0d0
-        end if
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !           Bond angle coordinates and their periodic scalings
@@ -254,17 +237,6 @@ SUBROUTINE readCoords()
         CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
         deallocate(tmpCoord)
 
-        ! load scaling factor
-        allocate(CoordSet(i)%Coef(2))
-        if(CoordSet(i)%Scaling==2)then
-            read(CSETFL,*,IOSTAT=ios) CoordSet(i)%Coef
-            if(ios/=0)stop "Error reading coord set definitions."
-        else
-            CoordSet(i)%Coef = 0d0
-        end if
-
-! no scaling parameters for bond angles
-
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !           Torsion angle coordinates and their periodic scalings
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -274,7 +246,6 @@ SUBROUTINE readCoords()
         CoordSet(i)%ncoord=0
         ! TORSION NOT YET IMPLEMENTD
 
-! no coefficient to read for torsion
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !                   Other types.  Should not get here
@@ -320,11 +291,7 @@ SUBROUTINE readCoords()
                 case default
                     stop "UNSUPPORTED COORDINATE TYPE"
             end select
-            if(allocated(CoordSet(i)%coef))then
-                print "(x,2F12.8)",CoordSet(i)%coef
-            else
-                print *,""
-            end if
+            print "(x,2F12.8)",CoordSet(i)%Coef
             k=k+1
         end do! j=1,CoordSet(i)%ncoord
     end do!i=1,nCoordSets

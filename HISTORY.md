@@ -1,7 +1,19 @@
+## 2.4.2 (2013-04-30)
+
+**IMPORTANT** : You have to updated your `coord.in` file after updating to this version!
+
+* _All_ coordinate types now require the two scaling coefficients.  Put them there regardless of coordinate you are defining.   
+With this change, the format is the same for all coordinate definitions and you do not have to check if coefficients are expected for a specific type.
+* Plain bond distance and bond angle coordinates are not shifted by coefficient 2 and then scaled by coefficient 1.   Old definitions would be equivalent
+to defining with
+
+    1.000     0.000
+
+* Added new rij scaling type (tanh) that can be used as a smooth step function.
+
 ## 2.4.1 (2013-04-27)
 
 * Fixed an array deallocation problem upon termination.
-
 
 ## 2.4.0 (2013-04-27)
 
