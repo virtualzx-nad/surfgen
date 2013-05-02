@@ -1,3 +1,9 @@
+## 2.4.4 (2013-05-01)
+
+* Module files (`*.mod`) are now also included in `libsurfgen.a`
+* Added utility program `testpt`.   This, and any future, utility programs can be found in the `utilities` directory.
+* Removed some obselete features from `potlib`, such as coupling flattening, which can now be properly prevented by correct choice of coordinates.
+
 ## 2.4.3 (2013-04-30)
 
 * Fixed the `enfDiab` not working bug.  

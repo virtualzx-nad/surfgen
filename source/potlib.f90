@@ -454,7 +454,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   DOUBLE PRECISION,dimension(3*natoms,nstates,nstates),intent(OUT) ::  cgrads,dcgrads
   DOUBLE PRECISION,dimension(nstates),intent(OUT)                  ::  energy
 
-  double precision,dimension(nstates,nstates)              ::  evec
+  double precision,dimension(nstates,nstates)              ::  evec,hmat2
   double precision,dimension(nstates)                      ::  eerr
   double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
   double precision,dimension(ncoord)                ::  igeom
@@ -510,58 +510,9 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     end do !j=1,ncoord
   end do !i=1,3*natoms
 
-  !apply inner repulsive wall
-  k=0
-  do i=1,natoms
-    w1ijlist(i,i)=1d0
-    do j=i+1,natoms
-      k=k+1
-      dvec = cgeom(i*3-2:i*3)-cgeom(j*3-2:j*3) 
-      rijlist(k)=sqrt(sum(dvec*dvec))
-    end do
-  end do
-  xlist=(rijlist-innerB_r2)/(innerB_r1-innerB_r2)
-  minRij = minval(xlist)
-  if(minRij.lt.1)then
-    minK = minloc(xlist,1)
-    dtR=(innerB_r1(minK)-innerB_r2(minK))
-    minI = ilist(minK)
-    minJ = jlist(minK)
-    if(minRij.lt.0)minRij=0
-    csX =(cos(minRij*PI)+1)/2
-    dcsX=-sin(minRij*PI)/2*pi
-    eWall = innerB_r2(minK)/rijlist(minK)*exp(-(rijlist(minK)-innerB_r2(minK))/innerB_r2(minK))
-    dX = (cgeom(minI*3-2:minI*3)-cgeom(minJ*3-2:minJ*3))/rijlist(minK)/dtR
-! scale hmat and update dcg piece that correspond to this term
-! contribution from gradient of mixing functionrads
-    dcgrads = dcgrads*(1-csX)
-    if(minRij>0)then
-      do i=1,3
-        dcgrads((minI-1)*3+i,:,:)=dcgrads((minI-1)*3+i,:,:)-hmat*dcsX*dX(i)
-        dcgrads((minJ-1)*3+i,:,:)=dcgrads((minJ-1)*3+i,:,:)+hmat*dcsX*dX(i)
-      end do!i=1,3
-    end if
-    hmat = hmat*(1-csX)
-! add diagonal wall term
-    gfactor = eWall*(-dtR*(1/rijlist(minK)+1/innerB_r2(minK))*csX+dcsX)
-    do i=1,nstates
-      dcgrads(minI*3-2:minI*3,i,i) = dcgrads(minI*3-2:minI*3,i,i) + &
-           gfactor*innerB_h(i)*dX
-      dcgrads(minJ*3-2:minJ*3,i,i) = dcgrads(minJ*3-2:minJ*3,i,i) - &
-           gfactor*innerB_h(i)*dX
-    end do!i=1,nstates  
-! update hmat
-    do i=1,nstates
-      hmat(i,i) = hmat(i,i)+csX*eWall*innerB_h(i)
-    end do!i=1,nstates  
-  end if!minRij.lt.1
-  if(timeeval)then
-    call system_clock(COUNT=count1)
-    teval(4) = dble(count1-count2)/count_rate*1000
-  end if!timeeval
-
  ! generate eigenvectors and energies at current geometry
-  CALL DSYEVR('V','A','U',nstates,hmat,nstates,dble(0),dble(0),0,0,1D-12,m,&
+  hmat2 = hmat
+  CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-12,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
@@ -572,10 +523,12 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     teval(5) = dble(count2-count1)/count_rate*1000
   end if!timeeval
 
-
 ! CHECK COM GRADIENTS
- do i=1,nstates
-   comP = cgrads(1:3,i,i)+cgrads(4:6,i,i)+cgrads(7:9,i,i)+cgrads(10:12,i,i)
+  do i=1,nstates
+   comP = 0d0
+   do j=1,natoms
+     comP = comp+cgrads(j*3-2:j*3,i,i)
+   end do!j
    if(sqrt(dot_product(comP,comP))>1D-9)then
      print *,"electronic state:",i
      print *,"CoM gradients:  ",comP
@@ -583,7 +536,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
      print "(2x,3F20.12)",cgrads(:,i,i)
      stop "BUG:  CoM gradient not vanishing"
    end if
- end do
+  end do
   if(timeeval)then
     call system_clock(COUNT=count1)
     teval(6) = dble(count1-count2)/count_rate*1000
@@ -860,3 +813,12 @@ SUBROUTINE setTrajData(ttime, tisurf)
   timetraj  = ttime
   isurftraj = tisurf
 END SUBROUTINE setTrajData
+
+SUBROUTINE getInfo(nat,nst)
+  use hddata, only:   nstates
+  use progdata, only: natoms
+  integer,intent(out)  :: nat,nst
+
+  nat = natoms
+  nst = nstates
+END SUBROUTINE

@@ -19,6 +19,9 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
            libsym.o libinternal.o localcoord.o makesurf.o linsteps.o io.o testsurfgen.o
 
+# Modules stored in the surfgen libraries
+#MODLf   =  hddata.mod potdata.mod potdata.mod cnpi.mod  
+
 # Objects for version labeling
 OBJVf   =  getver.o
 
@@ -27,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.4.3
+SGENVER := 2.4.4
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -58,6 +61,7 @@ OBJSL := $(addprefix $(SDIR)/,$(OBJSLf))
 OBJT  := $(addprefix $(SDIR)/,$(OBJTf))
 OBJV  := $(addprefix $(SDIR)/,$(OBJVf))
 PDFPG := $(addprefix $(DDIR)/,$(PDFfl))
+#MODL  := $(addprefix $(SDIR)/,$(MODLf))
 
 PDFsrc := $(PDFfl:.pdf=.1)
 PDFMN  := $(addprefix $(MANDIR)/man1/,$(PDFsrc))
@@ -186,10 +190,10 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building target: $@'
 	@echo 'Archiving the object into library '
-	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL) $(OBJV)
+	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)  $(OBJV) #$(MODL)
 	@echo '-----------------------------------------'
 	@echo 'Creating symbolic link to new library'
-	ln -sf $(LIBF) $(LDIR)/libsurfgen
+	ln -sf $(LIBF) $(LDIR)/libsurfgen.a
 	@echo ''
 
 #

@@ -467,8 +467,8 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
 
     ! segmentation function tanh
     case(7)
-      w    = tanh((fval-coef(2))/coef(1))
-      dwdR = bval/(cosh((fval-coef(2))/coef(1))**2*coef(1))
+      w    = tanh((fval-coef(2))/coef(1))/2
+      dwdR = bval/(cosh((fval-coef(2))/coef(1))**2*coef(1))/2
 
     case default
       print *,"scaling = ",scaling
