@@ -359,6 +359,48 @@ END SUBROUTINE
    CALL EvaluateSurfgen(cartgeom,E,dH,hmat,dcgrads)
  end subroutine
 !---------------------------------------------------------------------
+! Wrapper for fotran 77 callers where array size may need to be fixed
+! parameters.  The subroutine takes input arrays with the size passed
+! as argument, repack them then calls EvaluateSurfgen using repacked
+! arrays.  
+!
+! Arguments
+! ---------
+! mnatm [in] INTEGER
+!       Maximum number of atoms. Used as dimensionality of cgeos,Ga and Gd
+! mnst  [in] INTEGER 
+!       Maximum number of states, used as dimensionality of arrays
+! cgeom [in] DOUBLE PRECISION, dimension(3*mnat)
+!       Cartesian geometry of the molecule.
+! Ea    [out] DOUBLE PRECISION,dimension(mnst)
+!       Adiabatic energies of all electronic states.
+! Ga    [out] DOUBLE PRECISION,dimension(3*mnat,mnst,mnst)
+!       The diagonal contains adiabatic energy gradients, and off-diagonal 
+!       contains derivative coupling vectors.
+! Ed    [out] DOUBLE PRECISION,dimension(mnst,mnst)
+!       Diabatic energy matrix
+! Gd    [out] DOUBLE PRECISION,dimension(3*mnat,mnst,mnst)
+!       Gradient of diabatic energies.
+ subroutine EvaluateSurfgen77(mnatm,mnst,cgeom,Ea,Ga,Ed,Gd)
+   USE progdata, ONLY: natoms
+   USE hddata, ONLY: nstates
+   integer, intent(in)          ::  mnatm,mnst
+   double precision,intent(in)  ::  cgeom(3*mnatm)
+   double precision,intent(out) ::  Ea(mnst),Ed(mnst,mnst)
+   double precision,intent(out),dimension(3*mnatm,mnst,mnst) :: Ga,Gd
+! local packed variables
+   double precision :: cgeompck(3*natoms),edpck(nstates,nstates)
+   double precision,dimension(3*natoms,nstates,nstates) :: gapck,gdpck
+
+   if(natoms>mnatm.or.nstates>mnst)&
+     stop "EvaluateSurgen: Maximum on atom or state count insufficient."
+   cgeompck = cgeom(1:3*natoms)
+   call EvaluateSurfgen(cgeompck,Ea,gapck,edpck,gdpck)
+   Ed(1:nstates,1:nstates) = edpck
+   Ga(1:3*natoms,1:nstates,1:nstates) = gapck
+   Gd(1:3*natoms,1:nstates,1:nstates) = gdpck
+ end subroutine EvaluateSurfgen77
+!---------------------------------------------------------------------
 ! POTLIB interface in compliance with ANT 09's NH3 potential 
 ! works only for 2 state systems
 ! Xcart          [input] DOUBLE PRECISION, dimension(3*natoms)

@@ -12,3 +12,5 @@ pdf/*.pdf
 test/test.log
 test/surfgen.out
 test/surfgen.log
+utilities/*/test
+utilities/*/*.x

@@ -947,7 +947,7 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>1d-1*ncp.and.printlvl>2.and.ncp>1d0 ) print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
+             if(dcp>4d-2*ncp.and.printlvl>2.and.ncp>1d0 ) print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
                         "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
                         ", ",dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
                         dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)*100,"% cp*dE" 
@@ -978,7 +978,7 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if(((dgrd>4D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) &
+             if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) &
                         print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
                         "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
              if(gnrm>1D-4) then
@@ -1595,7 +1595,8 @@ MODULE makesurfdata
        j=j+1
        if(j==10)exit
      end do
-     wt = ptWeights(i)
+     wt = 1d0
+     if(ptWeights(i)<1d-5) wt = 0d0
      if(j>0) wt = wt*highEScale(j)
      if(all(.not.incener(i,:,:)).and.all(.not.e_exact(i,:,:)).or.abs(w_energy*wt)<1d-3)then
        pbasw(n1,:) = 0d0
@@ -2236,7 +2237,7 @@ SUBROUTINE makesurf()
         write(c2,'(i4)')l
         rlabs(k) = ' GM '//trim(adjustl(c2))
       enddo!l=1,npoints
-      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
+      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),npoints,k,2*nvibs,gradtable,int(13),int(8))
     end if!any(hasGrad)
   enddo!i=1,nstates
 
@@ -2267,7 +2268,7 @@ SUBROUTINE makesurf()
         write(c2,'(i4)')l
         rlabs(k) = ' GM '//trim(adjustl(c2))
       enddo!l=1,npoints
-      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),k,2*nvibs,gradtable,int(13),int(8))
+      call printMatrix(OUTFILE,rlabs,clabs,int(8 ),npoints,k,2*nvibs,gradtable,int(13),int(8))
     end if!any(hasGrad(i,j))
    enddo!j=1,i-1
   enddo!i=1,nstates
@@ -2293,7 +2294,7 @@ SUBROUTINE makesurf()
    write(c2,'(i4)')j
    rlabs(j) = ' GM '//trim(adjustl(c2))
   enddo!j=1,npoints
-  call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,2*nstates,enertable,int(19),int(9))
+  call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,npoints,2*nstates,enertable,int(19),int(9))
   print *," Weighed Error Norms for Energy Gradients and Couplings"
   print *," Gradients are given in the following order:"
   print "(10(I4,'-',I4,',',4X),I4,'-',I4)",(((/j,k/),k=1,j),j=1,nstates)
@@ -2821,7 +2822,7 @@ SUBROUTINE printDisps(type,npts)
     disps(k,j) = dispgeoms(j)%igeom(k)
    enddo
   enddo
-  call printMatrix(OUTFILE,rlabs,clabs,npr,ncoord,npts,disps,int(11),int(6))
+  call printMatrix(OUTFILE,rlabs,clabs,npr,ncoord,ncoord,npts,disps,int(11),int(6))
 
   write(OUTFILE,'(/,2x,"Ab Initio Energies")')
   write(str,'(i4)') nstates

@@ -532,6 +532,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
     max_b=-1
     ldeg=pt%deg_groups(igrp,1)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
+    if(printlvl>2)print "(3(A,I3))","  Degenerate group ",igrp,", states ",ldeg," to ",udeg
     iter=0
     !build normalized g and h vectors from Hd and compute rotation angles the first time
     do i=ldeg,udeg 
@@ -544,7 +545,8 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
         end if!(abs(beta(i,j))>max_b)
       end do!j=ldeg,i-1
     end do!i=ldeg,udeg
-    if(printlvl>2)print *,"      max(|beta|)=",max_b
+    if(printlvl>2)print "(6x,A,E15.7,A,I3,A,I3,A)","max(|beta|)=",max_b,&
+                        "(",mi,",",mj,")"
     do while(iter<maxiter.and.max_b>toler)
       iter=iter+1
       t=beta(mi,mj)
@@ -580,7 +582,8 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
           end if!(abs(beta(i,j))>max_b)
         end do!j=ldeg,i-1
       end do!i=ldeg,udeg      
-      if(printlvl>2)print *,"   iteration ",iter,", max(|beta|)=",max_b
+      if(printlvl>2)print "(4x,A,I4,A,E15.7,A,I3,A,I3,A)","iteration ",iter,", max(|beta|)=",max_b,&
+                        "(",mi,",",mj,")"
     end do!while(iter<maxiter.and.max_b>toler)do
     if(printlvl>2.and.iter>0)then
         if(max_b<toler)then
@@ -600,7 +603,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
 1000 format(7X,"no convergence after ",I4," iterations, max residue angle=",F8.2)
 1001 format(7X,"convergence after ",I4," iterations")
 1002 format(14X,'states(',I2,',',I2,'):')
-1003 format(12X,3E16.7)
+1003 format(12X,3E20.11)
 CONTAINS
   FUNCTION getBetaHd(i,j) RESULT(beta)
     USE progdata, only : abpoint,pi

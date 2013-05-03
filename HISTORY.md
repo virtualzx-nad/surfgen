@@ -1,6 +1,11 @@
+## 2.4.5 (2013-05-02)
+
+* Added FORTRAN77 interface to `libsurfgen` which allows arrays with arbitrary fixed sizes to be passed as arguments to 
+evaluation subroutine.
+* Fixed a problem with matrix printing that caused the gradients and couplings output in `surfgen.out` not to align correctly.
+
 ## 2.4.4 (2013-05-01)
 
-* Module files (`*.mod`) are now also included in `libsurfgen.a`
 * Added utility program `testpt`.   This, and any future, utility programs can be found in the `utilities` directory.
 * Removed some obselete features from `potlib`, such as coupling flattening, which can now be properly prevented by correct choice of coordinates.
 

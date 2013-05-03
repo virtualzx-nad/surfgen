@@ -731,19 +731,19 @@ END FUNCTION filename
 !pcols   :    max number of columns displayed in a line
 !nr      :    number of rows
 !nc      :    number of columns
+!LDM     :    Lower dimensionality of matrix mat
 !mat     :    matrix to print
 !fld,dcml:    printing format (F($fld).($dcml))
-SUBROUTINE printMatrix(ofile,rlabs,clabs,pcols,nr,nc,mat,fld,dcml)
+SUBROUTINE printMatrix(ofile,rlabs,clabs,pcols,LDM,nr,nc,mat,fld,dcml)
   IMPLICIT NONE
-  INTEGER,INTENT(IN)                     :: ofile,pcols,nr,nc,fld,dcml
+  INTEGER,INTENT(IN)                     :: ofile,pcols,nr,nc,fld,dcml,LDM
   CHARACTER(16),dimension(nr),INTENT(IN) :: rlabs
   CHARACTER(16),dimension(nc),INTENT(IN) :: clabs
-  DOUBLE PRECISION,dimension(nr,nc),INTENT(IN) :: mat
+  DOUBLE PRECISION,dimension(LDM,nc),INTENT(IN) :: mat
   INTEGER                                :: i,j,k,ilo,ihi,nbatch
   INTEGER                                :: rlen,clen,flen,lspace,rspace
   CHARACTER(4)                           :: rlstr,clstr,lstr,rstr
   CHARACTER(255)                         :: FMT1,FMT2,FMT3,FMT4
-
   flen = fld
   rlen = 0
   clen = 0

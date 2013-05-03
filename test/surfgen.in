@@ -1,5 +1,5 @@
 &GENERAL
-printlvl   = 1,
+printlvl   = 3,
 jobtype    = 1, 
 natoms     = 13,
 atmgrp     = 1,1,1,1,1,1,2,3,3,3,3,3,3

@@ -314,7 +314,7 @@ SUBROUTINE testHd(ntest,disp)
     print "(A,F10.5,A)"," Maximum relative error for Lagrangian: ",maxrLag*100,"%"
     print *,""
     if(maxratio>1d-6)stop"Hd gradient test failed."
-    if(maxrLag>1d-4) stop"Lagrangian test failed."
+    if(maxrLag>3d-4) stop"Lagrangian test failed."
     print *,"Hd gradient and Lagrangian tests finished."
     printlvl = prtl
 END SUBROUTINE testHd
