@@ -702,7 +702,7 @@ END SUBROUTINE
 SUBROUTINE readginput(jtype) 
   use potdata
   use progdata 
-  use hddata, only: initGrps,ncoord,nstates,order,getFLUnit 
+  use hddata, only: initGrps,ncoord,nstates,order,getFLUnit,CpOrder 
   use CNPI, only: irrep,GrpPrty,GrpSym,nSymLineUps 
   IMPLICIT NONE 
   INTEGER,INTENT(INOUT)           :: jtype 
@@ -715,7 +715,7 @@ SUBROUTINE readginput(jtype)
   DOUBLE PRECISION,dimension(50)  :: e_guess,B_r1,B_r2,B_h
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
-                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl
+                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, &
                             timeeval,B_r1,B_r2,B_h,parsing,eshift
@@ -727,6 +727,7 @@ SUBROUTINE readginput(jtype)
   end do
 
   nSymLineUps = 1
+  CpOrder    = -1
   jtype      = 0 
   natoms     = 2 
   printlvl   = 1 
@@ -744,6 +745,7 @@ SUBROUTINE readginput(jtype)
   read(unit=INPUTFILE,NML=GENERAL) 
   if(printlvl>0)print *,"    readinput():  Control parameters read from surfgen.in" 
   jtype  = jobtype 
+  if(CpOrder<0) CpOrder = order
  
   call genAtomList(atmgrp) 
    

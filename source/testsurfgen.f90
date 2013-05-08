@@ -121,7 +121,7 @@ END SUBROUTINE testCoord
 ! read general input from input file (surfgen.in) 
 SUBROUTINE readginput()
     use progdata
-    use hddata, only: initGrps,ncoord,nstates,order,getFLUnit
+    use hddata, only: initGrps,ncoord,nstates,order,getFLUnit,CpOrder
     use CNPI, only: irrep,GrpPrty,GrpSym,nSymLineUps
     IMPLICIT NONE
     INTEGER                         :: i,j,ios,k
@@ -131,9 +131,10 @@ SUBROUTINE readginput()
     INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty
 
     NAMELIST /GENERAL/      jobtype,natoms,order,nGrp,groupsym,groupprty,&
-                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl
+                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
 
     nSymLineUps = 1
+    CpOrder=-1
     natoms     = 2
     printlvl   = 1
     inputfl    = ''
@@ -157,6 +158,8 @@ SUBROUTINE readginput()
     GrpPrty=groupprty(1:nGrp,1:nSymLineUps)
     call initGrps(nGrp,irrep(GrpSym(:,1))%Dim)
 
+    if(CpOrder==-1)CpOrder=order
+PRINT *,"Maximum order of off-diagonal coupling blocks:",CpOrder
     CALL readMAKESURF(INPUTFILE)
 
 end SUBROUTINE readginput

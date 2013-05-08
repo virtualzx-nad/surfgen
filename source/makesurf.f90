@@ -53,6 +53,7 @@ MODULE makesurfdata
   CHARACTER(255)                               :: flheader  !comment line in the outputfile
   CHARACTER(255)                               :: ckl_input   !if nonempty, read wave functions from this file
   CHARACTER(255)                               :: ckl_output  !if nonempty, output wave functions to this file
+  LOGICAL                                      :: orderall    !tell the ordering to use data that are excluded in points.in
 
 ! restartdir specifies a directory where hd coefficients for each iteration will
 ! be saved. particularly useful if the error turns up at one point and you want
@@ -536,6 +537,7 @@ MODULE makesurfdata
       end if!i==enfDiab
       fitpt%lb = dispgeoms(i)%lb
       fitpt%ub = dispgeoms(i)%ub
+      fitpt%id = i
       cklPrev = ckl(i,:,:)
       ckl(i,:,:)=hmatPt
       call DSYEV('V','U',nstates,ckl(i,:,:),nstates,eval,scr,5*nstates*nstates,INFO)
@@ -2478,7 +2480,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   use combinatorial
   use hddata,only: nstates
   use progdata, only: abpoint,printlvl
-  use makesurfdata, only: incgrad,incener,e_exact,g_exact,hasEner,hasGrad
+  use makesurfdata, only:incgrad,incener,e_exact,g_exact,hasEner,hasGrad,orderall
   IMPLICIT NONE
   type(abpoint),INTENT(IN)                                   :: abpt
   type(abpoint),INTENT(INOUT)                                :: fitpt
@@ -2494,7 +2496,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   DOUBLE PRECISION,DIMENSION(abpt%nvibs,nstates,nstates) :: gradnew
   double precision,dimension(nstates,nstates)       :: en_new
   double precision   ::  shift
-
+  if(printlvl>3.and.fitpt%ndeggrp>0)print "(A,I4)","Reordering point",ptid
   min_err=0d0
   err1   =0d0
   best_p =0
@@ -2502,6 +2504,9 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     ldeg=fitpt%deg_groups(i,1)
     ndeg=fitpt%deg_groups(i,2)
     udeg=ldeg+ndeg-1
+if(printlvl>3)then
+  print "(A,I3,A,2I3)","Permutation group",i,", range ",ldeg,udeg
+end if
     if(hasEner(ptid,ldeg).and.hasEner(ptid,udeg))then
         shift = -(fitpt%energy(ldeg,ldeg)+fitpt%energy(udeg,udeg)-abpt%energy(ldeg,ldeg)-abpt%energy(udeg,udeg))/2
     else
@@ -2511,13 +2516,16 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
       err=dble(0)
       do j=ldeg,udeg
         m=pmtList(pmt,j-ldeg+1)+ldeg-1
-        if(hasGrad(ptid,j,j).and.(incgrad(ptid,j,j).or.g_exact(ptid,j,j)))then
+        if(hasGrad(ptid,j,j).and.(incgrad(ptid,j,j).or.g_exact(ptid,j,j).or.orderall))then
           diff=fitpt%grads(:abpt%nvibs,m,m)-abpt%grads(:abpt%nvibs,j,j)
-          err=err+dot_product(diff,diff*abpt%scale(:abpt%nvibs))*w_grd
+          err=err+dot_product(diff,diff)*w_grd**2
         end if
-        if(hasEner(ptid,j).and.(incener(ptid,j,j).or.e_exact(ptid,j,j)))  &
-                    err=err+ (fitpt%energy(m,m)-abpt%energy(j,j)+shift)**2 *w_en
+        if(hasEner(ptid,j).and.(incener(ptid,j,j).or.e_exact(ptid,j,j).or.orderall))  &
+                    err=err+ (fitpt%energy(m,m)-abpt%energy(j,j))**2*w_en**2
       end do!j=ldeg,udeg
+if(printlvl>3)then
+  print "(A,I3,A,E12.5)","pmt",pmt,",err=",err
+end if
       if(pmt==1)then
         min_err=err
         best_p=pmt
@@ -2564,10 +2572,11 @@ SUBROUTINE readMakesurf(INPUTFL)
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, &
-                      dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir
+                      dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall
                       
   npoints   = 0
   maxiter   = 3
+  orderall  = .true.
   diagHess  = -1d0
   dconv     = 1d-4
   followprev= .false.

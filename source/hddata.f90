@@ -91,6 +91,7 @@ MODULE HdDATA
 
   ! BASIC PROPERTIES OF Hd
   INTEGER                                         :: order  !total order of Taylor expansion
+  INTEGER                                         :: CpOrder!total order for off-diagonal coupling blocks 
   INTEGER                                         :: ncoord !total number of scaled coords
   INTEGER                                         :: nstates!number of electronic states
 

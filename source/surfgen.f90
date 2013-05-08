@@ -29,7 +29,7 @@ end program surfgen
 ! and read in job specific input according to jtype
 SUBROUTINE readinput(jtype)
   use progdata
-  use hddata, only: initGrps,nstates,order
+  use hddata, only: initGrps,nstates,order,CpOrder
   use CNPI, only: irrep,GrpPrty,GrpSym,nSymLineUps,nirrep
   IMPLICIT NONE
   INTEGER,INTENT(INOUT)           :: jtype
@@ -38,10 +38,11 @@ SUBROUTINE readinput(jtype)
   INTEGER,dimension(50)           :: atmgrp
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupsym,groupPrty
 
-  NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
+  NAMELIST /GENERAL/ jobtype,natoms,order,nGrp,groupsym,groupprty,CpOrder,&
                             switchdiab, printlvl,inputfl,atmgrp,cntfl,nSymLineUps
 
   nSymLineUps = 1
+  CpOrder    = -1
   jtype      = 0
   natoms     = 0
   order      = 2
@@ -61,7 +62,6 @@ SUBROUTINE readinput(jtype)
   jtype  = jobtype
 
   call genAtomList(atmgrp)
-
   if(jtype>=0)then  ! jobtype<0 will only print out symmetry operations
       call readIrreps()
       if(allocated(GrpSym))deallocate(GrpSym)
@@ -79,6 +79,7 @@ SUBROUTINE readinput(jtype)
         end do!j
       end do
       call initGrps(nGrp,irrep(GrpSym(:,1))%Dim)
+      if(CpOrder==-1)CpOrder=order
   end if!(jtype>=0)
 
   if(printlvl>0)print *,"    Reading job specific inputs."

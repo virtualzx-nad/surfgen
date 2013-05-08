@@ -91,6 +91,14 @@ Maximum order of the Hd expansion.  Order here means the number of basis functio
 that are multiplied together, should they be same type of coordinate or not,
 in the form of coordinates defined in 
 .Ar coord.in.
+.It CpOrder
+.Sy INTEGER []
+Maximum order for the off-diagonal coupling blocks.  When this option is not specified,
+lower than 0, or larger than 
+.Sy order ,
+the value of 
+.Sy order
+is used as default.   
 .It atmgrp
 .Sy INTEGER,dimension(natoms)
 Array that specify the equivalency of the atoms.  Must contain

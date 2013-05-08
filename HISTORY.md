@@ -1,3 +1,8 @@
+## 2.4.6 (2013-05-06)
+
+* A new option CpOrder now allows the user to specify the maximum order of off-diagonal coupling blocks to be different from that of the diagonal blocks.
+* Added g and h vector output for intersection points.
+
 ## 2.4.5 (2013-05-02)
 
 * Added FORTRAN77 interface to `libsurfgen` which allows arrays with arbitrary fixed sizes to be passed as arguments to 

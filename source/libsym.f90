@@ -494,7 +494,7 @@ CONTAINS
  !***********************************************************************
  !Generating the list of symmetrized polynomial basis for each block
  subroutine genMaptab()
-  use hddata, only:nl, nr, RowGrp, ColGrp, nBasis, lnBlock
+  use hddata, only:nl, nr, RowGrp, ColGrp, nBasis, lnBlock,CpOrder
   use progdata
   implicit none
   INTEGER                          ::  ord,iCyc,ntotal,iblk,broot,i
@@ -506,6 +506,7 @@ CONTAINS
  !construct blocks with unique symmetry 
     do i=1,NBlockSym 
       iblk = blockSymLs(i)
+      if((RowGrp(iblk).ne.ColGrp(iblk)).and.ord>CpOrder)cycle
       pC=>permCycle(ord)%handle
       do iCyc=1,permCycle(ord)%nCycle
         pC=>pC%pNext
