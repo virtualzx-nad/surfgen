@@ -570,7 +570,7 @@ MODULE makesurfdata
       else
 ! determine ordering and phase by comparing with ab initio data
         call genEnerGroups(fitpt,gorder/AU2CM1)
-        call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad)
+        call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad,w_fij,nrmediff,ediffcutoff)
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
                  dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
@@ -2475,8 +2475,9 @@ end SUBROUTINE printSurfHeader
   end SUBROUTINE fixphase
 !---------------------------------------------------------------------
 !reorder degenerate eigenvectors to best fit ab initio gradients
+!both gradients and couplings are considered when doing the ordering
 !---------------------------------------------------------------------
-SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
+SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd,w_cp,cpE1,cpE2)
   use combinatorial
   use hddata,only: nstates
   use progdata, only: abpoint,printlvl
@@ -2485,17 +2486,18 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
   type(abpoint),INTENT(IN)                                   :: abpt
   type(abpoint),INTENT(INOUT)                                :: fitpt
   DOUBLE PRECISION,DIMENSION(nstates,nstates),intent(INOUT)  :: ckl
-  DOUBLE PRECISION,INTENT(IN)                                :: w_en,w_grd
+  DOUBLE PRECISION,INTENT(IN)                                :: w_en,w_grd,w_cp,cpE1,cpE2
   INTEGER,INTENT(IN)                                         :: ptid,LDP
   INTEGER,DIMENSION(LDP,nstates),INTENT(IN)                  :: pmtList
 
   integer :: i,j,ldeg,udeg,ndeg, pmt, best_p, m
   double precision :: min_err, err, err1
   DOUBLE PRECISION,DIMENSION(nstates,nstates)       :: ckl_new
-  DOUBLE PRECISION,DIMENSION(abpt%nvibs)            :: diff
+  DOUBLE PRECISION,DIMENSION(abpt%nvibs)            :: diff,diff2
   DOUBLE PRECISION,DIMENSION(abpt%nvibs,nstates,nstates) :: gradnew
   double precision,dimension(nstates,nstates)       :: en_new
-  double precision   ::  shift
+  double precision   ::  shift,de,ndiff
+  integer :: reord(nstates)
   if(printlvl>3.and.fitpt%ndeggrp>0)print "(A,I4)","Reordering point",ptid
   min_err=0d0
   err1   =0d0
@@ -2504,9 +2506,9 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd)
     ldeg=fitpt%deg_groups(i,1)
     ndeg=fitpt%deg_groups(i,2)
     udeg=ldeg+ndeg-1
-if(printlvl>3)then
-  print "(A,I3,A,2I3)","Permutation group",i,", range ",ldeg,udeg
-end if
+    if(printlvl>3)then
+      print "(A,I3,A,2I3)","Permutation group",i,", range ",ldeg,udeg
+    end if
     if(hasEner(ptid,ldeg).and.hasEner(ptid,udeg))then
         shift = -(fitpt%energy(ldeg,ldeg)+fitpt%energy(udeg,udeg)-abpt%energy(ldeg,ldeg)-abpt%energy(udeg,udeg))/2
     else
@@ -2514,18 +2516,43 @@ end if
     end if
     do pmt=1,factl(ndeg)
       err=dble(0)
+      ! establish new ordering and store in array reord
+      do j=1,nstates
+        reord(j)=j
+      end do
       do j=ldeg,udeg
-        m=pmtList(pmt,j-ldeg+1)+ldeg-1
+        reord(j)=pmtList(pmt,j-ldeg+1)+ldeg-1
+      end do
+      if(printlvl>3)print "(A,10I3)","  New order: ",reord
+      do j=ldeg,udeg
+      ! calculate error contributions from gradients 
         if(hasGrad(ptid,j,j).and.(incgrad(ptid,j,j).or.g_exact(ptid,j,j).or.orderall))then
-          diff=fitpt%grads(:abpt%nvibs,m,m)-abpt%grads(:abpt%nvibs,j,j)
+          diff=fitpt%grads(:abpt%nvibs,reord(j),reord(j))-abpt%grads(:abpt%nvibs,j,j)
           err=err+dot_product(diff,diff)*w_grd**2
         end if
+      ! calculate error contributions from energies 
         if(hasEner(ptid,j).and.(incener(ptid,j,j).or.e_exact(ptid,j,j).or.orderall))  &
-                    err=err+ (fitpt%energy(m,m)-abpt%energy(j,j))**2*w_en**2
+                    err=err+ (fitpt%energy(reord(j),reord(j))-abpt%energy(j,j))**2*w_en**2
+      ! add coupling contrubutions
+        do m=1,nstates
+           if(m==j)cycle
+           if(hasGrad(ptid,m,j).and.(incgrad(ptid,m,j).or.g_exact(ptid,m,j).or.orderall))then
+             de = abs(abpt%energy(j,j)-abpt%energy(m,m))
+             if(de<cpE2)de=cpE2
+             diff=fitpt%grads(:abpt%nvibs,reord(m),reord(j))-abpt%grads(:abpt%nvibs,m,j)
+             diff2=fitpt%grads(:abpt%nvibs,reord(m),reord(j))+abpt%grads(:abpt%nvibs,m,j)
+             ndiff = min(dot_product(diff,diff),dot_product(diff2,diff2)) 
+             if(m>=ldeg.and.m<=udeg)then
+               err=err+ndiff*(w_cp*cpE1/de)**2/2
+             else
+               err=err+ndiff*(w_cp*cpE1/de)**2
+             end if
+           end if
+        end do
       end do!j=ldeg,udeg
-if(printlvl>3)then
-  print "(A,I3,A,E12.5)","pmt",pmt,",err=",err
-end if
+      if(printlvl>3)then
+        print "(A,I3,A,E12.5)","pmt",pmt,",err=",err
+      end if
       if(pmt==1)then
         min_err=err
         best_p=pmt

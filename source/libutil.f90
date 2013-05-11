@@ -561,6 +561,16 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
       do i=1,pt%nvibs
         gradnew(i,:,:)=matmul(matmul(transpose(jacobi),gradnew(i,:,:)),jacobi)
       end do
+      if(printlvl>2)then
+        print *,"  Ab initio g vector:"
+        print "(20F7.3)",(pt%grads(:pt%nvibs,mi,mi)-pt%grads(:pt%nvibs,mj,mj))/2
+        print *,"  Fit g vector:"
+        print "(20F7.3)",(gradnew(:pt%nvibs,mi,mi)-gradnew(:pt%nvibs,mj,mj))/2
+        print *,"  Ab initio h vector:"
+        print "(20F7.3)",pt%grads(:pt%nvibs,mi,mj)
+        print *,"  Fit h vector:"
+        print "(20F7.3)",gradnew(:pt%nvibs,mi,mj)
+      end if
       ckl = matmul(ckl,jacobi)
       !update rotation angles
       do i=mj+1,udeg 
@@ -585,6 +595,16 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
       if(printlvl>2)print "(4x,A,I4,A,E15.7,A,I3,A,I3,A)","iteration ",iter,", max(|beta|)=",max_b,&
                         "(",mi,",",mj,")"
     end do!while(iter<maxiter.and.max_b>toler)do
+    if(iter==0.and.printlvl>2)then
+        print *,"  Ab initio g vector:"
+        print "(30F7.3)",(pt%grads(:pt%nvibs,mi,mi)-pt%grads(:pt%nvibs,mj,mj))/2
+        print *,"  Fit g vector:"
+        print "(30F7.3)",(gradnew(:pt%nvibs,mi,mi)-gradnew(:pt%nvibs,mj,mj))/2
+        print *,"  Ab initio h vector:"
+        print "(30F7.3)",pt%grads(:pt%nvibs,mi,mj)
+        print *,"  Fit h vector:"
+        print "(30F7.3)",gradnew(:pt%nvibs,mi,mj)
+    end if
     if(printlvl>2.and.iter>0)then
         if(max_b<toler)then
           print 1001,iter

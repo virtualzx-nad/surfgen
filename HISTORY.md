@@ -1,3 +1,8 @@
+## 2.4.7 (2013-05-10)
+
+* Gradient ordering now also take into account all the errors of derivative couplings, in order to achieve better ordering accuracy.
+* Fixed a problem with gradient ordering that can cause difficulty to obtain correct order when one of the states in the ordering group does not have gradients 
+
 ## 2.4.6 (2013-05-06)
 
 * A new option CpOrder now allows the user to specify the maximum order of off-diagonal coupling blocks to be different from that of the diagonal blocks.
