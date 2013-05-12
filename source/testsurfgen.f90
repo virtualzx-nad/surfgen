@@ -196,7 +196,7 @@ SUBROUTINE testHd(ntest,disp)
     call tranHd('F',hvec_raw,hvec)   ! convert primitive h expansion to block orthogonal basis expansions
 
     prtl = printlvl
-    printlvl = 0
+    printlvl = printlvl-2
     hnorm = dnrm2(ncons,hvec,int(1))
     print *,"Testing gradients of Hd along 3 random pathes"
     print *,"  Cartesian displacement size :", disp

@@ -73,6 +73,11 @@ MODULE makesurfdata
 !           same format as points.in input
   INTEGER                                      :: rmsexcl
 
+! whether to generate error and geometry information for error analysis in
+! potlib libraries. geometries will be stored in `refgeom`, and error info will
+! be stored in `error.log`
+  LOGICAL                                      :: printError
+
   TYPE(abpoint),dimension(:),allocatable       :: dispgeoms
   type(TEqList)                                :: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER                                      :: enfDiab ! index of point where diabatic and adiabatic matches
@@ -2180,6 +2185,12 @@ SUBROUTINE makesurf()
   !----------------------------------
   ! End of self-consistent iterations
   !----------------------------------
+  !print final errors
+  call makebvec(bvec,.true.)
+  print "(5x,A)","Final RMS Errors of Fitting Equations"
+  print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
+                             ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
+                             ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
   if(adif.le.toler)then
    write(OUTFILE,1006)iter
   else
@@ -2338,36 +2349,46 @@ SUBROUTINE makesurf()
           k=1,j-1),j=1,nstates)
   end do
 
+  if(printError)then
   !------------------------------------------------------------------
-  ! out fitting error to error.log
+  ! out fitting error to error.log and geom info to refgeom
   !------------------------------------------------------------------
-  uerrfl = getFLUnit()
-  open(unit=uerrfl,file='error.log',access='sequential',form='formatted',&
-     status='replace',action='write',position='rewind',iostat=ios)
-  if(ios/=0)print *,"FAILED TO CREATE FILE error.log"
-  write(c2,'(i4)')ncoord
-  do i=1,npoints
-    do j=1,nstates
-      if(hasEner(i,j))then
-        write(uerrfl,"(E15.7)",advance='no')  fitE(i,j,j)-(dispgeoms(i)%energy(j,j))
-      else
-        write(uerrfl,"(E15.7)",advance='no')  0d0
-      end if
-    end do!j
-    write(uerrfl,*) ""
-    do j=1,nstates
-      errgrd = dble(0)
-      if(hasGrad(i,j,j))then
-        call ginv(ncoord,dispgeoms(i)%nvibs,dispgeoms(i)%bmat,ncoord,binv,1D-2)
-        do k=1,dispgeoms(i)%nvibs
-            if(dispgeoms(i)%scale(k)>1D-1)&
-                errgrd=errgrd+binv(:,k)*(fitG(i,k,j,j)-dispgeoms(i)%grads(k,j,j))
-        end do
-      end if!hasGrad
-      write(uerrfl,"("//trim(c2)//"E15.7)") errgrd
+    uerrfl = getFLUnit()
+    open(unit=uerrfl,file='error.log',access='sequential',form='formatted',&
+       status='replace',action='write',position='rewind',iostat=ios)
+    if(ios/=0)print *,"FAILED TO CREATE FILE error.log"
+    write(c2,'(i4)')ncoord
+    do i=1,npoints
+      do j=1,nstates
+        if(hasEner(i,j))then
+          write(uerrfl,"(E15.7)",advance='no')  fitE(i,j,j)-(dispgeoms(i)%energy(j,j))
+        else
+          write(uerrfl,"(E15.7)",advance='no')  0d0
+        end if
+      end do!j
+      write(uerrfl,*) ""
+      do j=1,nstates
+        errgrd = dble(0)
+        if(hasGrad(i,j,j))then
+          call ginv(ncoord,dispgeoms(i)%nvibs,dispgeoms(i)%bmat,ncoord,binv,1D-2)
+          do k=1,dispgeoms(i)%nvibs
+              if(dispgeoms(i)%scale(k)>1D-1)&
+                  errgrd=errgrd+binv(:,k)*(fitG(i,k,j,j)-dispgeoms(i)%grads(k,j,j))
+          end do
+        end if!hasGrad
+        write(uerrfl,"("//trim(c2)//"E15.7)") errgrd
+      end do
+    end do 
+    close(uerrfl)
+    open(unit=uerrfl,file='refgeom',access='sequential',form='formatted',&
+      status='replace',action='write',position='rewind',iostat=ios)
+    if(ios/=0)print *,"FAILED TO CREATE FILE error.log"
+    do i=1,npoints
+      write(uerrfl,*) ""
+      write(uerrfl,"(3F20.15)") dispgeoms(i)%cgeom
     end do
-  end do 
-  close(uerrfl)
+    close(uerrfl)
+  end if
 
   if(printlvl>0)print *,"    deallocating arrays"
   !------------------------------------------------------------------
@@ -2598,10 +2619,11 @@ SUBROUTINE readMakesurf(INPUTFL)
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
-                      energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, &
+                      energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall
                       
   npoints   = 0
+  printError= .false.
   maxiter   = 3
   orderall  = .true.
   diagHess  = -1d0

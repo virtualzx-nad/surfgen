@@ -137,11 +137,14 @@ CONTAINS
     end do
     min_d2=dsqrt(min_d2)
     if(ptid>0)then   ! estimate energy error
-      if(.not.calcerr)stop "getdist:  energy error requested when calcerr==.false." 
-      do i=1,nstates
-        estErr(i)=enererrdata(ptid,i)+&
-           dot_product(graderrdata(ptid,i,dcoordls(1:NRij)),minrgeomp)
-      end do
+      if(calcerr)then
+        do i=1,nstates
+          estErr(i)=enererrdata(ptid,i)+&
+             dot_product(graderrdata(ptid,i,dcoordls(1:NRij)),minrgeomp)
+        end do
+      else
+        estErr = 0d0
+      end if
     end if!ptid>0
   END SUBROUTINE getdist
 !-----------------------------------------------------------------------------
@@ -718,7 +721,7 @@ SUBROUTINE readginput(jtype)
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, &
-                            timeeval,B_r1,B_r2,B_h,parsing,eshift
+                            timeeval,B_r1,B_r2,B_h,parsing,eshift,calcErr
 
   atomlabels = ''
 
@@ -814,10 +817,17 @@ SUBROUTINE loadRefGeoms()
   character(3),dimension(natoms)               :: atoms
   double precision,dimension(natoms)           :: anums,masses
   character(3)    ::  ncstr
+  integer         :: fid
   PRINT *,"   Minimum distances to a set of reference geometries will be calculated."
   allocate(rgeom(nrpts,ncoord))
   PRINT *,"   Loading ",nrpts," geometries from file ",trim(adjustl(gflname))
-  call readColGeom(gflname,nrpts,natoms,atoms,anums,cgeom,masses)
+  fid = getFLUnit()
+  open(unit=fid,file=trim(adjustl(gflname)),access='sequential',form='formatted',&
+      status='old',action='read',position='rewind',iostat=ios)
+  if(ios/=0)stop "failed to open geometry input file"
+  read(unit=fid,fmt=*,iostat=ios)cgeom
+  if(ios/=0)stop "failed to read geometries" 
+  close(unit=fid)
   print *,"   ",nrpts," geometries loaded."
   PRINT *,"   Converting to internal coordinates"
   do i=1,nrpts

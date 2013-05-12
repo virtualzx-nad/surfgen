@@ -361,7 +361,10 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
     !build normalized g and h vectors from Hd and compute rotation angles the first time
     do i=ldeg,udeg 
       do j=ldeg,i-1
-        if(.not.allowedRot(i,j))cycle
+        if(.not.allowedRot(i,j))then
+          beta(i,j) = 0d0
+          cycle
+        end if
         beta(i,j) = getBeta(i,j)
         if(abs(beta(i,j))>max_b)then
           max_b=abs(beta(i,j))
@@ -457,7 +460,7 @@ CONTAINS
     h=pt%grads(:pt%nvibs,i,j)
     CALL orthgh(pt%nvibs,g,h,beta)
   END FUNCTION getBeta
-END SUBROUTINE 
+END SUBROUTINE OrthGH_Ab 
 
 !------------------------------------------------------------------------------
 ! Rotate Hd generated eigenvectors so that the resulting g and h vectors between any
@@ -490,6 +493,9 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
   double precision, dimension(pt%nvibs,nstates,nstates):: gAb, hAb,&!ab initio g and h vectors
                                                           gradnew   !Hd gradients after rotation
   double precision           :: max_b,t
+  ! allowedRot stores the infomation whether rotation between two specific states 
+  ! will not cause a gradient data to mix into a gradient that has not data
+  LOGICAL,dimension(nstates,nstates)  :: allowedRot
  
   if(pt%ndeggrp<=0)return 
 ! initialize eigenvectors and rotated gradients
@@ -534,6 +540,36 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
     if(printlvl>2)print "(3(A,I3))","  Degenerate group ",igrp,", states ",ldeg," to ",udeg
     iter=0
+
+    ! check if rotations among these states are allowed.
+    if(all(hasGrad))then
+      allowedRot(ldeg:udeg,ldeg:udeg)=.true.
+    else
+      allowedRot(ldeg:udeg,ldeg:udeg)=.false.
+      write (*,"(6X,A)",advance='no') "Allowed rotations:"
+      do i=ldeg,udeg
+          do j=ldeg,i-1
+            ! both gradients and coupling between then has to be present for
+            ! them to be rotatable
+            if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
+              ! the available gradients list has to be identical for them
+              if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
+                  write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
+                  allowedRot(i,j)=.true.
+                  allowedRot(j,i)=.true.
+              end if
+            end if!hasGrad ii, ij, jj
+          end do!j
+      end do!i=ldeg,udeg
+      if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
+        print *," none"
+        print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
+        cycle
+      else
+        print *,""
+      end if
+    end if
+
     !build normalized g and h vectors from Hd and compute rotation angles the first time
     do i=ldeg,udeg 
       do j=ldeg,i-1
@@ -634,6 +670,10 @@ CONTAINS
     double precision, dimension(pt%nvibs)                :: g,h
     double precision  ::  errg, errh, errcurr, errrot
 
+    if(.not.allowedRot(i,j))then
+      beta = 0d0
+      return
+    end if
     g=(gradnew(:,i,i)-gradnew(:,j,j))/2
     h=gradnew(:,i,j)
     CALL orthgh(pt%nvibs,g,h,beta)

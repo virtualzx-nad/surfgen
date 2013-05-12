@@ -500,15 +500,12 @@ will be excluded when
 .Em rmsexcl<0 .
 No effect when 
 .Em rmsexcl>=0
+.It printErr
+.Sy LOGICAL [.false.]
+This option specifies if geometry and error information will be generated for error analysis procedure in `libsurfgen`.
+Geometries will be stored in file `refgeom` and error info will be stored in `error.log`.
 .El
 .Pp
-.Sy Testing
-.Bl -tag -width VariableNm -compact
-.It ntest
-.Sy INTEGER [0]
-Number of test points.   When greater than 0, Hd gradient test will be performed.
-Used only for debugging purpose.
-.El
 .Ss POTLIB
 Parameters that control the behavior of the potential evaluation library.
 .br

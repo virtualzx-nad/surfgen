@@ -1,3 +1,12 @@
+## 2.4.8 (2013-05-12)
+
+* Added option `printError` in group `MAKESURF`.  When true, the program will generate files `refgeom` and `error.log`, which can be used
+by `libsurfgen` libraries to evaluate distances to existing points.
+* Tested to integrate with ANT2012
+* Rotation of Hd g and h vectors is now skipped when the corresponding rotation is forbiden by absence of data for ab initio data.
+* Total fitting errors will be printed after final iteration.
+* Updated manual pages for `surfgen.in`
+
 ## 2.4.7 (2013-05-10)
 
 * Gradient ordering now also take into account all the errors of derivative couplings, in order to achieve better ordering accuracy.
