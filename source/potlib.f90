@@ -1,12 +1,14 @@
 ! POTLIB interface for surfgen
 ! Module stores variables related to pot() calls
 MODULE potdata
-! dcoordls    INTEGER,dimension(NRij)
+! dcoordls    INTEGER,dimension(*)
 !             Specifies the set of curvilinear coordinates that will
 !             be used to calculate the distance factor.   Must contain
 !             NRij entries and in the same order as the Rij definition
 !             generated in libsym
-     INTEGER       ::  dcoordls(100)
+     INTEGER,PARAMETER  ::  MaxNDCoord= 200
+     INTEGER       ::  ndcoord
+     INTEGER       ::  dcoordls(MaxNDCoord)
 
 ! how much the energy will be shifted
      DOUBLE PRECISION  :: eshift
@@ -50,7 +52,9 @@ MODULE potdata
 
 ! this parameter enables parsing and distance checks
 ! can be modified through subroutines enableParsing() and disableParsing()
-     LOGICAL                                ::  Parsing
+     LOGICAL                                ::  parsing
+! this parameter specifies if parsing is temporarily paused
+     LOGICAL                                ::  paused 
 
 ! These parameters controls the estimation of energy errors over evaluation points
 ! calcErr     Whether or not energy error will be estimated
@@ -101,15 +105,16 @@ CONTAINS
        mdev = -1D0
      END SUBROUTINE init
 !-----------------------------------------------------------------------------
-! calculate the distance, in terms of scaled Rij coordiates,
+! calculate the distance, using a set of internal coordinate of choice,
 ! between two points
 !
+! Internal coordinates used to evaluate the distance is specified with 
+! `dcoordls`.   
 ! Distance will be calculated using all possible permutations
 ! of the atoms and the smallest one will be used.
 ! coordinate permutation list generated in CNPI module is used 
 ! if ptid>0, energy error will be estimated and output through estErr
   SUBROUTINE getdist(rgeom1,rgeom2,min_d2,ptid,estErr)
-    USE progdata, ONLY: NRij
     USE CNPI,     ONLY: coordPerm,nPmt
     USE hddata,   ONLY: ncoord,nstates
     IMPLICIT NONE
@@ -119,16 +124,16 @@ CONTAINS
     INTEGER, intent(IN)                               :: ptid
     DOUBLE PRECISION,dimension(nstates),intent(INOUT) :: estErr
 
-    double precision,dimension(NRij)            :: rgeomp,minrgeomp    
+    double precision,dimension(ndcoord)         :: rgeomp,minrgeomp    
     double precision                            :: d2
     DOUBLE PRECISION,dimension(ncoord)          :: rgeomtmp
     integer  :: i
-    rgeomtmp = rgeom1(coordperm(1,:))
-    rgeomp=rgeomtmp(dcoordls(1:NRij))-rgeom2(dcoordls(1:NRij))
+    rgeomtmp = rgeom1(coordperm(1,dcoordls(1:ndcoord)))
+    rgeomp=rgeomtmp(dcoordls(1:ndcoord))-rgeom2(dcoordls(1:ndcoord))
     min_d2=dot_product(rgeomp,rgeomp)
     do i=2,nPmt
-      rgeomtmp = rgeom1(coordperm(i,:))
-      rgeomp=rgeomtmp(dcoordls(1:NRij))-rgeom2(dcoordls(1:NRij))
+      rgeomtmp = rgeom1(coordperm(i,dcoordls(1:ndcoord)))
+      rgeomp=rgeomtmp(dcoordls(1:ndcoord))-rgeom2(dcoordls(1:ndcoord))
       d2=dot_product(rgeomp,rgeomp)
       if(d2<min_d2)then
         min_d2=d2
@@ -140,7 +145,7 @@ CONTAINS
       if(calcerr)then
         do i=1,nstates
           estErr(i)=enererrdata(ptid,i)+&
-             dot_product(graderrdata(ptid,i,dcoordls(1:NRij)),minrgeomp)
+             dot_product(graderrdata(ptid,i,dcoordls(1:ndcoord)),minrgeomp)
         end do
       else
         estErr = 0d0
@@ -304,7 +309,8 @@ SUBROUTINE prepot
      call initialize(jobtype)
 
      if(calcmind)call loadRefGeoms()
-    
+      
+     paused = .false. 
      if(parsing)then 
        GUNIT = 427
        open(GUNIT,file='trajdata0.csv',status='REPLACE',action='write')
@@ -557,7 +563,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
 
  ! generate eigenvectors and energies at current geometry
   hmat2 = hmat
-  CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-12,m,&
+  CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
@@ -691,6 +697,16 @@ SUBROUTINE getEnergy(cgeom,energy)
 END SUBROUTINE getEnergy
 
 !-----------------------------------------------------------------------------------
+SUBROUTINE pauseParsing()
+  USE potdata,only: parsing,paused
+  paused = parsing .or. paused
+  parsing = .false.
+END SUBROUTINE
+SUBROUTINE resumeParsing()
+  USE potdata,only: parsing,paused
+  parsing = parsing .or. paused
+  paused = .false.
+END SUBROUTINE
 SUBROUTINE enableParsing()
   USE potdata, ONLY: parsing
   parsing = .true.
@@ -720,15 +736,15 @@ SUBROUTINE readginput(jtype)
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
-                            mindcutoff, atomlabels,dcoordls,errflname, &
+                            mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
                             timeeval,B_r1,B_r2,B_h,parsing,eshift,calcErr
 
   atomlabels = ''
 
-  do i=1,NRij
+  do i=1,MaxNDCoord
     dcoordls(i) = i
   end do
-
+  ndcoord = 3
   nSymLineUps = 1
   CpOrder    = -1
   jtype      = 0 

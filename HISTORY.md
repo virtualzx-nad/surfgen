@@ -1,3 +1,7 @@
+## 2.4.9 (2013-05-13)
+
+* Added utilities `pauseParsing` and `resumeParsing` to allow programs to temporarily suspend parsing in evaluation subroutines.
+
 ## 2.4.8 (2013-05-12)
 
 * Added option `printError` in group `MAKESURF`.  When true, the program will generate files `refgeom` and `error.log`, which can be used

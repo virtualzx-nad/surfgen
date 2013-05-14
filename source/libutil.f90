@@ -336,14 +336,14 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
       allowedRot(ldeg:udeg,ldeg:udeg)=.true.
     else
       allowedRot(ldeg:udeg,ldeg:udeg)=.false.
-      write (*,"(6X,A)",advance='no') "Allowed rotations:"
+      if(printlvl>2)write (*,"(6X,A)",advance='no') "Allowed rotations:"
       do i=ldeg,udeg
           do j=ldeg,i-1
             ! both gradients and coupling between then has to be present for them to be rotatable
             if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
               ! the available gradients list has to be identical for them
               if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
-                  write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
+                  if(printlvl>2)write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
                   allowedRot(i,j)=.true.
                   allowedRot(j,i)=.true.
               end if
