@@ -53,6 +53,7 @@ MODULE makesurfdata
   CHARACTER(255)                               :: flheader  !comment line in the outputfile
   CHARACTER(255)                               :: ckl_input   !if nonempty, read wave functions from this file
   CHARACTER(255)                               :: ckl_output  !if nonempty, output wave functions to this file
+  CHARACTER(255)                               :: guide       !if nonempty, ordering guide wave functions to this file
   LOGICAL                                      :: orderall    !tell the ordering to use data that are excluded in points.in
 
 ! restartdir specifies a directory where hd coefficients for each iteration will
@@ -86,7 +87,7 @@ MODULE makesurfdata
   type(TDList),dimension(:),allocatable        :: WVals
   type(TDList),dimension(:),allocatable        :: dWVals    
   type(T2DDList),dimension(:),allocatable      :: WMat
-  DOUBLE PRECISION,dimension(:,:,:),allocatable:: ckl
+  DOUBLE PRECISION,dimension(:,:,:),allocatable:: ckl,   cklguide
 
 ! when followPrev is true, eigenvectors will be phased and ordered to match previous iteration instead of ab initio data
   LOGICAL                                      :: followPrev 
@@ -503,7 +504,7 @@ MODULE makesurfdata
     logical                                          :: folPrev
     double precision,dimension(nstates,nstates)      :: cklPrev
     integer,dimension(:,:),allocatable               :: pmtList
-    double precision,dimension(nstates)              :: eval
+    double precision,dimension(nstates)              :: eval,ovlp
 
     allocate(pmtList(factl(nstates),nstates))
     pmtList=Permutation(nstates,factl(nstates))
@@ -573,15 +574,35 @@ MODULE makesurfdata
         end do!k=1,dispgeoms(i)%nvibs
         fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
       else
+        if(cklguide(i,1,1)<-1d2.or.dispgeoms(i)%ndeggrp>0)then
 ! determine ordering and phase by comparing with ab initio data
-        call genEnerGroups(fitpt,gorder/AU2CM1)
-        call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad,w_fij,nrmediff,ediffcutoff)
+          call genEnerGroups(fitpt,gorder/AU2CM1)
+          call gradOrder(i,fitpt,dispgeoms(i),ckl(i,:,:),pmtList,factl(nstates),w_energy,w_grad,w_fij,nrmediff,ediffcutoff)
+        else
+! determine ordering by matching guide points
+          call guideOrder(i,ckl(i,:,:),cklguide(i,:,:),pmtlist,factl(nstates))
+        end if
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
                  dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
         fitG(i,:,:,:)=fitpt%grads
       end if !folPrev
       fitE(i,:,:)=matmul(transpose(ckl(i,:,:)),matmul(hmatPt,ckl(i,:,:)))
+      if(ptWeights(i)<1d-8.and.(.not.(printlvl>3)))cycle
+      do k=1,nstates
+        ovlp(k) = abs(dot_product(cklPrev(:,k),ckl(i,:,k)))
+      end do!k
+      if(sum(cklPrev**2)>8d-1.and.minval(ovlp)<8d-1)then
+        print "(A,I5)","small overlap between iterations at pt ",i
+        print *,"before:"
+        do k=1,nstates
+          print "(10F10.5)",cklPrev(:,k)
+        end do
+        print *,"after:"
+        do k=1,nstates
+          print "(10F10.5)",ckl(i,:,k)
+        end do
+      end if!
     end do!i=1,npoints
     deallocate(fitpt%energy)
     deallocate(fitpt%grads)
@@ -954,7 +975,8 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>4d-2*ncp.and.printlvl>2.and.ncp>1d0 ) print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
+             if(dcp>4d-2*ncp.and.printlvl>2.and.ncp>1d0.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))&
+                        print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
                         "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
                         ", ",dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
                         dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)*100,"% cp*dE" 
@@ -985,7 +1007,7 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2) &
+             if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3)) &
                         print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
                         "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
              if(gnrm>1D-4) then
@@ -1255,15 +1277,21 @@ MODULE makesurfdata
     DOUBLE PRECISION,intent(IN) :: WIJ(nstates,nstates),VIJ(nvibs,nstates,nstates)
     DOUBLE PRECISION,intent(OUT):: DIJ(nstates,nstates)
     integer :: nDij
-    double precision :: EMat(nstates*(nstates-1)/2,nstates*(nstates-1)/2), RVec(nstates*(nstates-1)/2) 
+    double precision :: EMat(nstates*(nstates-1)/2,nstates*(nstates-1)/2)
+    double precision,dimension(nstates*(nstates-1)/2) :: RVec, sv
     integer :: i,j,k,l,lb,ub
     integer :: grpind(nstates)  ! specifies which degeneracy group a state belongs to
     integer :: smap(nstates,nstates),dmap(nstates*(nstates-1)/2,2)  !mapping between dij and state indices 
     integer :: sgn(nstates,nstates)
     double precision,dimension (nvibs) :: gvec, hvec
-    integer :: INFO, IPIV(nstates*(nstates-1)/2)
+    double precision,dimension(:),allocatable :: WORK
+    integer :: INFO,LWORK,rank
+    integer,allocatable,dimension(:) :: IWORK
 
     nDij = nstates*(nstates-1)/2
+    LWORK = 1000+nDij*nDij*100
+    allocate(WORK(LWORK))
+    allocate(IWORK(nDij*nDij*5+20*nDij))
     grpind = 0
     ! construct state groupings index table
     do i=1,dispgeoms(pt)%ndeggrp
@@ -1315,9 +1343,19 @@ MODULE makesurfdata
     end do!k
 
     !solve the Dij values
-    CALL DGESV(nDij,1,EMat,nDij,IPIV,rvec,nDij,INFO)
+    CALL DGELSD(nDij,nDij,1,EMat,nDij,rvec,nDij,sv,1d-12,rank,WORK,LWORK,IWORK,INFO)
+    !if(rank<nDij)print "(A,I4,A,I5)","Reduced rank at point ",pt,", rank=",rank
     if(INFO/=0)then
        print *,"Failed to solve linear equations in getDegDij"
+       print *,"Point index:",pt
+       print *,"ckl at point :"
+       do i=1,nstates
+         print "(10F10.5)",ckl(pt,:,i)
+       end do
+       print *,"EMat  :"
+       do i=1,nstates*(nstates-1)/2
+         print "(20F10.5)",EMat(:,i)
+       end do
        print *,"INFO=",info
        stop
     end if
@@ -1330,6 +1368,8 @@ MODULE makesurfdata
       DIJ(i,j) = rvec(k)
       DIJ(j,i) = - rvec(k)
     end do!k 
+    deallocate(WORK)
+    deallocate(IWORK)
   END SUBROUTINE getDegDij
 
 !------------------------------------------------------------------
@@ -1458,8 +1498,8 @@ MODULE makesurfdata
     IMPLICIT NONE
     CHARACTER(255),INTENT(IN) :: cklfl
 
-    double precision ::  cklbuffer(nstates,nstates)
-    integer  ios, i, pt, ccount
+    double precision ::  cklbuffer(nstates,nstates),ovlp(nstates)
+    integer  ios, i, k, pt, ccount
 
     if(cklfl=='')return
     print "(A)","  Loading eigenvectors from file "//trim(adjustl(cklfl))
@@ -1475,8 +1515,22 @@ MODULE makesurfdata
     do while (ios==0)
         read(7421,*,iostat=ios) pt,cklbuffer
         if(ios==0.and.pt<=npoints.and.pt>0)then
-            ckl(pt,:,:)=cklbuffer
-            ccount=ccount+1
+          do k=1,nstates
+            ovlp(k) = abs(dot_product(cklbuffer(:,k),ckl(pt,:,k)))
+          end do!k
+          if(minval(ovlp)<8d-1.and.ckl(pt,1,1)>-1d2)then
+            print "(A,I4)","Small overlap between loaded and automatic Ckl at pt ",pt
+            print *,"loaded:"
+            do k=1,nstates
+              print "(10F10.5)",cklbuffer(:,k)
+            end do
+            print *,"automatic:"
+            do k=1,nstates
+              print "(10F10.5)",ckl(pt,:,k)
+            end do
+          end if!
+          ckl(pt,:,:)=cklbuffer
+          ccount=ccount+1
         end if
     end do
     if(printlvl>1)  print "(3x,I7,A)",ccount," eigenvectors loaded."
@@ -1756,6 +1810,8 @@ MODULE makesurfdata
     allocate(gradNorm(npoints,nvibs,nblks))
     if(allocated(ckl))deallocate(ckl)
     allocate(ckl(npoints,nstates,nstates))
+    if(allocated(cklguide))deallocate(cklguide)
+    allocate(cklguide(npoints,nstates,nstates))
     if(allocated(fitE))deallocate(fitE)
     if(allocated(fitG))deallocate(fitG)
     allocate(fitE(npoints,nstates,nstates))
@@ -2044,6 +2100,11 @@ SUBROUTINE makesurf()
   call getHdvec(hvec,coefmap,ncon_total)
   call tranHd('F',hvec,asol1)   ! convert primitive h expansion to block orthogonal basis expansions
 
+  ! load guide ckls
+  ckl(:,1,1)=-1d5
+  call readCkl(guide)
+  cklguide = ckl
+  ckl = 0d0
   !----------------------------------
   ! Begin self-consistent iterations
   !----------------------------------
@@ -2142,7 +2203,6 @@ SUBROUTINE makesurf()
        CALL solve(ncons,neqs,nex,NEL,rhs,exacttol,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
      end if
-
      CALL cleanArrays()
    end if!diagHess>0
    call system_clock(COUNT=count2,COUNT_RATE=count_rate)
@@ -2441,9 +2501,9 @@ SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
             2x,'--------  Fitting Surface to Ab Initio Data  --------',/, &
             2x,'-----------------------------------------------------',/)
 1000 format(72a)
-1001 format(2x,'Number of Nascent Coefficients:                 ',i5)
-1002 format(2x,'Number of Coefficients after Nullspace Removal: ',i5)
-1003 format(2x,'Number of Least Squares Equations:              ',i5)
+1001 format(2x,'Number of Nascent Coefficients:                 ',i7)
+1002 format(2x,'Number of Coefficients after Nullspace Removal: ',i7)
+1003 format(2x,'Number of Least Squares Equations:              ',i7)
 1004 format(2x,'Maximum Number of iterations:                   ',i10)
 1005 format(2x,'Coefficient convergence tolerance:              ',f12.8)
 1006 format(2x,'Threshold for gradient values:                  ',f12.8)
@@ -2571,9 +2631,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd,w_cp,cpE1,cpE2)
            end if
         end do
       end do!j=ldeg,udeg
-      if(printlvl>3)then
-        print "(A,I3,A,E12.5)","pmt",pmt,",err=",err
-      end if
+      if(printlvl>3)  print "(A,I3,A,E12.5)","pmt",pmt,",err=",sqrt(err)
       if(pmt==1)then
         min_err=err
         best_p=pmt
@@ -2583,6 +2641,7 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd,w_cp,cpE1,cpE2)
         best_p=pmt
       end if
     end do!pmt=1,factl(ndeg)
+    if(printlvl>3)  print "(A,I3)","best permutation:",best_p
     ckl_new=ckl
     en_new =fitpt%energy
     gradnew=fitpt%grads(:abpt%nvibs,:,:)
@@ -2608,6 +2667,47 @@ SUBROUTINE gradOrder(ptid,fitpt,abpt,ckl,pmtList,LDP,w_en,w_grd,w_cp,cpE1,cpE2)
           " ordered by gradients. Error:",E11.4,"->",E11.4)
 END SUBROUTINE gradOrder
 
+! reorder states by maximizing absolute overlap with guide ckl
+SUBROUTINE guideOrder(ptid,realckl,guideckl,pmtList,LDP)
+  use combinatorial
+  use hddata, only: nstates
+  use progdata, only: printlvl
+  use makesurfdata, only: ptWeights
+  IMPLICIT NONE
+  DOUBLE PRECISION,dimension(nstates,nstates),intent(IN)     :: guideckl
+  DOUBLE PRECISION,dimension(nstates,nstates),intent(INOUT)  :: realckl
+  INTEGER,INTENT(IN)                                         :: LDP
+  INTEGER,DIMENSION(LDP,nstates),INTENT(IN)                  :: pmtList
+  double precision :: reordered(nstates,nstates), ovlp, maxovlp
+  integer  :: ptid,i,j, maxi
+
+  maxovlp = -1d0
+  do i=1,factl(nstates)
+    ovlp = 0d0
+    do j=1,nstates
+      ovlp = ovlp+abs(dot_product(realckl(:,pmtList(i,j)),guideckl(:,j)))
+    end do
+    if(ovlp>maxovlp)then
+      maxovlp = ovlp
+      maxi = i
+    end if
+  end do!i
+  do j=1,nstates
+    reordered(:,j)=realckl(:,pmtList(maxi,j))
+  end do !j
+  if(printlvl>3.and.maxi>1)then
+    PRINT *,"Guide ordering at point ",PTID
+    PRINT *,"before:"
+    PRINT "(4F10.6)",REALCKL
+    PRINT *,"after:"
+    PRINT "(4F10.6)",reordered
+  else
+     if(printlvl>0.and.maxi>1.and.ptWeights(ptid)>1d-8)print 1000,ptid,maxovlp/nstates
+  end if
+  realckl = reordered
+1000 format(6x,"POINT ",I4," reordered by overlap with guide. Overlap=",F8.5)
+END SUBROUTINE guideOrder
+
 ! read input parameters for makesurf
 SUBROUTINE readMakesurf(INPUTFL)
   USE hddata,only: nstates
@@ -2616,7 +2716,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
   integer :: i
-  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, &
+  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
@@ -2637,6 +2737,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
+  guide = ''
   linSteps  = 0
   dfstart   = 0
   dijscale  = 1d0

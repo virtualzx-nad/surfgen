@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.5.0
+SGENVER := 2.5.1
 
 # Get the OS name and version
 UNAME := $(shell uname -a)

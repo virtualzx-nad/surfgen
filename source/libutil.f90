@@ -546,7 +546,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
       allowedRot(ldeg:udeg,ldeg:udeg)=.true.
     else
       allowedRot(ldeg:udeg,ldeg:udeg)=.false.
-      write (*,"(6X,A)",advance='no') "Allowed rotations:"
+      if(printlvl>2)write (*,"(6X,A)",advance='no') "Allowed rotations:"
       do i=ldeg,udeg
           do j=ldeg,i-1
             ! both gradients and coupling between then has to be present for
@@ -554,7 +554,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
             if(hasGrad(i,i).and.hasGrad(i,j).and.hasGrad(j,j))then
               ! the available gradients list has to be identical for them
               if(all(hasGrad(i,:).eqv.hasGrad(j,:)))then
-                  write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
+                  if(printlvl>2)write (*,"(' (',I1,',',I1,') ')",advance='no') I,J
                   allowedRot(i,j)=.true.
                   allowedRot(j,i)=.true.
               end if
@@ -562,11 +562,13 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
           end do!j
       end do!i=ldeg,udeg
       if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
-        print *," none"
-        print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
+        if(printlvl>2)then
+           print *," none"
+           print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
+        end if
         cycle
       else
-        print *,""
+        if(printlvl>2)print *,""
       end if
     end if
 

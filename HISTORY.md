@@ -1,3 +1,14 @@
+## 2.5.1 (2013-05-29)
+
+* option `guide` allows the specification of a set of guide eigenvectors which will be used to determine state ordering at these points.
+* enhanced output for detected state flipping during iterations or between loaded ckl files and automatic orderings.   
+* singularities are now removed from linear equations of near degeneracy treatments
+
+## 2.5.0 (2013-05-26)
+
+The eigenvalue decomposition procedure has been replaced by linear equation solver `dsysv`.  This alleviates memory issues and speeds up the procedure.  
+However, it can also be less reliable; specificly, it will fail when exact equations are linearly dependent.   This will be fixed in a future patch.
+
 ## 2.4.9 (2013-05-13)
 
 * Added utilities `pauseParsing` and `resumeParsing` to allow programs to temporarily suspend parsing in evaluation subroutines.

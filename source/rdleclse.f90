@@ -71,6 +71,7 @@ CONTAINS
     double precision,dimension(:,:),allocatable     :: evec
     double precision,dimension(:)  ,allocatable     :: eval
     integer,dimension(:),allocatable                :: ISUPPZ
+integer,dimension(:),allocatable                :: ipiv
     integer  :: nsstart,nsend  !starting and ending index of null space
     integer  :: i,n,nx,rank, INFO
     double precision,external :: dnrm2
@@ -79,85 +80,24 @@ CONTAINS
     n  = nex+nlse
     nx = nex+m
 
-    allocate(ISUPPZ(nx*2),STAT=INFO)
-    IF(INFO/=0) STOP "solve: failed to allocate memory for ISUPPZ"
+    allocate(ipiv(nx),STAT=INFO)
+    IF(INFO/=0) STOP "solve: failed to allocate memory for ipiv"
 
     do i=nex+1,nx
       NEL(i,i)=NEL(i,i)+t
     end do
 
-    !Allocate space for Eigenvalue Decomposition results
-    allocate(eval(nx),STAT=INFO)
-    IF(INFO==0)allocate(evec(nx,nx),STAT=INFO)
-    IF(INFO/=0)STOP "solve: failed to allocate memory for EVD matrices"
+    CALL allocArrays(1,0,0,0)
+    call dsysv('U',nx,1,NEL,nx,ipiv,rhs,nx,work,-1,info)
+    if(info/=0)stop "dsysv: space query failed"
+    
+    CALL allocArrays(int(WORK(1)),0,0,0)
+    call dsysv('U',nx,1,NEL,nx,ipiv,rhs,nx,work,lwork,info)
+    if(info/=0)stop "dsysv: failed to solve linear equations"
 
-    ! Perform symmetric eigenvalue decomposition
-    CALL allocArrays(1,1,0,0)
-    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex/1d6,i,eval,&
-          evec,nx,ISUPPZ,WORK,int(-1),IWORK,int(-1),INFO)
-    IF(INFO/=0)STOP "solve:  DSYEVR workspace query failed."
-    CALL allocArrays(int(WORK(1)),IWORK(1),0,0)
-    PRINT 1004,(LWORK*dble(2)+LIWORK)/262144.
-    CALL DSYEVR('V','A','U',nx,NEL,nx,0.,0.,0,0,tol_ex/1d6,i,eval,&
-          evec,nx,ISUPPZ,WORK,LWORK,IWORK,LIWORK,INFO)
-    IF(INFO/=0)STOP "solve:  DSYEVR failed for solve()."
-    ! WORK=U**T.y'
-    CALL allocArrays(nx,0,0,0)
-    CALL DGEMV('T',nx,nx,dble(1),evec,nx,rhs,int(1),&
-              dble(0),WORK,int(1))
-    ! WORK=S**-1*WORK
-    rank=0
-    ! nsstart and nsend marks the range of null space eigenvectors
-    ! the default values are set first.   null space vectors have 
-    ! eigenvalues that fall within tol_ex from threshold value t.
-    nsstart = nex+1
-    if(eval(1)>t+tol_ex)then
-        nsend = 0
-    else
-        nsend = nx
-    end if
-    if(printlvl>3)then
-        print *,"Eigenvalues for normal equations:"
-        print "(15E10.2)",eval
-    end if
-
-    do i=1,nx
-      if(abs(eval(i))<tol_ex)then
-         WORK(i)=dble(0)
-      else!if(abs(eval(i))<tol_ex)
-         WORK(i)=WORK(i)/eval(i)
-         rank=rank+1
-      end if!(abs(eval(i))<tol_ex)
-      if(i>nex.and.i>1)then
-        if(eval(i)>t+tol_ex.and.eval(i-1)<t+tol_ex)nsend=i-1
-        if(eval(i)>t-tol_ex.and.eval(i-1)<t-tol_ex)nsstart=i
-      end if
-    end do!i=1,n
-    ! x=U.WORK
-    CALL DGEMV('N',nx,nx,dble(1),evec,nx,WORK,int(1),dble(0),rhs,int(1))
-    sol=rhs(nex+1:nx) 
-    ! Output values of Lagrange Multipliers
-    if(printlvl>1.and. nex>0)then
-      print 1001
-      print 1002,rhs(1:nex)
-    end if!(printlvl>1.and. nex>0)
-    NEL(1:m,1:nsend-nsstart+1) = evec(nex+1:nx,nsstart:nsend)
-    deallocate(evec)
-    if(printlvl>4)then
-      print *,"Performing analysis of the null space"
-      print *," Null space range:",nsstart," to ",nsend
-      print *,"  Eigenvalues of normal equations matrix"
-      print "('  ',10E14.5)",eval
-    end if
-    deallocate(eval)
-    deallocate(ISUPPZ)
-    if(printlvl>0)  print 1998,nex+m-rank,DNRM2(m,sol,1)/sqrt(dble(m))
+    sol = rhs(nex+1:nx)
   1000 format(4X,'Solving Linear Equility Constrained Least Squares Equations',/,&
-              6X,'Number of Unkown:',I7,', LSE:',I5,', Exact Eq:',I4)
-  1001 format(6X,'Value of Lagrange Multipliers:')
-  1002 format(6X,7F9.2)
-  1004 format(6X,"Memory required for symmetric EVD:    ",F12.2,"MB")
-  1998 format(6X,'Undetermined Unknowns:',I5,4X,'RMS Sol Vector:',F7.3)
+              6X,'Number of Unkown:',I7,', LSE:',I7,', Exact Eq:',I4)
   END SUBROUTINE solve
 
 !----------------------------------------------------------------
