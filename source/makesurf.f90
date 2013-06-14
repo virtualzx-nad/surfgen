@@ -3042,6 +3042,7 @@ SUBROUTINE readdisps()
 ! lb, ub   : energies for states between lb and ub are given in energy file
   integer  :: ptinfile, npts, nnew,lb,ub
   double precision  :: NaN
+  double precision,external :: dnrm2
 
   NaN = 0d0
   NaN = NaN/NaN
@@ -3191,6 +3192,10 @@ SUBROUTINE readdisps()
         do j=1,ncoord
             print "(15F8.3)",dispgeoms(l)%bmat(j,:)
         end do
+    end if
+    if(printlvl>1)then
+        print *,"  Contribution of each nascent coordinate to B matrix"
+        print "(15F8.3)",(dnrm2(3*natoms,dispgeoms(l)%bmat(j,1),ncoord),j=1,ncoord)
     end if
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)

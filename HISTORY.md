@@ -1,3 +1,7 @@
+## 2.5.2 (2013-06-13)
+
+* Print out for contribution of each nascent coordinate during local internal construction.   This helps to diagnose reduced dimensionality issues.  Enabled when `printlvl>1`.
+
 ## 2.5.1 (2013-05-29)
 
 * option `guide` allows the specification of a set of guide eigenvectors which will be used to determine state ordering at these points.
