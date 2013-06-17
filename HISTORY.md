@@ -1,3 +1,7 @@
+## 2.5.3 (2013-06-17)
+
+* Timing for normal equations and solution of Newton-Raphson equations are done separately.
+
 ## 2.5.2 (2013-06-13)
 
 * Print out for contribution of each nascent coordinate during local internal construction.   This helps to diagnose reduced dimensionality issues.  Enabled when `printlvl>1`.

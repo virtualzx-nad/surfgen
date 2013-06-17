@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.5.2
+SGENVER := 2.5.3
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -135,7 +135,7 @@ ifneq ($(findstring ifort,$(COMPILER)),)
   ifdef NO_I8
     CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp
   else
-    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -xHost -no-opt-matmul -i8
+    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -no-opt-matmul -i8
   endif
   LKOPT    := -auto -lpthread -parallel
 else

@@ -2182,16 +2182,19 @@ SUBROUTINE makesurf()
      printlvl=printlvl+10
    end if
 
-   call system_clock(COUNT=count1)
    if(diagHess>0)then
      call solve_diagHess(dCi,dLambda,jaco2,dsol,diagHess)
    else !diagHess>0
    ! construct normal equations matrix and right hand side vector
    !-------------------------------------------------------------
+     call system_clock(COUNT=count1)
      if(diagHess<=0)call makeNormalEquations(NEL,rhs,weight)
+     call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+     if(printlvl>0)print 1004,dble(count2-count1)/count_rate  
 
    ! solve the equations to get estimated change in coefficients 
    !-------------------------------------------------------------
+     call system_clock(COUNT=count1)
      if(diff)then
        rhs(1:nex)=-dLambda*scaleEx
        rhs(nex+1:)=-dCi
@@ -2204,9 +2207,9 @@ SUBROUTINE makesurf()
        dsol = asol(1:ncons)-dsol
      end if
      CALL cleanArrays()
-   end if!diagHess>0
-   call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+     call system_clock(COUNT=count2,COUNT_RATE=count_rate)
      if(printlvl>0)print 1002,dble(count2-count1)/count_rate  
+   end if!diagHess>0
 
    ! Perform coefficient stepping or line search to get new Hd
    !-------------------------------------------------------------
@@ -2466,6 +2469,7 @@ SUBROUTINE makesurf()
 1001 format(a,f7.2,a)
 1002 format(4X,"Hd coefficients solved after ",F8.2," seconds.")
 1003 format(3X,"Generating initial eigenvectors.")
+1004 format(4X,"Normal equations constructed after ",F8.2," seconds.")
 1005 format(1x,'Iteration',i4,": Delta=",E9.2,", d[g]%=",f7.2,   &
                 ", <d[g]%>=",f7.2,"%, d[E]=",f8.2,", <d[E]>=",f8.2)
 1006 format(/,2x,'Computation Converged after ',i5,' Iterations')
