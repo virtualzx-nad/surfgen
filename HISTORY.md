@@ -1,3 +1,9 @@
+## 2.5.4 (2013-06-18)
+
+* Diagonal shift by a list of single coordinate functions for size consistency corrections.
+* During evaluation, RMS deviation per coordinate from existing point instead of total norm of deviation is displayed. 
+* Partially constructed parallelization wrapper with MPI through ScaLapack.
+
 ## 2.5.3 (2013-06-17)
 
 * Timing for normal equations and solution of Newton-Raphson equations are done separately.

@@ -7,8 +7,14 @@ MODULE potdata
 !             NRij entries and in the same order as the Rij definition
 !             generated in libsym
      INTEGER,PARAMETER  ::  MaxNDCoord= 200
-     INTEGER       ::  ndcoord
-     INTEGER       ::  dcoordls(MaxNDCoord)
+     INTEGER            ::  ndcoord
+     INTEGER            ::  dcoordls(MaxNDCoord)
+
+! diagonal shift potential.  currently only supports one coordinate functions.
+     INTEGER,PARAMETER  ::  MaxNfTerms=100
+     INTEGER            ::  nfterms  ! number of shift functions
+     INTEGER            ::  fterm(MaxNfTerms)  ! index of each shift function
+     DOUBLE PRECISION   ::  fcoef(MaxNfTerms)  ! expansion coefficient
 
 ! how much the energy will be shifted
      DOUBLE PRECISION  :: eshift
@@ -74,9 +80,7 @@ MODULE potdata
      LOGICAL                                ::  timeEval
 
 ! inner repulsive wall
-     DOUBLE PRECISION,dimension(:),allocatable     ::  innerB_r1,innerB_r2,innerB_h
      DOUBLE PRECISION                              ::  pi
-     INTEGER,dimension(:),allocatable              ::  ilist,jlist
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -514,13 +518,14 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   integer,dimension(nstates*2)                      :: ISUPPZ
   double precision,dimension(nstates*(nstates+26))  :: WORK
   integer,dimension(nstates*10)                     :: IWORK
-  double precision  ::  w1ijlist(natoms,natoms),dvec(3),dX(3),minwlist(natoms),dw,rijlist(natoms*(natoms-1)/2)
+  double precision  ::  dvec(3),dX(3),minwlist(natoms),dw
   double precision    :: bohr2ang,  mind, minRij,dcsX,csX,eWall,xlist(natoms*(natoms-1)/2),gfactor,dtR
   double precision   :: comP(3)
   integer   :: i,j,k,ptid,count1,count2,count_rate,minK,minI,minJ,tmp
   integer   :: counter = 1   ! count the number of evaluations
   character(4)  ::  str,str2
-  double precision  ::  teval(7),debug1(3*natoms),debug2(ncoord)
+  double precision  ::  teval(7)
+  double precision  ::  f,df(3*natoms)  !diagonal shift
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -561,17 +566,43 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     end do !j=1,ncoord
   end do !i=1,3*natoms
 
+  if(timeeval)then
+    call system_clock(COUNT=count1)
+    teval(4) = dble(count1-count2)/count_rate*1000
+  end if!timeeval
+
+ ! calculate diagonal shift factor and its derivatives
+ f = eshift
+ df = 0
+ do i=1,nfterms
+   f = f+fcoef(i)*igeom(fterm(i))
+  df =df+fcoef(i)*bmat(fterm(i),:)
+ end do 
+ ! perform shift for diagonals
+ do i=1,nstates
+   hmat(i,i)      = hmat(i,i)+f
+   dcgrads(:,i,i) = dcgrads(:,i,i) +df
+ end do
+ if(timeeval)then
+    call system_clock(COUNT=count2)
+    teval(6) = dble(count2-count1)/count_rate*1000
+ end if!timeeval
+
  ! generate eigenvectors and energies at current geometry
   hmat2 = hmat
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
+  if(timeeval)then
+    call system_clock(COUNT=count1)
+    teval(5) = dble(count1-count2)/count_rate*1000
+  end if!timeeval
+
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
   end do!i=1,ncoord
-
   if(timeeval)then
     call system_clock(COUNT=count2)
-    teval(5) = dble(count2-count1)/count_rate*1000
+    teval(5) = teval(5)+dble(count2-count1)/count_rate*1000
   end if!timeeval
 
 ! CHECK COM GRADIENTS
@@ -590,7 +621,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end do
   if(timeeval)then
     call system_clock(COUNT=count1)
-    teval(6) = dble(count1-count2)/count_rate*1000
+    teval(7) = dble(count1-count2)/count_rate*1000
   end if!timeeval
  
   if(parsing)then
@@ -598,9 +629,10 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     write(str,"(I4)") natoms*3
     write(str2,"(I4)") nstates
     if(GUNIT<0)call openTrajFile(0)
-    if(calcmind)then
+    if(calcmind.and.ndcoord>0)then
        !calculation minimum distances to all reference points
        call getmind(igeom,mind,ptid,eerr)
+       mind=mind/sqrt(dble(ndcoord))
        mdev = max(mdev,mind)
        if(calcerr)then
          write(GUNIT,&
@@ -630,7 +662,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     call system_clock(COUNT=count2)
     teval(7) = dble(count2-count1)/count_rate*1000
     print *,"Execution time of subroutines(ms)"
-    print *," buildWBMat EvalRawTerms EvalHdDirect  i2c+wall   DSYEVR   CpScaling   analysis"
+    print *," buildWBMat EvalRawTerms EvalHdDirect  int2cart   DSYEVR   DiagShift   analysis"
     print   "(7F11.3)",teval
   end if!timeeval
 END SUBROUTINE EvaluateSurfgen
@@ -731,13 +763,13 @@ SUBROUTINE readginput(jtype)
   INTEGER,dimension(50)           :: ci,atmgrp 
   DOUBLE PRECISION,dimension(500) :: minguess,mexguess 
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty 
-  DOUBLE PRECISION,dimension(50)  :: e_guess,B_r1,B_r2,B_h
+  DOUBLE PRECISION,dimension(50)  :: e_guess
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
-                            timeeval,B_r1,B_r2,B_h,parsing,eshift,calcErr
+                            timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef
 
   atomlabels = ''
 
@@ -753,6 +785,7 @@ SUBROUTINE readginput(jtype)
   inputfl    = ''
   eshift     = dble(0) 
   switchdiab = .false.
+  
   print *,"Entering readinput()." 
  !----------- GENERAL SECTION ----------------! 
   open(unit=INPUTFILE,file='surfgen.in',access='sequential',form='formatted',& 
@@ -777,32 +810,11 @@ SUBROUTINE readginput(jtype)
   GrpPrty=groupprty(1:nGrp,1:nSymLineUps) 
   call initGrps(nGrp,irrep(GrpSym(:,1))%Dim) 
  
-  if(allocated(innerB_r1))deallocate(innerB_r1)
-  if(allocated(innerB_r2))deallocate(innerB_r2)
-  if(allocated(ilist))deallocate(ilist)
-  if(allocated(jlist))deallocate(jlist)
-  allocate(innerB_r1(natoms*(natoms-1)/2)) 
-  allocate(innerB_r2(natoms*(natoms-1)/2)) 
-  allocate(innerB_h(nstates))
-  allocate(ilist(natoms*(natoms-1)/2)) 
-  allocate(jlist(natoms*(natoms-1)/2)) 
-
-  k=0
-  do i=1,natoms-1
-    do j=i+1,natoms
-      k=k+1
-      ilist(k) = i
-      jlist(k) = j
-    end do
-  end do
-
   if(jobtype.ne.0)print *,"WARNING:  Calling prepot() with jobtype.ne.0" 
   print *,"   Reading POTLIB related parameters"
   molden_p     = 100
   m_start      = 100
-  B_r1    = 1D0
-  B_r2    = 8D-1
-  B_h     = (/ (4.+0.1*i,i=1,nstates) /)
+  nfterms = 0
   calcmind     = .false.
   parsing      = .false.
   calcErr      = .false.
@@ -811,12 +823,10 @@ SUBROUTINE readginput(jtype)
   nrpts        = 20
   timeeval     = .false.
   mindcutoff   = 1D-5
+  nfterms      = 0
   read(unit=INPUTFILE,NML=POTLIB)
   print 1000,m_start,molden_p
   close(unit=INPUTFILE) 
-  innerB_r1 = B_r1(1:natoms*(natoms-1)/2) 
-  innerB_r2 = B_r2(1:natoms*(natoms-1)/2) 
-  innerB_h  = B_h(1:nstates)
   if(printlvl>0)print *,"Exiting readinput..." 
   return 
 1000 format("Point to start MOLDEN recording ",I4,"   Record every ",I4," Points")
