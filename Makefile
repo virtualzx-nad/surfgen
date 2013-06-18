@@ -190,7 +190,7 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building target: $@'
 	@echo 'Archiving the object into library '
-	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)  $(OBJV) #$(MODL)
+	$(CDS) $(AR) -r -v  $(LIBF) $(OBJSL)  $(OBJV) 
 	@echo '-----------------------------------------'
 	@echo 'Creating symbolic link to new library'
 	ln -sf $(LIBF) $(LDIR)/libsurfgen.a

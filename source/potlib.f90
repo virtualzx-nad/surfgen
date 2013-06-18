@@ -15,6 +15,7 @@ MODULE potdata
      INTEGER            ::  nfterms  ! number of shift functions
      INTEGER            ::  fterm(MaxNfTerms)  ! index of each shift function
      DOUBLE PRECISION   ::  fcoef(MaxNfTerms)  ! expansion coefficient
+     DOUBLE PRECISION   ::  forig(MaxNfTerms)  ! place where shift is 0
 
 ! how much the energy will be shifted
      DOUBLE PRECISION  :: eshift
@@ -575,8 +576,8 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
  f = eshift
  df = 0
  do i=1,nfterms
-   f = f+fcoef(i)*igeom(fterm(i))
-  df =df+fcoef(i)*bmat(fterm(i),:)
+   f = f+fcoef(i)*(1-igeom(fterm(i))/forig(i))**2
+  df =df-2*fcoef(i)*bmat(fterm(i),:)*(1-igeom(fterm(i))/forig(i))/forig(i)
  end do 
  ! perform shift for diagonals
  do i=1,nstates
@@ -769,7 +770,7 @@ SUBROUTINE readginput(jtype)
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
                             mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
-                            timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef
+                            timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef,forig
 
   atomlabels = ''
 
@@ -824,6 +825,8 @@ SUBROUTINE readginput(jtype)
   timeeval     = .false.
   mindcutoff   = 1D-5
   nfterms      = 0
+  fcoef        = 0d0
+  forig        = 1d0
   read(unit=INPUTFILE,NML=POTLIB)
   print 1000,m_start,molden_p
   close(unit=INPUTFILE) 

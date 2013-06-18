@@ -1,3 +1,7 @@
+## 2.5.4.1 (2013-06-18)
+
+* Diagonal shift changed to a Morse form :  D*(1-w/w0)^2 , so that minimum will not be moved while shifting dissociation energy.
+
 ## 2.5.4 (2013-06-18)
 
 * Diagonal shift by a list of single coordinate functions for size consistency corrections.
