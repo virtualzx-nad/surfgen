@@ -1,3 +1,7 @@
+## 2.5.5 (2013-06-19)
+
+* Updated `surfgen.in` manual pages for the options for evaluation subroutines.
+
 ## 2.5.4.1 (2013-06-18)
 
 * Diagonal shift changed to a Morse form :  D*(1-w/w0)^2 , so that minimum will not be moved while shifting dissociation energy.
