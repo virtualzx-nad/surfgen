@@ -1,3 +1,7 @@
+## 2.5.6 (2013-06-26)
+
+* Ability to plot size of couplings in evaluation libraries.
+
 ## 2.5.5 (2013-06-19)
 
 * Updated `surfgen.in` manual pages for the options for evaluation subroutines.

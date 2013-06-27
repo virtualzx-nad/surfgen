@@ -2079,7 +2079,7 @@ SUBROUTINE makesurf()
   NaN  = NaN/NaN
   call initMakesurf()
   call printSurfHeader(ncon_total,ncons,neqs,nex)
-  print 1001,"    Memory required to store coefficient matrix:",(neqs+nex)*ncons*7.62939453125D-6," MB"
+  print 1001,"    Memory required to store coefficient matrix:",(nvibs+1)*nstates*(nstates+1)*ncons*7.62939453125D-6/2," MB"
   allocate(hvec(ncon_total))               ! Hd coefficients vector in original form
   allocate(bvec(neqs+nex))                 !rhs for exact and LSE equations
   allocate(asol(ncons+nex))                ! solution vector
@@ -2466,7 +2466,7 @@ SUBROUTINE makesurf()
   deallocate(ckl)
   if(printlvl>0)print *,"Exiting makesurf()"
 1000 format(/,2X,"  ITERATION ",I3)
-1001 format(a,f7.2,a)
+1001 format(a,f9.2,a)
 1002 format(4X,"Hd coefficients solved after ",F8.2," seconds.")
 1003 format(3X,"Generating initial eigenvectors.")
 1004 format(4X,"Normal equations constructed after ",F8.2," seconds.")

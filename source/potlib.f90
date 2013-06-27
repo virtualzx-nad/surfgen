@@ -521,12 +521,13 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   integer,dimension(nstates*10)                     :: IWORK
   double precision  ::  dvec(3),dX(3),minwlist(natoms),dw
   double precision    :: bohr2ang,  mind, minRij,dcsX,csX,eWall,xlist(natoms*(natoms-1)/2),gfactor,dtR
-  double precision   :: comP(3)
+  double precision   :: comP(3), fnorm(20)
   integer   :: i,j,k,ptid,count1,count2,count_rate,minK,minI,minJ,tmp
   integer   :: counter = 1   ! count the number of evaluations
   character(4)  ::  str,str2
   double precision  ::  teval(7)
   double precision  ::  f,df(3*natoms)  !diagonal shift
+  double precision,external  :: dnrm2
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -635,19 +636,23 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
        call getmind(igeom,mind,ptid,eerr)
        mind=mind/sqrt(dble(ndcoord))
        mdev = max(mdev,mind)
+       do j=1,nstates-1
+         fnorm(j) = dnrm2(3*natoms,cgrads(1,j,j+1),1)
+       end do
        if(calcerr)then
          write(GUNIT,&
            "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,"//&
-                                                                                 trim(str2)//"(',',F16.4),',',I3)"),&
-            timetraj,NEval,                cgeom,                         energy  ,  mind    , ptid,   eerr, isurftraj
+                                                                                 trim(str2)//"(',',F16.4),',',I3,20E16.8)"),&
+            timetraj,NEval,                cgeom,                         energy  ,  mind    , ptid,   eerr, isurftraj, &
+                       fnorm(1:nstates-1)
        else
          write(GUNIT,&
            "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3)"),&
             timetraj, NEval,                 cgeom,                       energy  ,  mind   , ptid  , isurftraj
        end if
     else!calcmind
-       write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3)"),&
-                  timetraj,   NEval                ,  cgeom                    ,  energy   , isurftraj
+       write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3,20E16.8)"),&
+                  timetraj,   NEval                ,  cgeom                    ,  energy   , isurftraj, fnorm(1:nstates-1)
     end if !calcmind
     if(molden_p>0.and.NEval-m_start>nrec*molden_p.and.parsing)then
       ! output molden geometries
