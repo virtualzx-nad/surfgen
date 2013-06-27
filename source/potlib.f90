@@ -521,7 +521,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   integer,dimension(nstates*10)                     :: IWORK
   double precision  ::  dvec(3),dX(3),minwlist(natoms),dw
   double precision    :: bohr2ang,  mind, minRij,dcsX,csX,eWall,xlist(natoms*(natoms-1)/2),gfactor,dtR
-  double precision   :: comP(3), fnorm(nstates)
+  double precision   :: comP(3), fnorm(nstates),de
   integer   :: i,j,k,ptid,count1,count2,count_rate,minK,minI,minJ,tmp
   integer   :: counter = 1   ! count the number of evaluations
   character(4)  ::  str,str2
@@ -602,6 +602,14 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
   end do!i=1,ncoord
+  do i=1,nstates-1
+    do j=i+1,nstates
+      de=energy(j)-energy(i)
+      if(abs(de)<1d-30)de=1d-30
+      cgrads(:,i,j) = cgrads(:,i,j)/de
+      cgrads(:,j,i) = cgrads(:,i,j)
+    end do
+  end do
   if(timeeval)then
     call system_clock(COUNT=count2)
     teval(5) = teval(5)+dble(count2-count1)/count_rate*1000

@@ -1,3 +1,7 @@
+## 2.5.7 (2013-06-26)
+
+* Fixed a problem where the derivative couplings were not properly divided by energy difference.
+
 ## 2.5.6 (2013-06-26)
 
 * Ability to plot size of couplings in evaluation libraries.
