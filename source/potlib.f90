@@ -521,7 +521,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   integer,dimension(nstates*10)                     :: IWORK
   double precision  ::  dvec(3),dX(3),minwlist(natoms),dw
   double precision    :: bohr2ang,  mind, minRij,dcsX,csX,eWall,xlist(natoms*(natoms-1)/2),gfactor,dtR
-  double precision   :: comP(3), fnorm(20)
+  double precision   :: comP(3), fnorm(nstates)
   integer   :: i,j,k,ptid,count1,count2,count_rate,minK,minI,minJ,tmp
   integer   :: counter = 1   ! count the number of evaluations
   character(4)  ::  str,str2
