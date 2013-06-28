@@ -28,7 +28,7 @@ MODULE makesurfdata
 !  index of an involved state.
 !    Also note that there is an optional note file that will be read-in and its 
 !  content will be included in output files as comments.
-  INTEGER,parameter                            :: MaxSearchPaths=100 ! Maximum number of search pathes that can be provided by user
+  INTEGER,parameter                            :: MaxSearchPaths=999 ! Maximum number of search pathes that can be provided by user
   INTEGER                                      :: NSearchPaths
   CHARACTER(1000),dimension(MaxSearchPaths)    :: SPNotes
   CHARACTER(255),dimension(MaxSearchPaths)     :: SearchPath    ! The program will look for input files in these directories
@@ -2404,6 +2404,7 @@ SUBROUTINE makesurf()
        ((dnrm2(dispgeoms(i)%nvibs,fitG(i,:,j,k),int(1)), &
           k=1,j-1),j=1,nstates)
   end do
+  print *,"g vector: (err,fit,ab)"
   do i=1,npoints
     print trim(fmt),i,( (errGradh(i,k,j),k=1,j-1) ,j=1,nstates),&
        ((dnrm2(dispgeoms(i)%nvibs,dispgeoms(i)%grads(:,j,j)-dispgeoms(i)%grads(:,k,k),int(1))/2, &

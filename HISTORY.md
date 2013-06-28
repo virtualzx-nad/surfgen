@@ -1,3 +1,8 @@
+## 2.5.8 (2013-06-27)
+
+* Increased the number of allowed input directories from 100 to 999.
+* Minor output fixes.
+
 ## 2.5.7 (2013-06-26)
 
 * Fixed a problem where the derivative couplings were not properly divided by energy difference.
