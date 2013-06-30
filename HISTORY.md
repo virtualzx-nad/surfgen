@@ -1,3 +1,8 @@
+## 2.5.9 (2013-06-28)
+
+* Removal of linear dependencies from exact equations
+* New option gradcutoff allows gradients and coupling equations to be automatically removed when above certain energy threshold.
+
 ## 2.5.8 (2013-06-27)
 
 * Increased the number of allowed input directories from 100 to 999.

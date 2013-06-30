@@ -134,6 +134,10 @@ MODULE makesurfdata
 ! scaling factors to exact equations
   DOUBLE PRECISION  :: scaleEx
 
+! energy above which gradients will be automatically removed from fitting
+! equations
+  DOUBLE PRECISION  :: gradcutoff
+
 ! scaling factors to exact equations
   logical,dimension(:,:,:),allocatable       :: incgrad,g_exact
   logical,dimension(:,:,:),allocatable       :: incener,e_exact
@@ -211,7 +215,7 @@ MODULE makesurfdata
       if(ptWeights(i)>1D-8)then
         do s1=1,nstates
           do s2=1,s1
-            incgrad(i,s1,s2)=hasGrad(i,s1,s2)
+            if(dispgeoms(i)%energy(s2,s2)<gradcutoff)incgrad(i,s1,s2)=hasGrad(i,s1,s2)
           end do
           incener(i,s1,s1)=hasEner(i,s1)
           if(i==enfDiab)incener(i,:,:)=.true.
@@ -660,13 +664,15 @@ MODULE makesurfdata
   END SUBROUTINE folPrevCkl
 !-----------------------------------------------------------------------------------
 ! rhs is constructed for diff=.false.
-  SUBROUTINE makeNormalEquations(NE,rhs,wt)
+! ndep is the number of linear dependencies among exact equations
+  SUBROUTINE makeNormalEquations(NE,rhs,wt,ndep)
     use hddata, only: nblks,nstates,nBasis
     use progdata, only: printlvl
     IMPLICIT NONE
     DOUBLE PRECISION,dimension(neqs),INTENT(IN)                 :: wt
     DOUBLE PRECISION,dimension(nex+ncons,nex+ncons),INTENT(OUT) :: NE
     DOUBLE PRECISION,dimension(nex+ncons),INTENT(OUT)           :: rhs
+    INTEGER,INTENT(OUT)                                         :: ndep
    
     integer,parameter ::  bars = 80
     integer           ::  i,j,  pc, pc_last, nEqPt,nExPt,  neqTot, nexTot
@@ -726,7 +732,52 @@ MODULE makesurfdata
     if(printlvl>0)print *,"      [ DONE ]"
     deallocate(AMat)
     deallocate(bvec)
+! reform exact block to remove linear dpendencies
+    ndep = 0
+    if(nex>0)then
+      if(printlvl>0)print *,"  Removing linear dependencies from exact equations..."
+      call removeDependency(NE,rhs,ndep)
+      if(printlvl>0)print *,"  Number of linear dependencies in exact equations: ",ndep 
+    end if
   END SUBROUTINE makeNormalEquations
+!-----------------------------------------------------------------------------------
+! remove linear dependencies from the exact equations block and return the
+! number of such linear dependencies.
+  subroutine removeDependency(Mat, rhs,ndep)
+    implicit none
+    double precision,dimension(nex+ncons,nex+ncons),intent(INOUT):: Mat
+    double precision,dimension(nex+ncons),intent(INOUT)          :: rhs
+    integer,intent(OUT)                                          :: ndep
+
+    double precision,dimension(ncons,nex) :: newEqs
+    double precision,dimension(nex)       :: newRhs
+    double precision,dimension(nex,nex) :: ovlp !overlap matrix between exact equations
+    double precision,dimension(2*nex*(nex+2)) ::work
+    double precision,dimension(nex) :: eval
+    integer :: lwork,info,i,ngood 
+    
+    lwork =2*nex*(nex+2)
+    call dsyrk('U','N',nex,ncons,1d0,Mat(1,nex+1),ncons+nex, 0d0, ovlp,nex) 
+    call dsyev('V','U',nex,ovlp,nex,eval,work,lwork,info)
+    if(info/=0)then
+      print *,"failed to do eigenvalue decomposition.  info=",info
+      stop "fatal error in makesurf::removeDependency()"
+    end if
+    ngood = 0
+    do i=1,nex
+      if(eval(i)>exactTol)then
+        ngood=ngood+1
+        call dgemv('T',nex,ncons,1d0,Mat(1,nex+1),nex+ncons,ovlp(1,i),1,0d0,newEqs(1,ngood),1)
+        newrhs(ngood) = dot_product(rhs(1:nex),ovlp(:,i))
+      end if
+    end do
+    !reform the rhs and equations
+    do i=1,ngood
+      Mat(nex+1-i,nex+1:)=newEqs(:,i)
+      rhs(nex+1-i)       =newRhs(i)
+    end do
+    ndep = nex-ngood
+  end subroutine removeDependency
 !-----------------------------------------------------------------------------------
 !Generate the matrix A of the linear coefficients between Hd basis and RHS values
 !for a specific data point
@@ -2065,7 +2116,7 @@ SUBROUTINE makesurf()
   double precision,dimension(ncoord,3*natoms)    :: binv
   CHARACTER(255)                                 :: fmt, fn
   double precision            ::  dener(nstates,nstates)
-  integer                     ::  ios, status
+  integer                     ::  ios, status, ndep
   double precision, external  ::  dnrm2
   logical                     ::  diff  !whether differential convergence will be used
   DOUBLE PRECISION,dimension(nstates,nstates)            :: hmatPT
@@ -2188,7 +2239,7 @@ SUBROUTINE makesurf()
    ! construct normal equations matrix and right hand side vector
    !-------------------------------------------------------------
      call system_clock(COUNT=count1)
-     if(diagHess<=0)call makeNormalEquations(NEL,rhs,weight)
+     if(diagHess<=0)call makeNormalEquations(NEL,rhs,weight,ndep)
      call system_clock(COUNT=count2,COUNT_RATE=count_rate)
      if(printlvl>0)print 1004,dble(count2-count1)/count_rate  
 
@@ -2199,11 +2250,11 @@ SUBROUTINE makesurf()
        rhs(1:nex)=-dLambda*scaleEx
        rhs(nex+1:)=-dCi
        ! solve normal equations for change in coefficients
-       CALL solve(ncons,neqs,nex,NEL,rhs,exacttol,lsetol,dsol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,dsol,printlvl)
      else
        dsol = asol(1:ncons)
        ! solve normal equations
-       CALL solve(ncons,neqs,nex,NEL,rhs,exacttol,lsetol,asol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
      end if
      CALL cleanArrays()
@@ -2725,9 +2776,11 @@ SUBROUTINE readMakesurf(INPUTFL)
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
-                      dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall
+                      dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
+                      gradcutoff
                       
   npoints   = 0
+  gradcutoff=100000
   printError= .false.
   maxiter   = 3
   orderall  = .true.
@@ -2802,6 +2855,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   ! round up inappropriate option values and do unit changes
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
+  gradcutoff = gradcutoff/ AU2CM1
   if(nstates>nstates.or.nstates<1)nstates=nstates
 END SUBROUTINE readMakesurf
 

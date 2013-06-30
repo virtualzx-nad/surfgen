@@ -58,9 +58,9 @@ CONTAINS
   !          Solution of the constrained least squares equations.
   ! printlvl (input) INTEGER
   !          Level of output to default I/O.
-  SUBROUTINE solve(m,nlse,nex,NEL,rhs,tol_ex,t,sol,printlvl)
+  SUBROUTINE solve(m,nlse,nex,ndep,NEL,rhs,tol_ex,t,sol,printlvl)
     IMPLICIT NONE
-    INTEGER,VALUE,INTENT(IN)      :: m,nex,nlse,printlvl
+    INTEGER,VALUE,INTENT(IN)      :: m,nex,nlse,printlvl,ndep
     DOUBLE PRECISION,INTENT(INOUT):: NEL(nex+m,nex+m)
     DOUBLE PRECISION,INTENT(INOUT):: rhs(nex+m)
     DOUBLE PRECISION,INTENT(IN)   :: tol_ex,t
@@ -88,11 +88,11 @@ integer,dimension(:),allocatable                :: ipiv
     end do
 
     CALL allocArrays(1,0,0,0)
-    call dsysv('U',nx,1,NEL,nx,ipiv,rhs,nx,work,-1,info)
+    call dsysv('U',nx-ndep,1,NEL(ndep+1,ndep+1),nx,ipiv,rhs,nx,work,-1,info)
     if(info/=0)stop "dsysv: space query failed"
     
     CALL allocArrays(int(WORK(1)),0,0,0)
-    call dsysv('U',nx,1,NEL,nx,ipiv,rhs,nx,work,lwork,info)
+    call dsysv('U',nx-ndep,1,NEL(ndep+1,ndep+1),nx,ipiv,rhs(ndep+1),nx,work,lwork,info)
     if(info/=0)stop "dsysv: failed to solve linear equations"
 
     sol = rhs(nex+1:nx)
