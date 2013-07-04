@@ -212,10 +212,10 @@ MODULE makesurfdata
     do i=1,npoints
       if(abs(ptWeights(i)-1)>1d-5.and.printlvl>1) &
          print "(A,I6,A,F9.4,A,I6)","point ",i," weight=",ptWeights(i), " nvibs=",dispgeoms(i)%nvibs
-      if(ptWeights(i)>1D-8)then
+      if(ptWeights(i)>1D-8.or.orderall==.false.)then
         do s1=1,nstates
           do s2=1,s1
-            if(dispgeoms(i)%energy(s2,s2)<gradcutoff)incgrad(i,s1,s2)=hasGrad(i,s1,s2)
+            if(dispgeoms(i)%energy(s1,s1)<gradcutoff)incgrad(i,s1,s2)=hasGrad(i,s1,s2)
           end do
           incener(i,s1,s1)=hasEner(i,s1)
           if(i==enfDiab)incener(i,:,:)=.true.
@@ -2444,7 +2444,7 @@ SUBROUTINE makesurf()
   end do
 
   print *,""
-  print *,"Fit and and ab initio g and h vectors between each pairs of states and their errors"
+  print "(A)","Fit and and ab initio g and h vectors between each pairs of states and their errors"
   fmt=""
   write(fmt,'("(I5,2X,",I2,"(3(X,E11.4),2X))")'),(nstates-1)*nstates/2
   print *,"h vector: (err,fit,ab)"

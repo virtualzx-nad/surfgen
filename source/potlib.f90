@@ -42,6 +42,9 @@ MODULE potdata
 ! reference geometry in scaled rij coordinates
      DOUBLE PRECISION,dimension(:,:),allocatable   :: rgeom
 
+! register for eigenvectors to the Schrodinger equations
+     DOUBLE PRECISION,dimension(:,:),allocatable   :: evec_store
+
 ! energy and gradient fitting error for all the reference geometries
      DOUBLE PRECISION,dimension(:,:),allocatable   :: enererrdata
      DOUBLE PRECISION,dimension(:,:,:),allocatable :: graderrdata
@@ -298,7 +301,7 @@ END SUBROUTINE
 !---------------------------------------------------------------------
 ! initializes Hd on entrance 
 SUBROUTINE prepot
-     USE hddata, ONLY: getFLUnit, ncoord
+     USE hddata, ONLY: getFLUnit, ncoord,nstates
      USE potdata
      IMPLICIT NONE
      integer   ::jobtype
@@ -314,7 +317,7 @@ SUBROUTINE prepot
      call initialize(jobtype)
 
      if(calcmind)call loadRefGeoms()
-      
+     if(.not.allocated(evec_store))allocate(evec_store(nstates,nstates)) 
      paused = .false. 
      if(parsing)then 
        GUNIT = 427
@@ -464,6 +467,12 @@ SUBROUTINE pot(Xcart,U11,U22,U12,V1,V2,gU11,gU22,gU12,gV1,gV2,gV12)
   return
 END SUBROUTINE pot
 ! --------------------------------------------------------------
+SUBROUTINE getEvec(evec)
+  use hddata, only: nstates
+  DOUBLE PRECISION, dimension(nstates,nstates) :: evec
+  evec = evec_store
+END SUBROUTINE getEvec
+! --------------------------------------------------------------
 ![Description]
 ! EvaluateSurfgen evaluates Hd at a given Cartesian coordinate, returning adiabatic
 ! energies, energy gradients, derivative couplings, diabatic Hamiltonian matrix
@@ -594,6 +603,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   hmat2 = hmat
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
+  evec_store=evec
   if(timeeval)then
     call system_clock(COUNT=count1)
     teval(5) = dble(count1-count2)/count_rate*1000
