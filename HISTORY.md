@@ -1,3 +1,8 @@
+## 2.5.10 (2013-07-04)
+
+* A new utility program `ghplot` that creates two dimensional plots of the coupled PESs.
+* Evaluation subroutine now records eigenvectors and can be retrieved with getEvec subroutine.
+
 ## 2.5.9 (2013-06-28)
 
 * Removal of linear dependencies from exact equations
