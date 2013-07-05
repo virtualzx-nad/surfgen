@@ -2192,6 +2192,7 @@ SUBROUTINE makesurf()
             ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
 
   !CALL initDIISg(ndiis,ndstart,ncons,asol,dCi)
+  call evaluateError(asol,weight,LSErr,ExErr)
   CALL getError(nrmener,avgener,nrmgrad,avggrad)
   adif = dnrm2(ncons,asol,int(1))
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1

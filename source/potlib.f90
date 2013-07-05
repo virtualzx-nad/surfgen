@@ -43,7 +43,7 @@ MODULE potdata
      DOUBLE PRECISION,dimension(:,:),allocatable   :: rgeom
 
 ! register for eigenvectors to the Schrodinger equations
-     DOUBLE PRECISION,dimension(:,:),allocatable   :: evec_store
+     DOUBLE PRECISION,dimension(:,:),allocatable   :: evecstore
 
 ! energy and gradient fitting error for all the reference geometries
      DOUBLE PRECISION,dimension(:,:),allocatable   :: enererrdata
@@ -317,7 +317,8 @@ SUBROUTINE prepot
      call initialize(jobtype)
 
      if(calcmind)call loadRefGeoms()
-     if(.not.allocated(evec_store))allocate(evec_store(nstates,nstates)) 
+     if(allocated(evecstore))deallocate(evecstore)
+     allocate(evecstore(nstates,nstates)) 
      paused = .false. 
      if(parsing)then 
        GUNIT = 427
@@ -469,8 +470,9 @@ END SUBROUTINE pot
 ! --------------------------------------------------------------
 SUBROUTINE getEvec(evec)
   use hddata, only: nstates
-  DOUBLE PRECISION, dimension(nstates,nstates) :: evec
-  evec = evec_store
+  use potdata, only: evecstore
+  DOUBLE PRECISION, dimension(nstates,nstates),intent(out):: evec
+  evec = evecstore
 END SUBROUTINE getEvec
 ! --------------------------------------------------------------
 ![Description]
@@ -603,7 +605,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   hmat2 = hmat
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
-  evec_store=evec
+  evecstore=evec
   if(timeeval)then
     call system_clock(COUNT=count1)
     teval(5) = dble(count1-count2)/count_rate*1000
