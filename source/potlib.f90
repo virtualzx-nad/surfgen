@@ -552,6 +552,20 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
 
   if(timeeval) call system_clock(COUNT=count1,COUNT_RATE=count_rate)
   call buildWBMat(cgeom,igeom,bmat,.false.)
+  de=sum(igeom)+sum(bmat)
+  IF((de.NE.de) .OR. ((de*0).NE.0))THEN
+    PRINT *,"INTERNAL COORDINATE IS NAN!"
+    PRINT *,"Cartesian geometry:"
+    print "(3F15.5)",cgeom
+    PRINT *,"Internal geometry:"
+    print "(3F15.5)",igeom
+    print *,"BMAT"
+    do i=1,ncoord
+      print *,"coord",i
+      print "(3F15.5)",bmat(i,:)
+    end do
+    STOP  "found nan!"
+  END IF
   if(timeeval)then
     call system_clock(COUNT=count2)
     teval(1) = dble(count2-count1)/count_rate*1000
@@ -622,6 +636,16 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
       cgrads(:,j,i) = cgrads(:,i,j)
     end do
   end do
+  de = sum(cgrads)
+  IF(de.NE.de .OR. (de*0).NE.0)THEN
+    PRINT *,"INTERNAL COORDINATE IS NAN!"
+    PRINT *,"Cartesian geometry:"
+    print "(3F15.5)",cgeom
+    PRINT *,"Internal geometry:"
+    print "(3F15.5)",igeom
+    STOP  "found nan!"
+  END IF
+
   if(timeeval)then
     call system_clock(COUNT=count2)
     teval(5) = teval(5)+dble(count2-count1)/count_rate*1000

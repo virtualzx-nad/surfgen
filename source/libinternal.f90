@@ -777,7 +777,7 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   double precision,intent(IN)                     :: factor
 
   double precision ::  v, dv(9), d1(3),d2(3), d12, d22, dd12(9), dd22(9)
-  double precision ::  p, dp(9), tmp
+  double precision ::  p, dp(9), tmp, pw
   integer,dimension(3,9) ::   dd1,dd2    ! derivatives of d1 and d2
   integer  ::  i
 
@@ -833,9 +833,15 @@ SUBROUTINE BEND(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !   q = p/( 1+exp[c1*(d1^2+d2^2-c2^2)] )
     case  (2)
-        tmp  = exp(scale*(d12+d22-factor**2))
-        qval = p/(1+tmp)
-        bval = (  dp  -  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
+        pw=scale*(d12+d22-factor**2)
+        if(pw>70d0)then
+          qval = 0d0
+          bval = 0d0
+        else
+          tmp  = exp(pw)
+          qval = p/(1+tmp)
+          bval = (  dp  -  scale*tmp*p/(1+tmp)*(dd12+dd22)  ) /(1+tmp)
+        end if
   end select!case(sctype)
 END SUBROUTINE BEND
 
