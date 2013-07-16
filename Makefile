@@ -72,7 +72,7 @@ ifdef FC  #use predefined fortran compiler
   COMPILER := $(FC)
   $(info Using Fortran compiler : $(FC))
 else       #find default compilers
-  ifdef NERSC_HOSTS
+  ifdef NERSC_HOST
     FC = ifort
     COMPILER = ifort
   else
