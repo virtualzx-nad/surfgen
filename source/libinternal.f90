@@ -475,7 +475,7 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
       stop "Unsupported bond distance scaling method."
 
   end select !case(scaling)
-  if(abs(w)<1d-30)w=sign(1d-30,w)
+  if(abs(w)<1d-30)w=1d-30
 END SUBROUTINE calcwij
 
 !************************************************************************************
