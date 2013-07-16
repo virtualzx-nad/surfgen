@@ -843,7 +843,7 @@ SUBROUTINE readginput(jtype)
  
   if(jobtype.ne.0)print *,"WARNING:  Calling prepot() with jobtype.ne.0" 
   print *,"   Reading POTLIB related parameters"
-  molden_p     = 100
+  molden_p     = 0
   m_start      = 100
   nfterms = 0
   calcmind     = .false.
