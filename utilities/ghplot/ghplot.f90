@@ -97,13 +97,13 @@ implicit none
 
 ! dx and dy are size of the displacement between grid points 
   dx = 6d-2
-  dy = 1d-2
+  dy = 2d-2
 
 ! starting and ending indicies for the plotting
   xstart=-5
   xend  = 40
   ystart= 0
-  yend  = 35 
+  yend  = 40 
 
 ! printevec dictates whether the eigenvectors will be recorded.
   printevec =.true.

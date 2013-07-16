@@ -989,7 +989,7 @@ MODULE makesurfdata
    DOUBLE PRECISION,intent(OUT)                   :: nrmener,avgener,nrmgrad,avggrad
 
    INTEGER  :: incdata,j,k,l,NEx_E,NEx_grd,nvpt,inc_e,inc_cp
-   DOUBLE PRECISION  :: gnrm,dgrd,rmsexclthreshold,dE_exact,dG_exact,dcp,nrmcp,nrmdcp,ncp,de1,de2
+   DOUBLE PRECISION  :: gnrm,dgrd,rmsexclthreshold,dE_exact,dG_exact,dcp,nrmcp,nrmdcp,ncp,de1,de2,dcp2
    double precision,external :: dnrm2
 
    if(rmsexcl>=0)then
@@ -1026,11 +1026,11 @@ MODULE makesurfdata
                  ( dispgeoms(j)%grads(:nvpt,k,l)/de1-fitG(j,:nvpt,k,l)/de2)*dispgeoms(j)%scale(1:nvpt)  )
              ncp = dot_product(dispgeoms(j)%grads(:nvpt,k,l)                          , &
                                dispgeoms(j)%grads(:nvpt,k,l)*dispgeoms(j)%scale(:nvpt) ) /de1**2
-             if(dcp>4d-2*ncp.and.printlvl>2.and.ncp>1d0.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))&
+             dcp2 =dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
+                        dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)
+             if(dcp>4d-2*ncp.and.dcp2>3d-2.and.printlvl>2.and.ncp>1d0.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))&
                         print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
-                        "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),&
-                        ", ",dnrm2(nvpt,(dispgeoms(j)%grads(:nvpt,k,l)-fitG(j,:nvpt,k,l))*sqrt(dispgeoms(j)%scale(:nvpt)),1)/&
-                        dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)*100,"% cp*dE" 
+                        "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),", ",dcp2*100,"% cp*dE"
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
            end if! coupling included
@@ -2422,7 +2422,7 @@ SUBROUTINE makesurf()
    write(c2,'(i4)')j
    rlabs(j) = ' GM '//trim(adjustl(c2))
   enddo!j=1,npoints
-  call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,npoints,2*nstates,enertable,int(19),int(9))
+  call printMatrix(OUTFILE,rlabs,clabs,2*nstates,npoints,npoints,2*nstates,enertable,int(14),int(4))
   print *," Weighed Error Norms for Energy Gradients and Couplings"
   print *," Gradients are given in the following order:"
   print "(10(I4,'-',I4,',',4X),I4,'-',I4)",(((/j,k/),k=1,j),j=1,nstates)
@@ -3199,7 +3199,7 @@ SUBROUTINE readdisps()
     if(printlvl>1)print 1001,'- Reading gradients and couplings'
     do j = lb,ub
       do k = lb,ub
-        infile = trim(SearchPath(i))//'/'//filename(j,k,grdfptn,cpfptn)
+        infile = trim(SearchPath(i))//'/'//filename(j,k,grdfptn(i),cpfptn(i))
         if(printlvl>3) print 1000,"Searching for gradients in <"//trim(infile)//">..."
         ptinfile=npoints
         call readGrads(infile,ptinfile,natoms,cgrads)

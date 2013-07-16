@@ -1,3 +1,8 @@
+## 2.5.11 (2013-07-15)
+
+* Bug fix to prevent division by zero due to scaling function when distance is extremely large
+* Format update for energy output.
+
 ## 2.5.10 (2013-07-04)
 
 * A new utility program `ghplot` that creates two dimensional plots of the coupled PESs.
