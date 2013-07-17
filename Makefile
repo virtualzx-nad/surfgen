@@ -72,7 +72,12 @@ ifdef FC  #use predefined fortran compiler
   COMPILER := $(FC)
   $(info Using Fortran compiler : $(FC))
 else       #find default compilers
-  $(error Compiler NOT defined! Please set it with variable FC)
+  ifdef NERSC_HOST
+    FC = ifort
+    COMPILER = ifort
+  else
+    $(error Compiler NOT defined! Please set it with variable FC)
+  endif
 endif
 
 # set up product name
@@ -130,19 +135,34 @@ endif
 # On Mac the default is to use the vecLib framework
 ifndef LIBS
  ifndef BLAS_LIB
-  ifeq ($(OS),Darwin)  
-     #on mac, use frameworks
-     LIBS := -framework vecLib
-     $(info Using vecLib framework for Mac OS X)
-     PS2PDF := /sw/bin/ps2pdf
+  ifdef NERSC_HOST  
+    # On NERSC.   Define proper MKL library pathes for hopper and carver
+    ifeq ($(NERSC_HOST),hopper)
+      MKLROOT=/opt/intel/composer_xe_2013.1.117/mkl
+    else
+    # i am assuming carver here.   
+      MKLROOT=/usr/common/usg/intel/13.0.028/composer_xe_2013.1.117/mkl
+    endif
+    BLAS_LIB:=-Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_ilp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
+          $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
+    LIBS:=$(BLAS_LIB)
+    FFLAGS:=-openmp -i8 -I$(MKLROOT)/include
+    LDFLAGS:=-openmp
   else
-     $(info BLAS_LIB not set.  Trying to determine LAPACK link options...)
-     #BLAS_LIB is not set.  check LD_LIBRARY_PATH for mkl
-     ifneq ($(findstring mkl,$(LD_LIBRARY_PATH)),)
-        $(info Found mkl in LD_LIBRARY_PATH. Using dynamic link to MKL.)
+    ifeq ($(OS),Darwin)  
+       #on mac, use frameworks
+       LIBS := -framework vecLib
+       $(info Using vecLib framework for Mac OS X)
+       PS2PDF := /sw/bin/ps2pdf
+    else
+       $(info BLAS_LIB not set.  Trying to determine LAPACK link options...)
+       #BLAS_LIB is not set.  check LD_LIBRARY_PATH for mkl
+       ifneq ($(findstring mkl,$(LD_LIBRARY_PATH)),)
+          $(info Found mkl in LD_LIBRARY_PATH. Using dynamic link to MKL.)
         LIBS := -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lpthread -lm
-     endif #ifneq mkl,LD_...
-  endif #OS==Darwin
+       endif #ifneq mkl,LD_...
+    endif #OS==Darwin
+  endif #is on hopper.nersc.gov
  else
     LIBS := $(BLAS_LIB)
  endif #BLAS_LIB
@@ -246,7 +266,7 @@ install : $(PDFMN)
 
 $(DDIR)/%.pdf : $(MANDIR)/man1/%.1 | $(DDIR)
 	@echo 'Constructing pdf manual from man page of $(notdir $(basename $<))'
-	@man -M $(MANDIR) $(notdir $(basename $@)) -t > $(notdir $(basename $@)).tmp.ps
+	@man -t -M $(MANDIR) $(notdir $(basename $@)) > $(notdir $(basename $@)).tmp.ps
 	@$(PS2PDF) $(notdir $(basename $@)).tmp.ps $@
 	@rm $(notdir $(basename $@)).tmp.ps
 
