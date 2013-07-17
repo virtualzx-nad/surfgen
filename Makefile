@@ -81,7 +81,7 @@ LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
 TSTX  := $(TDIR)/test
 
 # set debugging flags
-ifdef ($(DEBUGGING_SYMBOLS))
+ifdef DEBUGGING_SYMBOLS
   ifndef DEBUGFLAG
    ifneq ($(findstring gfortran,$(COMPILER)),)
     DEBUGFLAG = -g -fbounds-check -fbacktrace -Wall -Wextra
@@ -93,8 +93,36 @@ ifdef ($(DEBUGGING_SYMBOLS))
     endif
    endif
   endif
+  ifdef NO_I8
+    CPOPT = 
+  else
+    CPOPT =  -i8
+  endif
+  LKOPT = 
 else
   DEBUGFLAG := 
+  # set default compiler flags
+  ifneq ($(findstring ifort,$(COMPILER)),)
+    ifdef NO_I8
+      CPOPT    := -auto -assume byterecl -parallel -O3 -lpthread -openmp
+    else
+      CPOPT    := -auto  -assume byterecl -parallel -O3 -lpthread -openmp -no-opt-matmul -i8
+    endif
+    LKOPT    := -auto -lpthread -parallel
+  else
+   ifneq ($(findstring gfortran,$(COMPILER)),)
+    ifneq (,$(filter $(NO_I8),YES yes))
+      CPOPT    := -fopenmp -O3
+    else
+      CPOPT    := -fopenmp -O3 -m64
+    endif
+    LKOPT    :=
+   else
+    CPOPT    :=
+    LKOPT    :=
+   endif
+  endif
+
 endif
 
 # set BLAS and LAPACK libraries.  
@@ -130,27 +158,6 @@ ifndef AR
     AR := ar
 endif
 
-# set default compiler flags
-ifneq ($(findstring ifort,$(COMPILER)),)
-  ifdef NO_I8
-    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp
-  else
-    CPOPT    := -auto -c -assume byterecl -parallel -O3 -lpthread -openmp -no-opt-matmul -i8
-  endif
-  LKOPT    := -auto -lpthread -parallel
-else
- ifneq ($(findstring gfortran,$(COMPILER)),)
-  ifneq (,$(filter $(NO_I8),YES yes))
-    CPOPT    := -fopenmp -O3 
-  else
-    CPOPT    := -fopenmp -O3 -m64
-  endif
-  LKOPT    :=
- else
-  CPOPT    := 
-  LKOPT    :=
- endif
-endif
 
 # build everything
 all  :  surfgen libs man tests
