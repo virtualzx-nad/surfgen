@@ -235,7 +235,7 @@ clean:
 # Compile and run test code 
 tests : $(OBJV) $(OBJT) | $(TDIR) 
 	@echo '-----------------------------------------'
-	@echo '  SURFGEN TESTING PRGRAMS'
+	@echo '  SURFGEN TESTING PROGRAM'
 	@echo 'Program Version:     $(SGENVER)'
 	@echo 'Test Program:        $(TSTX)'
 	@echo 'Execution Directory: $(TDIR)'
