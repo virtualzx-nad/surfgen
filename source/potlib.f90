@@ -94,7 +94,6 @@ CONTAINS
        INTEGER,INTENT(IN) :: ncoord
        integer :: i
        double precision, external :: dnrm2
-       if(initialized)return
        if(allocated(lastrgeom))deallocate(lastrgeom)
        if(allocated(ldbounds))deallocate(ldbounds)
        if(allocated(udbounds))deallocate(udbounds)
