@@ -94,7 +94,7 @@ CONTAINS
        INTEGER,INTENT(IN) :: ncoord
        integer :: i
        double precision, external :: dnrm2
-
+       if(initialized)return
        if(allocated(lastrgeom))deallocate(lastrgeom)
        if(allocated(ldbounds))deallocate(ldbounds)
        if(allocated(udbounds))deallocate(udbounds)
@@ -682,10 +682,10 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     if(molden_p>0.and.NEval-m_start>nrec*molden_p.and.parsing)then
       ! output molden geometries
       nrec=nrec+1
-      write(MUnit,'(I3,A)') natoms,"/coord "
-      write(MUnit,'(I3,A)') nrec,"/current iter "
+      write(MUnit,'(I3,A)') natoms,"  /coord "
+      write(MUnit,'(I3,A)') nrec,"  /current iter "
       do i=1, natoms
-        write(MUnit,"('"//trim(adjustl(atomlabels(atoms(i))))//" ',3F11.6)") cgeom(i*3-2:i*3)*bohr2ang
+        write(MUnit,"(' "//trim(adjustl(atomlabels(atoms(i))))//" ',3F11.6)") cgeom(i*3-2:i*3)*bohr2ang
       end do
     end if!(molden_p>0.and.NEval-m_start>nrec*molden_p.and.parsing)
   end if!(parsing)
