@@ -715,21 +715,7 @@ CONTAINS
     end do!j
   end do!i
 
-PRINT *,"BEFORE"
-DO I=1,NSYMLINEUPS
-  PRINT *,"SYMMETRY LINEUP :",i
-  PRINT "(A,20I3)","PERM:",BPerm(:,i)
-  PRINT "(A,20I3)","PRTY:",BPrty(:,i)
-END DO
-
-   call sortBlkSymLists(nblks,nSymLineUps,BPerm,BPrty)
-
-PRINT *,"AFTER"
-DO I=1,NSYMLINEUPS
-  PRINT *,"SYMMETRY LINEUP :",i
-  PRINT "(A,20I3)","PERM:",BPerm(:,i)
-  PRINT "(A,20I3)","PRTY:",BPrty(:,i)
-END DO
+  call sortBlkSymLists(nblks,nSymLineUps,BPerm,BPrty)
 
    NBlockSym = 0
    do i=1,nblks

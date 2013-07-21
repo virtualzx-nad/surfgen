@@ -1,3 +1,9 @@
+## 2.5.12 (2013-07-21)
+
+* Distance output now calculates the RMS average distance per non-vanishing coordinates.   A new parameter `cvanish` is
+added and a coordinate is considered vanished when the norm of B-matrix elements of that coordinate is smaller than this value.
+Setting it to 0 will reproduce the old distance definition.
+
 ## 2.5.11 (2013-07-15)
 
 * Bug fix to prevent division by zero due to scaling function when distance is extremely large

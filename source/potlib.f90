@@ -83,8 +83,12 @@ MODULE potdata
 ! and report time spent in each of the sections in ms
      LOGICAL                                ::  timeEval
 
-! inner repulsive wall
-     DOUBLE PRECISION                              ::  pi
+! Threshold for a coordinate to be considered vanished.   Norm of B-matrix
+! elements is used to check if a coordinate is vanished.   The distance output
+! in trajdata file is the RMS distance over number of non-vanishing coordinates
+! at the current evaluation point.
+! Number of non-vanishing coordinates is also appended in the output file. 
+     DOUBLE PRECISION                       ::  cvanish
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -333,7 +337,6 @@ SUBROUTINE prepot
         write(MUnit,'(A)')" [GEOMETRIES] XYZ"
      end if
 
-     PI = DACOS(-1D0)
 ! initialize important variables
      print *," Initializing module potlib..."
      initialized = .true.
@@ -538,6 +541,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   double precision  ::  teval(7)
   double precision  ::  f,df(3*natoms)  !diagonal shift
   double precision,external  :: dnrm2
+  integer   ::  nc ! number of nonvanishing coordinates
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -628,19 +632,19 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end if!timeeval
 
 ! CHECK COM GRADIENTS
-  do i=1,nstates
-   comP = 0d0
-   do j=1,natoms
-     comP = comp+cgrads(j*3-2:j*3,i,i)
-   end do!j
-   if(sqrt(dot_product(comP,comP))>1D-9)then
-     print *,"electronic state:",i
-     print *,"CoM gradients:  ",comP
-     print *,"Cartesian Gradients: "
-     print "(2x,3F20.12)",cgrads(:,i,i)
-     stop "BUG:  CoM gradient not vanishing"
-   end if
-  end do
+!  do i=1,nstates
+!   comP = 0d0
+!   do j=1,natoms
+!     comP = comp+cgrads(j*3-2:j*3,i,i)
+!   end do!j
+!   if(sqrt(dot_product(comP,comP))>1D-9)then
+!     print *,"electronic state:",i
+!     print *,"CoM gradients:  ",comP
+!     print *,"Cartesian Gradients: "
+!     print "(2x,3F20.12)",cgrads(:,i,i)
+!     stop "BUG:  CoM gradient not vanishing"
+!   end if
+!  end do
   if(timeeval)then
     call system_clock(COUNT=count1)
     teval(7) = dble(count1-count2)/count_rate*1000
@@ -652,9 +656,18 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     write(str2,"(I4)") nstates
     if(GUNIT<0)call openTrajFile(0)
     if(calcmind.and.ndcoord>0)then
+       !get the number of nonvanishing coordinates
+       if(cvanish<=0)then
+          nc=ndcoord
+       else  
+          nc=0
+          do j=1,ndcoord
+            if(dnrm2(3*natoms,bmat(dcoordls(j),1),ncoord)>cvanish)nc=nc+1
+          end do
+       end if 
        !calculation minimum distances to all reference points
        call getmind(igeom,mind,ptid,eerr)
-       mind=mind/sqrt(dble(ndcoord))
+       mind=mind/sqrt(dble(nc))
        mdev = max(mdev,mind)
        fnorm = 0d0
        if(isurftraj<=nstates.and.isurftraj>0)then
@@ -666,13 +679,13 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
        if(calcerr)then
          write(GUNIT,&
            "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,"//&
-                                                        trim(str2)//"(',',F16.4),',',I3,"//trim(str2)//"(',',E16.8))"),&
+                                                        trim(str2)//"(',',F16.4),',',I3,"//trim(str2)//"(',',E16.8),I4)"),&
             timetraj,NEval,                cgeom,                         energy  ,  mind    , ptid,   eerr, isurftraj, &
-                       fnorm
+                       fnorm, nc
        else
          write(GUNIT,&
-           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"//trim(str2)//"(',',E16.8))"),&
-            timetraj, NEval,                 cgeom,                       energy  ,  mind   , ptid  , isurftraj,fnorm
+           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"//trim(str2)//"(',',E16.8),I4)"),&
+            timetraj, NEval,                 cgeom,                       energy  ,  mind   , ptid  , isurftraj,fnorm,nc
        end if
     else!calcmind
        write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3,"//trim(str2)//"(',',E16.8))"),&
@@ -682,7 +695,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
       ! output molden geometries
       nrec=nrec+1
       write(MUnit,'(I3,A)') natoms,"  /coord "
-      write(MUnit,'(I3,A)') nrec,"  /current iter "
+      write(MUnit,'(I5,A)') nrec,"  /current iter "
       do i=1, natoms
         write(MUnit,"(' "//trim(adjustl(atomlabels(atoms(i))))//" ',3F11.6)") cgeom(i*3-2:i*3)*bohr2ang
       end do
@@ -690,7 +703,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end if!(parsing)
   if(timeeval)then
     call system_clock(COUNT=count2)
-    teval(7) = dble(count2-count1)/count_rate*1000
+    teval(7) =teval(7)+ dble(count2-count1)/count_rate*1000
     print *,"Execution time of subroutines(ms)"
     print *," buildWBMat EvalRawTerms EvalHdDirect  int2cart   DSYEVR   DiagShift   analysis"
     print   "(7F11.3)",teval
@@ -797,7 +810,7 @@ SUBROUTINE readginput(jtype)
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
-  NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, &
+  NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, cvanish,&
                             mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
                             timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef,forig
 
@@ -812,6 +825,7 @@ SUBROUTINE readginput(jtype)
   jtype      = 0 
   natoms     = 2 
   printlvl   = 1 
+  cvanish    = 0d0
   inputfl    = ''
   eshift     = dble(0) 
   switchdiab = .false.
