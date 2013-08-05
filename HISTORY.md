@@ -1,3 +1,7 @@
+## 2.5.13 (2013-08-05)
+
+* Molecular information (atoms and number of states) are now written to the first record of trajectory log files 
+
 ## 2.5.12 (2013-07-21)
 
 * Distance output now calculates the RMS average distance per non-vanishing coordinates.   A new parameter `cvanish` is

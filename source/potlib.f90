@@ -266,6 +266,8 @@ END MODULE potdata
 !--------------------------------------------------------------------
 ! create the files corresponding to a new trajectory
 SUBROUTINE openTrajFile(itraj)
+  USE hddata, ONLY: nstates
+  USE progdata, ONLY: natoms,atoms
   USE potdata
   IMPLICIT NONE
   INTEGER,intent(IN)     ::  itraj
@@ -299,6 +301,9 @@ SUBROUTINE openTrajFile(itraj)
     write(MUnit,'(A)')" [GEOMETRIES] XYZ"
   end if !molden_p>0
 
+  write(str,"(I4)")natoms 
+  write(GUNIT,&
+           "(I5,',',I5,"//trim(adjustl(str))//"(',',A3))")natoms,nstates,atomlabels(atoms(1:natoms))
 END SUBROUTINE
 
 !---------------------------------------------------------------------
