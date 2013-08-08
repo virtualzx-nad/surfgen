@@ -2124,6 +2124,10 @@ SUBROUTINE makesurf()
   
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision  :: NaN
+  character(3)                                    ::  str1, str2  ! # of ener and grad data
+
+
+
 
   if(printlvl>0)print *,"Entering makesurf"
   NaN  = 0
@@ -2467,7 +2471,7 @@ SUBROUTINE makesurf()
 
   if(printError)then
   !------------------------------------------------------------------
-  ! out fitting error to error.log and geom info to refgeom
+  ! output fitting error to error.log and geom info to refgeom
   !------------------------------------------------------------------
     uerrfl = getFLUnit()
     open(unit=uerrfl,file='error.log',access='sequential',form='formatted',&
@@ -2504,6 +2508,36 @@ SUBROUTINE makesurf()
       write(uerrfl,"(3F20.15)") dispgeoms(i)%cgeom
     end do
     close(uerrfl)
+  !------------------------------------------------------------------
+  !  generate fitinfo.csv which contains fitting info for each point
+  !  in csv format which can be read in by an analysis program 
+  !------------------------------------------------------------------
+! Output point destiny table
+    open(unit=uerrfl,file='fitinfo.csv',access='sequential',form='formatted',&
+       status='replace',action='write',iostat=ios)
+    if(ios/=0)then
+      print *,"Failed to open file fitinfo.csv for write."
+    else
+   ! write out header which contains the number of states and energy threshold
+      write(unit=uerrfl,fmt='(I8,F15.4)'),nstates,energyT(1)*au2cm1
+      ! format :
+      ! ID,weight,EnerInc,GrdInc,EnerErr,GrdErr
+      do i=1,npoints
+        write(unit=uerrfl,fmt='(I8,",",F12.6)',advance='no')i,ptWeights(i)
+        write(str1,"(I3)")  nstates+nstates*(nstates+1)/2
+        write(unit=uerrfl,fmt='('//str1//'(",",L))',advance='no'),(incener(i,j,j),j=1,nstates),&
+                ((incgrad(i,j,k),k=j,nstates),j=1,nstates)
+        write(str1,"(I3)")  nstates*2
+        write(unit=uerrfl,fmt='('//str1//'(",",E16.8))',advance='no'),&
+                ([dispgeoms(i)%energy(j,j),fitE(i,j,j)-dispgeoms(i)%energy(j,j)]*AU2CM1,j=1,nstates)
+        write(str1,"(I3)")  nstates*(nstates+1)
+        write(unit=uerrfl,fmt='('//str1//'(",",E16.8))',advance='no'),&
+                (([dnrm2(nvibs,dispgeoms(i)%grads(:,j,k),int(1)),&
+                  errGrad(i,j,k)],k=j,nstates),j=1,nstates)
+        write(unit=uerrfl,fmt='(A)') " "
+      end do
+      close(uerrfl)
+    endif
   end if
 
   if(printlvl>0)print *,"    deallocating arrays"

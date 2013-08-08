@@ -1,3 +1,8 @@
+## 2.5.14 (2013-08-08)
+
+* The program also generates a fitinfo.csv file when PrintError=.true.
+This file contains information needed to generate figures regarding the quality of fit.
+
 ## 2.5.13 (2013-08-05)
 
 * Molecular information (atoms and number of states) are now written to the first record of trajectory log files 
