@@ -2527,13 +2527,16 @@ SUBROUTINE makesurf()
         write(str1,"(I3)")  nstates+nstates*(nstates+1)/2
         write(unit=uerrfl,fmt='('//str1//'(",",L))',advance='no'),(incener(i,j,j),j=1,nstates),&
                 ((incgrad(i,j,k),k=j,nstates),j=1,nstates)
-        write(str1,"(I3)")  nstates*2
-        write(unit=uerrfl,fmt='('//str1//'(",",E16.8))',advance='no'),&
-                ([dispgeoms(i)%energy(j,j),fitE(i,j,j)-dispgeoms(i)%energy(j,j)]*AU2CM1,j=1,nstates)
-        write(str1,"(I3)")  nstates*(nstates+1)
-        write(unit=uerrfl,fmt='('//str1//'(",",E16.8))',advance='no'),&
-                (([dnrm2(nvibs,dispgeoms(i)%grads(:,j,k),int(1)),&
-                  errGrad(i,j,k)],k=j,nstates),j=1,nstates)
+        write(str1,"(I3)")  nstates
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+                (dispgeoms(i)%energy(j,j)*AU2CM1,j=1,nstates)
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+                ((fitE(i,j,j)-dispgeoms(i)%energy(j,j))*AU2CM1,j=1,nstates)
+        write(str1,"(I3)")  nstates*(nstates+1)/2
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+                ((dnrm2(nvibs,dispgeoms(i)%grads(:,j,k),int(1)),k=j,nstates),j=1,nstates)
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+                (( errGrad(i,j,k),k=j,nstates),j=1,nstates)
         write(unit=uerrfl,fmt='(A)') " "
       end do
       close(uerrfl)
