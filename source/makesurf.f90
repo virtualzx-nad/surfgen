@@ -137,6 +137,9 @@ MODULE makesurfdata
 ! energy above which gradients will be automatically removed from fitting
 ! equations
   DOUBLE PRECISION  :: gradcutoff
+! energy above which couplings with this state will be removed from fitting
+! equations.  when <=0, value of gradcutoff is used instead
+  DOUBLE PRECISION  :: cpcutoff
 
 ! scaling factors to exact equations
   logical,dimension(:,:,:),allocatable       :: incgrad,g_exact
@@ -215,7 +218,9 @@ MODULE makesurfdata
       if(ptWeights(i)>1D-8.or.orderall==.false.)then
         do s1=1,nstates
           do s2=1,s1
-            if(dispgeoms(i)%energy(s1,s1)<gradcutoff)incgrad(i,s1,s2)=hasGrad(i,s1,s2)
+            if( ( dispgeoms(i)%energy(s1,s1)<gradcutoff ) .and.  &
+                ( (s1.eq.s2) .or.  (dispgeoms(i)%energy(s1,s1)<cpcutoff) )) &
+                                incgrad(i,s1,s2)=hasGrad(i,s1,s2)
           end do
           incener(i,s1,s1)=hasEner(i,s1)
           if(i==enfDiab)incener(i,:,:)=.true.
@@ -2815,10 +2820,11 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff
+                      gradcutoff,cpcutoff
                       
   npoints   = 0
-  gradcutoff=100000
+  gradcutoff= 100000.
+  cpcutoff  = -1.
   printError= .false.
   maxiter   = 3
   orderall  = .true.
@@ -2894,6 +2900,8 @@ SUBROUTINE readMakesurf(INPUTFL)
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
   gradcutoff = gradcutoff/ AU2CM1
+  cpcutoff   = cpcutoff  / AU2CM1
+  If(cpcutoff<=0)cpcutoff=gradcutoff
   if(nstates>nstates.or.nstates<1)nstates=nstates
 END SUBROUTINE readMakesurf
 

@@ -1,3 +1,9 @@
+## 2.5.15 (2013-08-08)
+
+* New option `cpcutoff` now allows couplings to be automatically removed above a set energy. 
+works in a similar way as `gradcutoff`.  It is used to set the couplings cut off energy to be 
+a different value from that of gradients.   If not set, the gradient cut off will be used instead.
+
 ## 2.5.14 (2013-08-08)
 
 * The program also generates a fitinfo.csv file when PrintError=.true.
