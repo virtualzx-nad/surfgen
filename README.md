@@ -87,6 +87,10 @@ A library is built with `ifort` with static link to LAPACK/BLAS on CentOS 6.  It
 If you cannot file a working binary or library, it will only take you a few minutes to build them
 from source code, located in `source` directory.  See the following sections for compilation guides.
 
+* Stacksize
+
+Please set stacksize to unlimited to allow execution for larger systems.
+
 Compiling the Fitting Program
 -----------------------------
 

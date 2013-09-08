@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.5.15
+SGENVER := 2.5.17
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -156,11 +156,19 @@ ifndef LIBS
        PS2PDF := /sw/bin/ps2pdf
     else
        $(info BLAS_LIB not set.  Trying to determine LAPACK link options...)
-       #BLAS_LIB is not set.  check LD_LIBRARY_PATH for mkl
-       ifneq ($(findstring mkl,$(LD_LIBRARY_PATH)),)
-          $(info Found mkl in LD_LIBRARY_PATH. Using dynamic link to MKL.)
-        LIBS := -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lpthread -lm
-       endif #ifneq mkl,LD_...
+       #BLAS_LIB is not set.  check MKL_HOME and LD_LIBRARY_PATH for mkl
+       ifdef MKL_HOME
+         $(info Using path specified by MKL_HOME variable)
+         MKLROOT=$(MKL_HOME)
+         BLAS_LIB:=-Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_ilp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
+                 $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
+         LIBS:=$(BLAS_LIB)
+       else
+         ifneq ($(findstring mkl,$(LD_LIBRARY_PATH)),)
+            $(info Found mkl in LD_LIBRARY_PATH. Using dynamic link to MKL.)
+            LIBS := -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -lpthread -lm
+          endif #ifneq mkl,LD_...
+       endif #ifdef MKL_HOME
     endif #OS==Darwin
   endif #is on hopper.nersc.gov
  else

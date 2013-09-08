@@ -364,6 +364,17 @@ CONTAINS
                 end if ! count(...)==2
             end do !k
 
+        !antisymmetric bend
+         case(2)
+           call reorderABend(pmtList(i,CoordSet(m)%coord(:,n)),newCoord,sgn)
+           do k=1,CoordSet(m)%ncoord
+             if(all(newCoord.eq.CoordSet(m)%coord(:,k)))then
+               coordPerm(i,j) = CoordSet(m)%icoord(k)
+               sgnCPerm(i,j)  = sgn
+               exit
+             end if ! count(...)==4
+           end do ! k
+
        ! Others are not implemented yet
          case default
            print *," Type = ",CoordSet(m)%Type

@@ -1,3 +1,12 @@
+## 2.5.17 (2013-09-08)
+
+* Slightly modified makefile to enable automatic detection based on $MKL_HOME variable
+* Size of test decreased to more reasonable level.
+
+## 2.5.16 (2013-09-01)
+
+* New coordinate type anti-symmetric bend (type=1) added to describe bendings of atoms attached to a ring or chain
+
 ## 2.5.15 (2013-08-08)
 
 * New option `cpcutoff` now allows couplings to be automatically removed above a set energy. 

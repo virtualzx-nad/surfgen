@@ -238,14 +238,36 @@ SUBROUTINE readCoords()
         deallocate(tmpCoord)
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-!           Torsion angle coordinates and their periodic scalings
+!        anti-symmetric bends 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
       case (2) ! torsion A1-A2-A3-A4.   %atom = A1, A2, A3, A4
+        ! allocate temporary coord set list
+        allocate(tmpCoord(4,nPmt))
+        CoordSet(i)%ncoord    = 0
+        do l=1,nPmt
+          rawCoord = pmtList(l,CoordSet(i)%atom)
+          call reorderABend(rawCoord,newcrd,prty)
+          ! look up if this coordinate is already defined in the list
+          found = .false.
+          do j=1,CoordSet(i)%ncoord
+                if(count(tmpCoord(:,j).eq.newcrd).eq.4)then
+                    found =.true.
+                    exit
+                end if
+          end do!j
 
-        CoordSet(i)%ncoord=0
-        ! TORSION NOT YET IMPLEMENTD
+          if(.not.found)then
+                CoordSet(i)%ncoord = CoordSet(i)%ncoord+1
+                tmpCoord(:,CoordSet(i)%ncoord) = newcrd
+          end if!.not.found
 
+        end do!l=1,nPmt
+
+        ! allocate coord list
+        allocate(CoordSet(i)%coord(4,CoordSet(i)%ncoord))
+        CoordSet(i)%coord = tmpCoord(:,1:CoordSet(i)%ncoord)
+        deallocate(tmpCoord)
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !                   Other types.  Should not get here
@@ -279,6 +301,9 @@ SUBROUTINE readCoords()
                 case (1) ! bend
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,3I3,3x)",advance="no") &
                         k,i,"bending",CoordSet(i)%Scaling,CoordSet(i)%coord(1:3,j)
+                case (2) ! abend
+                    write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3,4x)",advance="no") &
+                        k,i,"asymbnd",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)
                 case (-1) ! oop tetr
                     write (*,"(4x,I5,x,I4,x,A7,x,I6,x,4I3)",advance="no") &
                         k,i,"TetrOOP",CoordSet(i)%Scaling,CoordSet(i)%coord(1:4,j)

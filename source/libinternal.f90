@@ -132,6 +132,20 @@ SUBROUTINE reorderDot4(oldDot4,newDot4,parity)
   end if
 END SUBROUTINE reorderDot4
 
+!***********************************************************************
+! reorder atoms for anti-symmetric bends
+! only atoms 3 and 4 needs to be ordered
+SUBROUTINE reorderABend(oldAtms,newAtms,parity)
+  IMPLICIT NONE
+  INTEGER,DIMENSION(4),INTENT(IN)  :: oldAtms
+  INTEGER,DIMENSION(4),INTENT(OUT) :: newAtms
+  INTEGER,INTENT(OUT)              :: parity
+
+  parity = 1
+  newAtms=oldAtms
+  if(newAtms(3)>newAtms(4))call swapInd(newAtms(3),newAtms(4),parity)
+END SUBROUTINE
+
 !
 ! Builds a b-matrix given a set of internal coordinates definitions
 !
@@ -143,11 +157,11 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
   DOUBLE PRECISION,dimension(3*natoms),INTENT(IN)           :: cgeom
   DOUBLE PRECISION,dimension(ncoord),INTENT(OUT)            :: igeom
   DOUBLE PRECISION,dimension(ncoord,3*natoms),INTENT(OUT)   :: bmat
-  INTEGER                                       :: i,j,offs,m,n
+  INTEGER                                :: i,j,offs,m,n,atms(4),cmap(4)
 
 ! bval     Derivative of a unscaled coordinate with respect to cartesian 
 !            coordinates of the four reference atoms.
-  DOUBLE PRECISION     ::  bval(12), w(3), dwdR(3,12), dw(12),ss,fs,s(3)
+  DOUBLE PRECISION     ::  bval(12), w(3), dwdR(3,12), dw(12),ss,fs,s(3),igm
 
 ! intialize bmat
   bmat = 0d0
@@ -177,7 +191,6 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
         select case(CoordSet(m)%Scaling)
 
           case(0)  ! Reciprocal scaling   Det/(Product[rij])^a
-            bmat(i,:) = dble(0)
             call  oop(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,coordset(m)%coef(1))
             igeom(i) = igeom(i)*coordset(m)%coef(2)
             do j=1,4
@@ -186,7 +199,6 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
             end do!j=1,4
             
           case default  ! Exponential scaling using one of the linear scaling types.
-            bmat(i,:) = dble(0)
             call oop2(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,coordset(m)%coef(1),&
                                                     CoordSet(m)%Scaling,coordset(m)%coef(2))
             do j=1,4
@@ -199,7 +211,6 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !     Special OOP angles
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case(-2)  !special oop angles
-        bmat(i,:) = dble(0)
         if(CoordSet(m)%Scaling>0)then
             call  oop(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,5d-1)
             ! scaling with exponentials
@@ -233,7 +244,6 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
      case (-3) ! (a1-a2).(a3-a4)/norm(a1-a2)/norm(a3-a4) *scaling
         call dot4(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
                 Coordset(m)%coef,CoordSet(m)%Scaling)
-        bmat(i,:) = 0d0
         do j=1,4
             offs = 3*(CoordSet(m)%coord(j,n)-1)
             bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
@@ -243,12 +253,38 @@ SUBROUTINE buildWBmat(cgeom,igeom,bmat)
 !     Scaled bond angle
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       case (1) ! angle
-        bmat(i,:) = dble(0)
         call bend(natoms,CoordSet(m)%coord(1,n),cgeom,igeom(i),bval,&
                 coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
         do j=1,3
             offs = 3*(CoordSet(m)%coord(j,n)-1)
             bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+        end do!j=1,3
+
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!     Antisymmetric bendings of the following motion
+!                1 ->
+!                |
+!                2
+!              /   \
+!             3     4
+!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      case(2)
+        cmap=[1,3,2,4]
+        atms=CoordSet(m)%coord(cmap,n) 
+        call bend(natoms,atms,cgeom,igeom(i),bval,&
+                coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
+        do j=1,3
+            offs = 3*(CoordSet(m)%coord(cmap(j),n)-1)
+            bmat(i,offs+1:offs+3) =  bval(3*j-2:3*j)
+        end do!j=1,3
+        cmap=[1,4,2,3]
+        atms=CoordSet(m)%coord(cmap,n) 
+        call bend(natoms,atms,cgeom,igm,bval,&
+                coordset(m)%coef(1),CoordSet(m)%Scaling,coordset(m)%coef(2))
+        igeom(i)=igeom(i)-igm
+        do j=1,3
+            offs = 3*(CoordSet(m)%coord(cmap(j),n)-1)
+            bmat(i,offs+1:offs+3) = bmat(i,offs+1:offs+3)-bval(3*j-2:3*j)
         end do!j=1,3
 
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

@@ -2524,14 +2524,14 @@ SUBROUTINE makesurf()
       print *,"Failed to open file fitinfo.csv for write."
     else
    ! write out header which contains the number of states and energy threshold
-      write(unit=uerrfl,fmt='(I8,F15.4)'),nstates,energyT(1)*au2cm1
+      write(unit=uerrfl,fmt='(I8,",",F15.4)'),nstates,energyT(1)*au2cm1
       ! format :
       ! ID,weight,EnerInc,GrdInc,EnerErr,GrdErr
       do i=1,npoints
         write(unit=uerrfl,fmt='(I8,",",F12.6)',advance='no')i,ptWeights(i)
         write(str1,"(I3)")  nstates+nstates*(nstates+1)/2
         write(unit=uerrfl,fmt='('//str1//'(",",L))',advance='no'),(incener(i,j,j),j=1,nstates),&
-                ((incgrad(i,j,k),k=j,nstates),j=1,nstates)
+                ((incgrad(i,j,k).or.incgrad(i,k,j),k=j,nstates),j=1,nstates)
         write(str1,"(I3)")  nstates
         write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
                 (dispgeoms(i)%energy(j,j)*AU2CM1,j=1,nstates)
