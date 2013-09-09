@@ -601,7 +601,7 @@ MODULE makesurfdata
       do k=1,nstates
         ovlp(k) = abs(dot_product(cklPrev(:,k),ckl(i,:,k)))
       end do!k
-      if(sum(cklPrev**2)>8d-1.and.minval(ovlp)<8d-1)then
+      if(sum(cklPrev**2)>8d-1.and.minval(ovlp)<8d-1.and.printlvl>1)then
         print "(A,I5)","small overlap between iterations at pt ",i
         print *,"before:"
         do k=1,nstates
