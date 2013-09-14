@@ -1,3 +1,9 @@
+## 2.6.0 (2013-09-13)
+
+* Updated Makefile for smoother compilation on NERSC (tested for Hopper, Edison II and Carver)
+* Minor modifications that allows compilation on Cray fortran compilers
+* Fixed a few use-before-initialization bugs.
+
 ## 2.5.17 (2013-09-08)
 
 * Slightly modified makefile to enable automatic detection based on $MKL_HOME variable

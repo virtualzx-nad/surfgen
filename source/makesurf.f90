@@ -215,7 +215,7 @@ MODULE makesurfdata
     do i=1,npoints
       if(abs(ptWeights(i)-1)>1d-5.and.printlvl>1) &
          print "(A,I6,A,F9.4,A,I6)","point ",i," weight=",ptWeights(i), " nvibs=",dispgeoms(i)%nvibs
-      if(ptWeights(i)>1D-8.or.orderall==.false.)then
+      if(ptWeights(i)>1D-8.or.   .not.orderall)then
         do s1=1,nstates
           do s2=1,s1
             if( ( dispgeoms(i)%energy(s1,s1)<gradcutoff ) .and.  &
@@ -310,7 +310,7 @@ MODULE makesurfdata
     do s1 = 1,nstates
       write(enerfate(s1),"(X,I2,X)") s1
       do s2= 1,s1     
-        write(gradfate(ng),"(x,I2,',',I2,x)"),s1,s2
+        write(gradfate(ng),"(x,I2,',',I2,x)")s1,s2
         ng= ng + 1
       end do !s2
     end do !s1
@@ -699,7 +699,7 @@ MODULE makesurfdata
       print *,"   Constructing normal equations"
       write (*,'(4x)',advance='no')
       do i=1,bars
-        write(*,'(a)',advance='no'),"_"
+        write(*,'(a)',advance='no')"_"
       end do
       print *,""
       write (*,'(a,$)')"    "
@@ -729,7 +729,7 @@ MODULE makesurfdata
       if(printlvl>0)then
         pc = i*bars/npoints  ! check percentage finished and print out to screen
         if(pc>pc_last)then
-           write(*,"(A,$)"),'>'
+           write(*,"(A,$)")'>'
            pc_last = pc
         end if!pc>pc_last
       end if!printlvl>0
@@ -1541,7 +1541,7 @@ MODULE makesurfdata
     do i=1,npoints
         write(7421,"(I7)")I
         do j=1,nstates
-           write(7421,"(81E32.24)"),ckl(i,:,J)
+           write(7421,"(81E32.24)")ckl(i,:,J)
         end do!j
     end do!i=1,npoints
     print "(2A)"," wave functions exported to file ",trim(adjustl(cklfl))
@@ -1691,7 +1691,7 @@ MODULE makesurfdata
         cycle
     end if
     call system_clock(COUNT=count2)
-    if(printlvl>1)write(*,"(A)",advance='no'),"   Evaluating primitive basis... "
+    if(printlvl>1)write(*,"(A)",advance='no')"   Evaluating primitive basis... "
 ! pbas contains the values and gradients of all primitive basis matrices.
 !   row number is the index for surface quantities, looping through blocks>point>energy,each gradient component
 ! pbasw are equations weighed by 
@@ -1737,7 +1737,7 @@ MODULE makesurfdata
     ! dmat is the dot product (overlap) matrix of primitive basis matrices on the space spanned by the aforementioned
     !   surface quantities.   dmat=pbasw^T.pbasw
         allocate(dmat(npb(k),npb(k)))
-        if(printlvl>1)write(*,"(A)",advance='no'),"   Constructing and diagonalizing intermediate basis overlap matrix..."
+        if(printlvl>1)write(*,"(A)",advance='no')"   Constructing and diagonalizing intermediate basis overlap matrix..."
         CALL DSYRK('U','T',npb(k),npoints*(nvibs+1)*ll*rr,dble(1),pbasw,&
              npoints*(nvibs+1)*ll*rr,dble(0),dmat,npb(k))
         deallocate(pbasw)
@@ -1788,7 +1788,7 @@ MODULE makesurfdata
         deallocate(eval)
 
     ! get the values and gradients in the transformed basis
-        if(printlvl>1)write(*,"(A)",advance='no'),"   Generating values and gradients in transformed basis..." 
+        if(printlvl>1)write(*,"(A)",advance='no')"   Generating values and gradients in transformed basis..." 
         pv1 = npoints*(1+nvibs)*ll*rr
     ! generate new coefficient matrix in the basis.  WMat = pbas.ZBas
         allocate(WMat(k)%List(pv1,nb))
@@ -2212,7 +2212,7 @@ SUBROUTINE makesurf()
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
      c1=""
-     write(c1,"(I4)"),iter
+     write(c1,"(I4)")iter
      fn = trim(restartdir)//'/hd.data.'//trim(adjustl(c1))
      if(printlvl>1)print "(A)","  Exporting Hd coefficients to "//fn
      call tranHd('B',asol1,hvec)                ! convert hd to nascent basis
@@ -2279,7 +2279,7 @@ SUBROUTINE makesurf()
    ! scaling the whole displacement vector is larger than the maximum size
    if(nrmD>maxd)then
        if(printlvl>0)print "(2(A,E12.5))","  Displacement vector scaled from",nrmD," to ",maxD
-       dsol=dsol*maxD/nrmD
+       dsol=dsol*(maxD/nrmD)
        nrmD = maxD
    end if 
    if(linSteps<=0)then
@@ -2435,11 +2435,11 @@ SUBROUTINE makesurf()
   print *," Weighed Error Norms for Energy Gradients and Couplings"
   print *," Gradients are given in the following order:"
   print "(10(I4,'-',I4,',',4X),I4,'-',I4)",(((/j,k/),k=1,j),j=1,nstates)
-  write(fmt,'("(A,2X,A,2X,",I2,"A)")'),(nstates+1)*nstates
+  write(fmt,'("(A,2X,A,2X,",I2,"A)")')(nstates+1)*nstates
   print trim(fmt)," PT ","  WT  ",(("   ErrG  ",k=1,j),j=1,nstates),&
                            ((" Ab Grd  ",k=1,j),j=1,nstates)
   fmt=""
-  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(2(X,E11.4),2x))")'),(nstates+1)*nstates/2
+  write(fmt,'("(I5,2X,F6.3,2X,",I2,"(2(X,E11.4),2x))")')(nstates+1)*nstates/2
   do i=1,npoints
     do k=1,nstates
       dener(k,k)=1D0
@@ -2456,7 +2456,7 @@ SUBROUTINE makesurf()
   print *,""
   print "(A)","Fit and and ab initio g and h vectors between each pairs of states and their errors"
   fmt=""
-  write(fmt,'("(I5,2X,",I2,"(3(X,E11.4),2X))")'),(nstates-1)*nstates/2
+  write(fmt,'("(I5,2X,",I2,"(3(X,E11.4),2X))")')(nstates-1)*nstates/2
   print *,"h vector: (err,fit,ab)"
   do i=1,npoints
     print trim(fmt),i,( (errGradh(i,j,k),k=1,j-1) ,j=1,nstates),&
@@ -2524,23 +2524,23 @@ SUBROUTINE makesurf()
       print *,"Failed to open file fitinfo.csv for write."
     else
    ! write out header which contains the number of states and energy threshold
-      write(unit=uerrfl,fmt='(I8,",",F15.4)'),nstates,energyT(1)*au2cm1
+      write(unit=uerrfl,fmt='(I8,",",F15.4)')nstates,energyT(1)*au2cm1
       ! format :
       ! ID,weight,EnerInc,GrdInc,EnerErr,GrdErr
       do i=1,npoints
         write(unit=uerrfl,fmt='(I8,",",F12.6)',advance='no')i,ptWeights(i)
         write(str1,"(I3)")  nstates+nstates*(nstates+1)/2
-        write(unit=uerrfl,fmt='('//str1//'(",",L))',advance='no'),(incener(i,j,j),j=1,nstates),&
+        write(unit=uerrfl,fmt='('//str1//'(",",L))',advance='no')(incener(i,j,j),j=1,nstates),&
                 ((incgrad(i,j,k).or.incgrad(i,k,j),k=j,nstates),j=1,nstates)
         write(str1,"(I3)")  nstates
-        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 (dispgeoms(i)%energy(j,j)*AU2CM1,j=1,nstates)
-        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 ((fitE(i,j,j)-dispgeoms(i)%energy(j,j))*AU2CM1,j=1,nstates)
         write(str1,"(I3)")  nstates*(nstates+1)/2
-        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 ((dnrm2(nvibs,dispgeoms(i)%grads(:,j,k),int(1)),k=j,nstates),j=1,nstates)
-        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no'),&
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 (( errGrad(i,j,k),k=j,nstates),j=1,nstates)
         write(unit=uerrfl,fmt='(A)') " "
       end do

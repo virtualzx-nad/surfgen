@@ -585,6 +585,9 @@ SUBROUTINE oop2(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
 ! calculate displacement vectors between these atoms
   dvecs=matmul(sgns,geom)
+  do i=1,6
+    dnorm2(i)=dot_product(dvecs(i,:),dvecs(i,:))
+  end do
 
 ! calculate value of unscaled OOP angle and its derivatives
   fval=det3(dvecs(1,1),6)
@@ -734,6 +737,9 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
 
 ! calculate displacement vectors between these atoms
   dvecs=matmul(sgns,geom)
+  do i=1,6
+    dnorm2(i)=dot_product(dvecs(i,:),dvecs(i,:))
+  end do
 
 ! calculate value of unscaled OOP coordinate and its derivatives
   fval=det3(dvecs(1:3,:))

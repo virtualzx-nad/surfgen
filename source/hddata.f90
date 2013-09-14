@@ -461,8 +461,9 @@ CONTAINS
    DOUBLE PRECISION,DIMENSION(ncoord),INTENT(IN)           :: geom
    DOUBLE PRECISION,DIMENSION(nstates,nstates),INTENT(OUT) :: hmat
    type(T3DDList),DIMENSION(0:order,nblks)     :: dval
-   integer,dimension(0)                        :: dlist
+   integer,dimension(1)                        :: dlist
    CALL EvalRawTerms(geom)
+   dlist = 0
    CALL EvaluateBasis(0,dlist,dval)
    CALL EvaluateHd(0,dval,hmat)
    CALL deallocDVal(dval)

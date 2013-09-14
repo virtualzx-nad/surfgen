@@ -102,7 +102,7 @@
       end do
     end do ! n1=1,nstates
     if(ptdata%nvibs<3*natoms-6.or.printlvl>1)then
-      write(str,'(I3)'),3*natoms
+      write(str,'(I3)') 3*natoms
       print "(7X,A,"//trim(str)//"F7.3)","scaling factors of local coordinates: ",ptdata%scale
       print *,"      nvibs = ",ptdata%nvibs
       if(ptdata%nvibs<3*natoms-6) then

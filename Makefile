@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER := 2.5.17
+SGENVER := 2.6.0 
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -70,11 +70,18 @@ PDFMN  := $(addprefix $(MANDIR)/man1/,$(PDFsrc))
 CPLIST := g95 pgf90 /usr/bin/gfortran gfortran 
 ifdef FC  #use predefined fortran compiler
   COMPILER := $(FC)
-  $(info Using Fortran compiler : $(FC))
+  $(info Using supplied Fortran compiler : $(FC))
 else       #find default compilers
   ifdef NERSC_HOST
-    FC = ifort
-    COMPILER = ifort
+    $(info Running on NERSC)
+    ifeq ($(NERSC_HOST),hopper)
+      $(info System : hopper) 
+      FC=ftn
+      COMPILER=ftn
+    else
+      FC = ifort
+      COMPILER = ifort
+    endif
   else
     $(error Compiler NOT defined! Please set it with variable FC)
   endif
@@ -138,16 +145,31 @@ ifndef LIBS
   ifdef NERSC_HOST  
     # On NERSC.   Define proper MKL library pathes for hopper and carver
     ifeq ($(NERSC_HOST),hopper)
-      MKLROOT=/opt/intel/composer_xe_2013.1.117/mkl
+      $(info Setting LAPACK flags with Hopper)
+      MKLROOT=
+      BLAS_LIB=
+      LIBS=
+      FC=ftn
+      CPOPT=
+      FFLAGS=
+      LDFLAGS=
     else
+      ifeq ($(NERSC_HOST),edison)
+        BLAS_LIB:=-Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_ilp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
+            $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
+        LIBS:=$(BLAS_LIB)
+        FFLAGS:=-openmp -i8 -I$(MKLROOT)/include
+        LDFLAGS:=-openmp
+      else
     # i am assuming carver here.   
-      MKLROOT=/usr/common/usg/intel/13.0.028/composer_xe_2013.1.117/mkl
+        MKLROOT=/usr/common/usg/intel/13.0.028/composer_xe_2013.1.117/mkl
+        BLAS_LIB:=-Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_ilp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
+            $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
+        LIBS:=$(BLAS_LIB)
+        FFLAGS:=-openmp -i8 -I$(MKLROOT)/include
+        LDFLAGS:=-openmp
+      endif
     endif
-    BLAS_LIB:=-Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_ilp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a \
-          $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm
-    LIBS:=$(BLAS_LIB)
-    FFLAGS:=-openmp -i8 -I$(MKLROOT)/include
-    LDFLAGS:=-openmp
   else
     ifeq ($(OS),Darwin)  
        #on mac, use frameworks
@@ -175,10 +197,6 @@ ifndef LIBS
     LIBS := $(BLAS_LIB)
  endif #BLAS_LIB
 endif #ifndef $LIBS
-ifndef LIBS
-  $(info Warning:  Lapack library link line options not determined. \
-     Use variable LIBS or BLAS_LIB to define these libraries.)
-endif
 
     RM := rm -rf
 
@@ -284,7 +302,7 @@ man : $(PDFPG)
 $(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS)
+	$(CDS) $(COMPILER) -c -o $@  $(CPOPT) $(DEBUGFLAG) $(FFLAGS) $<
 	@echo 'Finished building: $<'
 	@echo ' '
 
@@ -292,7 +310,7 @@ $(SDIR)/%.o : $(SDIR)/%.f90
 $(SDIR)/%.o : $(SDIR)/%.F90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	$(CDS) $(COMPILER) -c -o $@ $< $(CPOPT) $(DEBUGFLAG) $(FFLAGS) -DSGENVER=\"$(SGENVER)\"
+	$(CDS) $(COMPILER) -c -o $@ $(CPOPT) $(DEBUGFLAG) $(FFLAGS) -DSGENVER=\"$(SGENVER)\" $<
 	@echo 'Finished building: $<'
 	@echo ' '
 # Compile version string subroutine

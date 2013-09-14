@@ -684,16 +684,16 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
        if(calcerr)then
          write(GUNIT,&
            "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,"//&
-                                                        trim(str2)//"(',',F16.4),',',I3,"//trim(str2)//"(',',E16.8),',',I4)"),&
+                                                        trim(str2)//"(',',F16.4),',',I3,"//trim(str2)//"(',',E16.8),',',I4)")&
             timetraj,NEval,                cgeom,                         energy  ,  mind    , ptid,   eerr, isurftraj, &
                        fnorm, nc
        else
          write(GUNIT,&
-           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"//trim(str2)//"(',',E16.8),',',I4)"),&
+           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"//trim(str2)//"(',',E16.8),',',I4)")&
             timetraj, NEval,                 cgeom,                       energy  ,  mind   , ptid  , isurftraj,fnorm,nc
        end if
     else!calcmind
-       write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3,"//trim(str2)//"(',',E16.8))"),&
+       write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3,"//trim(str2)//"(',',E16.8))")&
                   timetraj,   NEval                ,  cgeom                    ,  energy   , isurftraj, fnorm
     end if !calcmind
     if(molden_p>0.and.NEval-m_start>nrec*molden_p.and.parsing)then
