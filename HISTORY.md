@@ -1,3 +1,9 @@
+## 2.6.1 (2013-09-20)
+
+Built-in evaluation counters added and is incremented on every EvaluateSurfgen calls.    
+To retrieve the evaluation count, use GetEvalCount(count) subroutine.
+The counter can be reset with the method ResetEvalCount().
+
 ## 2.6.0 (2013-09-13)
 
 * Updated Makefile for smoother compilation on NERSC (tested for Hopper, Edison II and Carver)

@@ -89,6 +89,10 @@ MODULE potdata
 ! at the current evaluation point.
 ! Number of non-vanishing coordinates is also appended in the output file. 
      DOUBLE PRECISION                       ::  cvanish
+    
+! EvalCount stores the evaluation counts.   
+! Use ResetEvalCount() and GetEvalCount() to reset and retrieve the counter
+     INTEGER                                ::  EvalCount
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -261,6 +265,17 @@ CONTAINS
     call getdist(currgeom,rgeom(ptid,:),d,ptid,eerr)
     eerr = eerr *AU2CM1
   END SUBROUTINE getmind
+!--------------------------------------------------------------------
+! Reset the evaluation counter
+  SUBROUTINE ResetEvalCount()
+     EvalCount = 0
+  END SUBROUTINE ResetEvalCount
+!--------------------------------------------------------------------
+! Retrieve the evaluation counter
+  SUBROUTINE GetEvalCount(count)
+     INTEGER,INTENT(OUT)  :: count
+     count= EvalCount
+  END SUBROUTINE GetEvalCount
 END MODULE potdata
 
 !--------------------------------------------------------------------
@@ -271,13 +286,16 @@ SUBROUTINE openTrajFile(itraj)
   USE potdata
   IMPLICIT NONE
   INTEGER,intent(IN)     ::  itraj
-
+  integer cnt
   character(4)   ::  str
 
 ! output analysis of previous trajectories.
   if(itraj>0.and.mdev>0)then
     print "(A,I4,A,E10.3)","Maximum deviation for trajectory ",itraj," : ",mdev 
     mdev = -1D0
+    call GetEvalCount(cnt)
+    print "(A,I8,A)","Last trajectory finished with ",cnt," evaluations. "
+    call ResetEvalCount()
   end if
 
   write(str,"(I4)")itraj 
@@ -349,6 +367,8 @@ SUBROUTINE prepot
      nrec        = 0
      call init(ncoord)
      print *," Initialization complete."
+    
+     call ResetEvalCount()
      return
 END SUBROUTINE prepot
 !---------------------------------------------------------------------
@@ -558,6 +578,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     stop "Execution aborted."
   end if
 
+  EvalCount = EvalCount+1
   if(timeeval) call system_clock(COUNT=count1,COUNT_RATE=count_rate)
   call buildWBMat(cgeom,igeom,bmat,.false.)
   if(timeeval)then
