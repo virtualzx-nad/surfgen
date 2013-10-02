@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.6.1
+SGENVER :=2.6.2
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -90,6 +90,7 @@ endif
 # set up product name
 EXEC  := $(BDIR)/surfgen-$(SGENVER)-$(OS)-$(ARC)
 LIBF  := $(LDIR)/libsurfgen-$(SGENVER)-$(OS)-$(ARC).a
+DYLIBF:= $(LDIR)/surfgen.dylib
 TSTX  := $(TDIR)/test
 
 # set debugging flags
@@ -127,6 +128,9 @@ else
       CPOPT    := -fopenmp -O3
     else
       CPOPT    := -fopenmp -O3 -m64
+    endif
+    ifdef DYNAMIC
+      CPOPT := $(CPOPT) -dynamic
     endif
     LKOPT    :=
    else
@@ -204,9 +208,10 @@ ifndef AR
     AR := ar
 endif
 
+LTOOL=libtool -dynamic -install_name libsurfgen -current_version $(SGENVER)  -undefined suppress -flat_namespace
 
 # build everything
-all  :  surfgen libs man tests
+all  :  surfgen libs tests
 	@echo 'Finished building surfgen.'
 	@echo ''
 
@@ -318,3 +323,18 @@ $(SDIR)/%.o : $(SDIR)/%.F90
 $(BDIR) $(LDIR) $(TDIR) $(DDIR):
 	@echo 'Creating directory $@'
 	@mkdir -p $@
+
+# Create Mac OS X dylib library
+dylib : $(OBJV) $(OBJSL) | $(LDIR)
+	@echo ''
+	@echo '-----------------------------------------'
+	@echo '  SURFGEN dylib LIBRARY for Max OS X'
+	@echo 'Program Version:     $(SGENVER)'
+	@echo 'Library Tool:        $(LTOOL)'
+	@echo 'Library File Name:   $(DYLIBF)'
+	@echo '-----------------------------------------'
+	@echo 'Building target: $@'
+	@echo 'Creating dynamic linked library'
+	$(CDS) $(LTOOL) -o $(DYLIBF) $(OBJSL)  $(OBJV) 
+	@echo ''
+

@@ -710,8 +710,9 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
                        fnorm, nc
        else
          write(GUNIT,&
-           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"//trim(str2)//"(',',E16.8),',',I4)")&
-            timetraj, NEval,                 cgeom,                       energy  ,  mind   , ptid  , isurftraj,fnorm,nc
+           "(F10.3,',',I7,',',"//trim(str)//"(F12.7,','),"//trim(str2)//"(E16.8,','),F12.8,',',I6,',',I3,"&
+			//trim(str2)//"(',',E16.8),',',I4)")&
+            timetraj, NEval,      cgeom,               energy  ,  mind   , ptid  , isurftraj,fnorm,nc
        end if
     else!calcmind
        write(GUNIT,"(F10.3,',',I7,"//trim(str)//"(',',F12.7),"//trim(str2)//"(',',E16.8),',',I3,"//trim(str2)//"(',',E16.8))")&

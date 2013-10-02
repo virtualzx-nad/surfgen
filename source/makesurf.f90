@@ -1035,7 +1035,8 @@ MODULE makesurfdata
                         dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)
              if(dcp>4d-2*ncp.and.dcp2>3d-2.and.printlvl>2.and.ncp>1d0.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))&
                         print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
-                        "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,"% out of ", sqrt(ncp),", ",dcp2*100,"% cp*dE"
+                        	"Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,&
+				"% out of ", sqrt(ncp),", ",dcp2*100,"% cp*dE"
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
            end if! coupling included
@@ -1063,9 +1064,11 @@ MODULE makesurfdata
                         ( dispgeoms(j)%grads(:nvpt,k,k)-fitG(j,:nvpt,k,k) )*dispgeoms(j)%scale(1:nvpt)  )
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
-             if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.printlvl>2.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3)) &
-                        print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
-                        "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
+             if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.&
+			printlvl>2.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))then
+               print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
+                  "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
+  	     end if
              if(gnrm>1D-4) then
                 nrmgrad = nrmgrad + dgrd
                 avggrad = avggrad + sqrt(dgrd)

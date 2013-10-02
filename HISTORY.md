@@ -1,3 +1,7 @@
+## 2.6.2 (2013-10-02)
+
+Compatibility on Mac OS X.  Build OS X dynamic libraries with target 'dylib' '
+
 ## 2.6.1 (2013-09-20)
 
 Built-in evaluation counters added and is incremented on every EvaluateSurfgen calls.    
