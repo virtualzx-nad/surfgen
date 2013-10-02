@@ -563,6 +563,7 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   INTEGER                                               :: i,j,k,GUNIT,ios
 
   GUNIT=getFLUnit()
+  print "(A,I4,2A)","unit of geom file = ",GUNIT,", filename=",trim(adjustl(gfile))
   open(unit=GUNIT,file=trim(adjustl(gfile)),access='sequential',form='formatted',&
       status='old',action='read',position='rewind',iostat=ios)
   if(ios/=0)then

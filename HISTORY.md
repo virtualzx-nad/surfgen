@@ -1,6 +1,10 @@
+## 2.6.3 (2013-10-02)
+
+Changed format string in potlib to allow parsing of longer propagation times.
+
 ## 2.6.2 (2013-10-02)
 
-Compatibility on Mac OS X.  Build OS X dynamic libraries with target 'dylib' '
+Compatibility on Mac OS X.  Build OS X dynamic libraries with target 'dylib' 
 
 ## 2.6.1 (2013-09-20)
 
