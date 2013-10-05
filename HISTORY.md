@@ -1,10 +1,20 @@
+## 2.6.4 (2013-10-05)
+
+* When making libraries with `make libs`, recommended compilation and link flags for the program to use surfgen evaluation libraries 
+will be printed out.   Two shell scripts, one for bash/sh one for csh/tcsh, will also be created in the `bin` directory that can be 
+* sourced to set these environment variables and adjust stack size settings. 
+PDF documentations now distributed with the repository.   
+* A critical point search program `findmin` is added to the utilities.  
+This program can be used to search for minima, saddle points, or conical intersections on the fit surface.
+* More documentations for utility programs, along with installation scripts for each of them
+
 ## 2.6.3 (2013-10-02)
 
 Changed format string in potlib to allow parsing of longer propagation times.
 
 ## 2.6.2 (2013-10-02)
 
-Compatibility on Mac OS X.  Build OS X dynamic libraries with target 'dylib' 
+Compatibility on Mac OS X.  Build OS X dynamic libraries with target `dylib` 
 
 ## 2.6.1 (2013-09-20)
 

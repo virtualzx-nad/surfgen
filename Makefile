@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.6.3
+SGENVER :=2.6.4
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -210,6 +210,7 @@ endif
 
 LTOOL=libtool -dynamic -install_name libsurfgen -current_version $(SGENVER)  -undefined suppress -flat_namespace
 
+SURFGENLIB= $(LDIR)/libsurfgen.a $(LIBS) $(LKOPT) $(LDFLAGS)
 # build everything
 all  :  surfgen libs tests
 	@echo 'Finished building surfgen.'
@@ -252,8 +253,34 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo '-----------------------------------------'
 	@echo 'Creating symbolic link to new library'
 	ln -sf $(LIBF) $(LDIR)/libsurfgen.a
+	@echo '-----------------------------------------'
+	@echo 'Compile and linking options:'
+	@echo 'To compile a program that use surfgen subroutines,'
+	@echo '* Compile with these options:' 
 	@echo ''
-
+	@echo '  $(CPOPT)'
+	@echo '' 
+	@echo '* Link link with these options :'
+	@echo ''
+	@echo '  $(SURFGENLIB)'
+	@echo ''
+	@echo '* You may also source the setsgenvar script in bin directory for your current shell.' 
+	@echo '  It will set up compilation options as $$SGENFLAG and link options as $$SGENLIB.'
+	@echo '  This shell script will also raise the stack limit.'
+	@echo '' #sh/bash source file for variable settings 
+	@echo '#!/bin/bash' > $(BDIR)/setsgenvars.sh 
+	@echo 'ulimit -s unlimited' >> $(BDIR)/setsgenvars.sh 
+	@echo '#Set surfgen compilation flags and link line options' >> $(BDIR)/setsgenvars.sh 
+	@echo "export SGENFLAG='$(CPOPT)'" >> $(BDIR)/setsgenvars.sh
+	@echo "export SGENLIB='$(SURFGENLIB)'" >> $(BDIR)/setsgenvars.sh
+	@echo "export SGENFC='$(COMPILER)'" >> $(BDIR)/setsgenvars.sh
+	@echo '' #csh/tcsh source file for variable settings 
+	@echo '#!/bin/tcsh' > $(BDIR)/setsgenvars.csh 
+	@echo 'set stacksize unlimited' >> $(BDIR)/setsgenvars.csh 
+	@echo '#Set surfgen compilation flags and link line options' >> $(BDIR)/setsgenvars.csh 
+	@echo "setenv SGENFLAG '$(CPOPT)'" >> $(BDIR)/setsgenvars.csh
+	@echo "setenv SGENLIB '$(SURFGENLIB)'" >> $(BDIR)/setsgenvars.csh
+	@echo "setenv SGENFC '$(COMPILER)'" >> $(BDIR)/setsgenvars.csh
 #
 clean:
 	-$(RM) $(OBJS) $(SDIR)/*.mod $(OBJSL) $(OBJT) $(OBJV) 

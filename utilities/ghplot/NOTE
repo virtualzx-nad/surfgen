@@ -1,3 +1,0 @@
-ghplot is a tool used to generate plots of the coupled potential energy surface and tabulate the information in comma separated input files.   along with energies, also recorded are the two geometrical parameters and the wave functions.
-
-To build the program simply use the Makefile.

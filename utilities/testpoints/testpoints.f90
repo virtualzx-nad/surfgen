@@ -1,4 +1,4 @@
-!testpt
+!testpoints
 !------
 !Point testing utility for surfgen.
 !
@@ -9,7 +9,7 @@
 !
 !This program uses surfgen evaluation library for construction and evaluation of
 !Hd, as well as geometry input. 
-program testpt
+program testpoints
   implicit none
   integer,parameter  ::  MaxGeoms = 10000,MaxAtoms=200
   character(255)     ::  geomfl 
@@ -21,7 +21,7 @@ program testpt
   DOUBLE PRECISION,dimension(:,:),allocatable  :: cgeoms,h
   double precision,dimension(:,:,:),allocatable:: cg,dcg
   print *,"-------------------------------------------------"
-  print *,"Entering testpt, a surfgen point testing utility"
+  print *,"Entering testpoints, a surfgen point testing utility"
   print *,""
   print *,"  This program is part of the surfgen program"
   print *,"  2013 Yarkony group, Johns Hopkins University"
@@ -81,4 +81,4 @@ program testpt
       end do!k
     end do!j
   end do!i
-end program testpt
+end program testpoints
