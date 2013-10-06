@@ -269,11 +269,15 @@ CONTAINS
  SUBROUTINE EvalRawTermsL(geom)
   IMPLICIT NONE
   DOUBLE PRECISION,DIMENSION(ncoord),INTENT(IN)             :: geom
-  integer                 :: i
+  integer                 :: i,j
 
   !evaluate the values of raw terms
   do i=1,order
-    TValL(i)%List = TValL(i-1)%List(pTermL(i)%List)*geom(pDirL(i)%List)/pCntL(i)%List
+!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(j)
+    do j=1,termList(i)%nTerms
+      TValL(i)%List(j) = TValL(i-1)%List(pTermL(i)%List(j))*geom(pDirL(i)%List(j))/pCntL(i)%List(j)
+    end do
+!$OMP END PARALLEL DO
   end do!i=1,order
  END SUBROUTINE EvalRawTermsL
 

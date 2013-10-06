@@ -1,5 +1,6 @@
 ## 2.6.6 (2013-10-06)
 
+* OpenMP parallelization for evaluation of raw terms.
 * New subroutine `finalizeSurfgen` in potlib.f90 that prints out the maximum deviation and evaluation count for the last trajectory
 
 ## 2.6.5 (2013-10-06)

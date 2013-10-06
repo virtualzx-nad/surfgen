@@ -279,7 +279,8 @@ CONTAINS
 END MODULE potdata
 
 !--------------------------------------------------------------------
-SUBROUTINE finializeSurfgen
+SUBROUTINE finalizeSurfgen()
+  USE potdata
   INTEGER   CNT
   if(mdev>0) print "(A,E10.3)","Maximum deviation of last trajectory:",mdev
   call GetEvalCount(cnt)
@@ -642,10 +643,6 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   evecstore=evec
-  if(timeeval)then
-    call system_clock(COUNT=count1)
-    teval(5) = dble(count1-count2)/count_rate*1000
-  end if!timeeval
 
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
@@ -660,29 +657,10 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end do
 
   if(timeeval)then
-    call system_clock(COUNT=count2)
+    call system_clock(COUNT=count1)
     teval(5) = teval(5)+dble(count2-count1)/count_rate*1000
   end if!timeeval
 
-! CHECK COM GRADIENTS
-!  do i=1,nstates
-!   comP = 0d0
-!   do j=1,natoms
-!     comP = comp+cgrads(j*3-2:j*3,i,i)
-!   end do!j
-!   if(sqrt(dot_product(comP,comP))>1D-9)then
-!     print *,"electronic state:",i
-!     print *,"CoM gradients:  ",comP
-!     print *,"Cartesian Gradients: "
-!     print "(2x,3F20.12)",cgrads(:,i,i)
-!     stop "BUG:  CoM gradient not vanishing"
-!   end if
-!  end do
-  if(timeeval)then
-    call system_clock(COUNT=count1)
-    teval(7) = dble(count1-count2)/count_rate*1000
-  end if!timeeval
- 
   if(parsing)then
     NEval=NEval+1
     write(str,"(I4)") natoms*3
