@@ -13,3 +13,6 @@ test/surfgen.out
 test/surfgen.log
 utilities/*/test
 utilities/*/*.x
+bin/setsgenvars.*
+source/*.o
+source/*.mod

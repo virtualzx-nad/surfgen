@@ -18,7 +18,7 @@ and an installation script.  Below is a list of all utility programs and their u
 | ----------------- | --------------------------------------- 
 |  testpoints       | Print out energies in adiabatic and diabatic representation at given geometries. 
 |  ghplot           | Output energy data on a grid along the branching coordinates from a given point  
-|  findcp           | Minima/saddle point/conical intersections search with frequency analysis         
+|  findcp           | Critical point (minima or saddle points) search with frequency analysis         
 
 Installation
 ------------

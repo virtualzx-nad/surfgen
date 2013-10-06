@@ -274,6 +274,12 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo "export SGENFLAG='$(CPOPT)'" >> $(BDIR)/setsgenvars.sh
 	@echo "export SGENLIB='$(SURFGENLIB)'" >> $(BDIR)/setsgenvars.sh
 	@echo "export SGENFC='$(COMPILER)'" >> $(BDIR)/setsgenvars.sh
+	@echo "export SGENDIR='$(BDIR)'" >> $(BDIR)/setsgenvars.sh
+	@echo 'if [[ '\"':$$PATH:'\"' =~ '\"':$$SGENDIR:'\"' ]]; then' >> $(BDIR)/setsgenvars.sh
+	@echo "  echo surfgen found in PATH variable">> $(BDIR)/setsgenvars.sh
+	@echo "else">> $(BDIR)/setsgenvars.sh
+	@echo '  export PATH=$$PATH:$$SGENDIR'>> $(BDIR)/setsgenvars.sh
+	@echo "fi" >> $(BDIR)/setsgenvars.sh
 	@echo '' #csh/tcsh source file for variable settings 
 	@echo '#!/bin/tcsh' > $(BDIR)/setsgenvars.csh 
 	@echo 'set stacksize unlimited' >> $(BDIR)/setsgenvars.csh 
@@ -281,6 +287,14 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo "setenv SGENFLAG '$(CPOPT)'" >> $(BDIR)/setsgenvars.csh
 	@echo "setenv SGENLIB '$(SURFGENLIB)'" >> $(BDIR)/setsgenvars.csh
 	@echo "setenv SGENFC '$(COMPILER)'" >> $(BDIR)/setsgenvars.csh
+	@echo "setenv SGENDIR '$(BDIR)'" >> $(BDIR)/setsgenvars.csh
+	@echo 'set found=`echo '\"'$$PATH'\"' | tr '\"':'\"' '\"'\n'\"' | grep -x '\"'$$SGENDIR'\"'`'>> $(BDIR)/setsgenvars.csh 
+	@echo 'if ( $${?found} == 0 ) then'>> $(BDIR)/setsgenvars.csh 
+	@echo '   setenv PATH '\"'$${PATH}:$${SGENDIR}'\" >> $(BDIR)/setsgenvars.csh
+	@echo 'else ' >> $(BDIR)/setsgenvars.csh
+	@echo '   echo surfgen found in PATH ' >> $(BDIR)/setsgenvars.csh
+	@echo 'endif' >> $(BDIR)/setsgenvars.csh
+
 #
 clean:
 	-$(RM) $(OBJS) $(SDIR)/*.mod $(OBJSL) $(OBJT) $(OBJV) 

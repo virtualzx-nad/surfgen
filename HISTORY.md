@@ -1,3 +1,9 @@
+## 2.6.5 (2013-10-06)
+
+* Updated `setsgenvars.sh` and `setsgenvars.csh` to set also the binary directory of surfgen as variable `SGENDIR`, and add surfgen directory to `PATH` variable if it is not already present.   
+* Updated `findcp` utility program to correctly search for critical points.  It now use command line options to set geometry input file and initial state, so that the source code will not need ot be modified for different searches.   
+* Utility programs will not be copied to binary directory upon installation.
+
 ## 2.6.4 (2013-10-05)
 
 * When making libraries with `make libs`, recommended compilation and link flags for the program to use surfgen evaluation libraries 
