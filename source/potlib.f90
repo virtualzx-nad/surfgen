@@ -279,6 +279,13 @@ CONTAINS
 END MODULE potdata
 
 !--------------------------------------------------------------------
+SUBROUTINE finializeSurfgen
+  INTEGER   CNT
+  if(mdev>0) print "(A,E10.3)","Maximum deviation of last trajectory:",mdev
+  call GetEvalCount(cnt)
+  print "(A,I8)","Evaluation count for last trajectory:",cnt
+END SUBROUTINE
+!--------------------------------------------------------------------
 ! create the files corresponding to a new trajectory
 SUBROUTINE openTrajFile(itraj)
   USE hddata, ONLY: nstates
