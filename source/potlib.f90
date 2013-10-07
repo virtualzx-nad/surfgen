@@ -556,7 +556,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   DOUBLE PRECISION,dimension(3*natoms,nstates,nstates),intent(OUT) ::  cgrads,dcgrads
   DOUBLE PRECISION,dimension(nstates),intent(OUT)                  ::  energy
 
-  double precision,dimension(nstates,nstates)              ::  evec,hmat2
+  double precision,dimension(nstates,nstates)              ::  evec,hmat2,dhtmp
   double precision,dimension(nstates)                      ::  eerr
   double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
   double precision,dimension(ncoord)                ::  igeom
@@ -574,7 +574,8 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   double precision  ::  teval(7)
   double precision  ::  f,df(3*natoms)  !diagonal shift
   double precision,external  :: dnrm2
-  integer   ::  nc ! number of nonvanishing coordinates
+  integer   :: nth, nc ! number of nonvanishing coordinates
+  integer,external  :: omp_get_max_threads
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -586,6 +587,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     stop "Execution aborted."
   end if
 
+  nth=omp_get_max_threads()
   EvalCount = EvalCount+1
   if(timeeval) call system_clock(COUNT=count1,COUNT_RATE=count_rate)
   call buildWBMat(cgeom,igeom,bmat,.false.)
@@ -610,12 +612,13 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
 
   ! convert gradients and couplings to cartesian coordinates
   dcgrads=dble(0) 
+!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(I,J,dhtmp)
   do i=1,3*natoms
     do j=1,ncoord
-      dcgrads(i,:,:)=dcgrads(i,:,:)+ dhmat(j,:,:)*bmat(j,i)
+      call daxpy(nstates*nstates,bmat(j,i),dhmat(j,1,1),ncoord,dcgrads(i,1,1),3*natoms)
     end do !j=1,ncoord
   end do !i=1,3*natoms
-
+!$OMP END PARALLEL DO
   if(timeeval)then
     call system_clock(COUNT=count1)
     teval(4) = dble(count1-count2)/count_rate*1000
@@ -638,11 +641,13 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     teval(6) = dble(count2-count1)/count_rate*1000
  end if!timeeval
 
+  call mkl_set_num_threads(1)
  ! generate eigenvectors and energies at current geometry
   hmat2 = hmat
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   evecstore=evec
+  call mkl_set_num_threads(nth)
 
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
@@ -651,14 +656,16 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     do j=i+1,nstates
       de=energy(j)-energy(i)
       if(abs(de)<1d-30)de=1d-30
-      cgrads(:,i,j) = cgrads(:,i,j)/de
-      cgrads(:,j,i) = cgrads(:,i,j)
+      call dscal(3*natoms,1/de,cgrads(1,i,j),1)
+      call dcopy(3*natoms,cgrads(1,i,j),1,cgrads(1,j,i),1)
+!      cgrads(:,i,j) = cgrads(:,i,j)/de
+!      cgrads(:,j,i) = cgrads(:,i,j)
     end do
   end do
 
   if(timeeval)then
     call system_clock(COUNT=count1)
-    teval(5) = teval(5)+dble(count2-count1)/count_rate*1000
+    teval(5) = dble(count1-count2)/count_rate*1000
   end if!timeeval
 
   if(parsing)then
@@ -715,7 +722,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end if!(parsing)
   if(timeeval)then
     call system_clock(COUNT=count2)
-    teval(7) =teval(7)+ dble(count2-count1)/count_rate*1000
+    teval(7) = dble(count2-count1)/count_rate*1000
     print *,"Execution time of subroutines(ms)"
     print *," buildWBMat EvalRawTerms EvalHdDirect  int2cart   DSYEVR   DiagShift   analysis"
     print   "(7F11.3)",teval
