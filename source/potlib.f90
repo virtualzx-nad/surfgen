@@ -641,13 +641,13 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
     teval(6) = dble(count2-count1)/count_rate*1000
  end if!timeeval
 
-  call mkl_set_num_threads(1)
+  call omp_set_num_threads(1)
  ! generate eigenvectors and energies at current geometry
   hmat2 = hmat
   CALL DSYEVR('V','A','U',nstates,hmat2,nstates,dble(0),dble(0),0,0,1D-15,m,&
             energy,evec,nstates,ISUPPZ,WORK,LWORK,IWORK,LIWORK, INFO )
   evecstore=evec
-  call mkl_set_num_threads(nth)
+  call omp_set_num_threads(nth)
 
   do i=1,3*natoms
     cgrads(i,:,:)=matmul(transpose(evec),matmul(dcgrads(i,:,:),evec))
