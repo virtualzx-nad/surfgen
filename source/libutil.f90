@@ -699,3 +699,107 @@ CONTAINS
     end if
   END FUNCTION getBetaHd
 END SUBROUTINE 
+!------------------------------------------------------------------------------
+! Rotate degenerate ab initio adiabatic data so that g and h vectors between any
+! pairs of two degenerate states are orthogonalized.  The rotation is made so that
+! total norm of off diagonal gradients (h vectors) is minimized.
+! This subroutine is used as interface for external programs. 
+!dh             : gradients in the current representation
+!h              : hamiltonian in the current representation
+!lstate,ustate  : range of degenerate states
+!nvibs          : vibrational degrees of freedom
+!
+!maxiter: maximum number of jacobi rotations
+!toler  : convergence tolerance for rotation angle beta
+!hasGrad: specifies if gradient/couple data is available for a block
+![method]
+! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
+! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
+! the norm of the corresponding coupling block rather than eliminating them.   
+SUBROUTINE OrthogonalizeGH(h,dh,lstate,ustate,nvibs,maxiter,toler)
+  USE hddata, only: nstates
+  USE progdata, only: abpoint,printlvl
+  IMPLICIT NONE
+  DOUBLE PRECISION,INTENT(INOUT),DIMENSION(nvibs,nstates,nstates) :: dh
+  DOUBLE PRECISION,INTENT(INOUT),DIMENSION(nstates,nstates)       :: h
+  INTEGER,INTENT(IN)                                    :: maxiter,lstate,ustate,nvibs
+  DOUBLE PRECISION,INTENT(IN)                           :: toler
+
+  integer           ::  i,j,iter
+  integer           ::  mi,mj  !location of maximum rotation
+  double precision, dimension(nvibs,nstates,nstates)    :: newgrad
+  double precision, dimension(nstates,nstates)          :: newener 
+  double precision, dimension(nstates,nstates)          :: beta   !required rotation 
+  double precision           :: max_b,t, c,s
+
+  beta=dble(0)  
+  max_b=-1
+  iter=0
+  !build normalized g and h vectors from Hd and compute rotation angles the first time
+  do i=lstate,ustate 
+      do j=lstate,i-1
+        beta(i,j) = getBeta(i,j)
+        if(abs(beta(i,j))>max_b)then
+          max_b=abs(beta(i,j))
+          mi=i
+          mj=j
+        end if!(abs(beta(i,j))>max_b)
+      end do!j=lstate,i-1
+    end do!i=lstate,ustate
+    do while(iter<maxiter.and.max_b>toler)
+      iter=iter+1
+      t=beta(mi,mj)
+      c = cos(t)
+      s = sin(t)
+! Gnew = J^T.G.J.   Gnew_ij=Jki*Gkl*Jlj
+      newgrad = dh 
+      newener = h
+      do i=1,nstates
+        newgrad(:,i,mi)=dh(:,i,mi)*c-dh(:,i,mj)*s
+        newgrad(:,i,mj)=dh(:,i,mj)*c+dh(:,i,mi)*s
+        newener(i,mi)=h(i,mi)*c-h(i,mj)*s
+        newener(i,mj)=h(i,mj)*c+h(i,mi)*s
+      end do
+      dh     = newgrad
+      h      = newener
+      do i=1,nstates
+        dh(:,mi,i)=newgrad(:,mi,i)*c-newgrad(:,mj,i)*s
+        dh(:,mj,i)=newgrad(:,mj,i)*c+newgrad(:,mi,i)*s 
+        h(mi,i)=newener(mi,i)*c-newener(mj,i)*s
+        h(mj,i)=newener(mj,i)*c+newener(mi,i)*s 
+      end do
+      !update rotation angles
+      do i=mj+1,ustate
+        beta(i,mj)=getBeta(i,mj)
+      end do
+      do j=lstate,mj-1
+        beta(mi,j)=getBeta(mi,j)
+      end do
+      do j=mj+1,mi-1
+        beta(mi,j)=getBeta(mi,j)
+      end do
+      max_b=-1
+      do i=lstate,ustate
+        do j=lstate,i-1
+          if(abs(beta(i,j))>max_b)then
+            max_b=abs(beta(i,j))
+            mi=i
+            mj=j
+          end if!(abs(beta(i,j))>max_b)
+        end do!j=lstate,i-1
+      end do!i=lstate,ustate 
+    end do!while(iter<maxiter.and.max_b>toler)do
+CONTAINS
+  FUNCTION getBeta(i,j) RESULT(beta)
+    USE progdata, only : abpoint,pi
+    IMPLICIT NONE
+    INTEGER,INTENT(IN)         :: i,j
+    DOUBLE PRECISION           :: beta
+
+    double precision, dimension(nvibs)                :: g,h
+
+    g=(dh(:,i,i)-dh(:,j,j))/2
+    h=dh(:,i,j)
+    CALL orthgh(nvibs,g,h,beta)
+  END FUNCTION getBeta
+END SUBROUTINE OrthogonalizeGH 

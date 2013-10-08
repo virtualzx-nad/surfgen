@@ -93,6 +93,9 @@ MODULE potdata
 ! EvalCount stores the evaluation counts.   
 ! Use ResetEvalCount() and GetEvalCount() to reset and retrieve the counter
      INTEGER                                ::  EvalCount
+! Whether to output couplings scaled by inverse energy difference in EvaluatSurfgen.
+! The default is true.  Use DisableEnergyScaling() and EnableEnergyScaling() to change it.
+     LOGICAL                                ::  DoEnergyScaling
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -118,6 +121,7 @@ CONTAINS
        timetraj  = -1D0
        isurftraj = 0
        mdev = -1D0
+       DoEnergyScaling = .true.
      END SUBROUTINE init
 !-----------------------------------------------------------------------------
 ! calculate the distance, using a set of internal coordinate of choice,
@@ -510,6 +514,15 @@ SUBROUTINE getEvec(evec)
   evec = evecstore
 END SUBROUTINE getEvec
 ! --------------------------------------------------------------
+SUBROUTINE EnableEnergyScaling()
+  USE potdata, only: DoEnergyScaling
+  DoEnergyScaling = .true.
+END SUBROUTINE
+SUBROUTINE DisableEnergyScaling()
+  USE potdata, only: DoEnergyScaling
+  DoEnergyScaling = .false.
+END SUBROUTINE
+! --------------------------------------------------------------
 ![Description]
 ! EvaluateSurfgen evaluates Hd at a given Cartesian coordinate, returning adiabatic
 ! energies, energy gradients, derivative couplings, diabatic Hamiltonian matrix
@@ -654,9 +667,11 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end do!i=1,ncoord
   do i=1,nstates-1
     do j=i+1,nstates
-      de=energy(j)-energy(i)
-      if(abs(de)<1d-30)de=1d-30
-      call dscal(3*natoms,1/de,cgrads(1,i,j),1)
+      if(DoEnergyScaling)then
+        de=energy(j)-energy(i)
+        if(abs(de)<1d-30)de=1d-30
+        call dscal(3*natoms,1/de,cgrads(1,i,j),1)
+      end if
       call dcopy(3*natoms,cgrads(1,i,j),1,cgrads(1,j,i),1)
 !      cgrads(:,i,j) = cgrads(:,i,j)/de
 !      cgrads(:,j,i) = cgrads(:,i,j)

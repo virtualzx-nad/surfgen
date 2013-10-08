@@ -1,3 +1,9 @@
+## 2.6.7 (2013-10-07)
+
+* new utilities program findmex that can be used to search for minimum energy point on N-state intersection seams on fit surface
+* New subroutine OrthogonalizeGH that can be used by external programs to obtain intersection adapted representations
+* adjusted bond-length threshold in findcp
+
 ## 2.6.6 (2013-10-06)
 
 * OpenMP parallelization for evaluation of raw terms.
