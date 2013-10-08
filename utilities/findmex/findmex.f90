@@ -73,14 +73,14 @@ program findmex
  
   ! print initial geometry information
   print *,"--------------- Initial Geometries ------------------"
-  call analysegeom(natm,cgeom)
+  call analysegeom(natm,cgeom,aname,anum,masses)
 
   ! search for intersections
   call findx(natm,nst,cgeom,isurf1,isurf2,50,1d-2,1d0,1d-5)
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"
-  call analysegeom(natm,cgeom)
+  call analysegeom(natm,cgeom,aname,anum,masses)
 ! deallocate arrays
   deallocate(masses)
   deallocate(anum)
@@ -91,17 +91,21 @@ program findmex
 end program
 
 !---print out geometry info ---
-subroutine analysegeom(natoms,geom)
+subroutine analysegeom(natoms,geom,aname,anum,masses)
   implicit none
   integer, intent(in)   :: natoms
+  character*3           :: aname(natoms)
+  double precision      :: anum(natoms),masses(natoms)
   double precision,intent(in)  ::  geom(3,natoms)
   double precision, parameter  ::  bohr2ang=0.529177249d0
   integer   ::  i,j,k,l
-  double precision  ::  distmat(natoms,natoms), TLen = 1.7D0, d,d1(3),d2(3),d3(3),cpd(3)
+  double precision  ::  distmat(natoms,natoms), TLen = 1.9D0, d,d1(3),d2(3),d3(3),cpd(3)
   double precision,external  ::   dnrm2
   logical :: hasOOP(natoms)
   print *,"Cartesian Geometries in Atomic Units"
-  print "(2x,3F15.10)",geom
+  do i=1,natoms
+     print "(x,a3,1x,f4.1,3F14.8,F14.8)",aname(i),anum(i),geom(:,i),masses(i)
+  end do
   distmat = 0d0
   print "(/,A)","   Atom1   Atom2   Bond Length(Ang)"
   do i=1,natoms
