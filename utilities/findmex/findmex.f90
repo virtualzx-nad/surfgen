@@ -76,7 +76,7 @@ program findmex
   call analysegeom(natm,cgeom,aname,anum,masses)
 
   ! search for intersections
-  call findx(natm,nst,cgeom,isurf1,isurf2,50,1d-2,1d0,1d-5)
+  call findx(natm,nst,cgeom,isurf1,isurf2,99,1d-1,1d0,1d-5)
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"
@@ -134,19 +134,20 @@ subroutine analysegeom(natoms,geom,aname,anum,masses)
   end do   !i    
 
   hasOOP = .false.
-  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Out-of-Plane Angle (Degrees)"
+  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Torsion Angle (Degrees)"
   do i=1,natoms
     do j=1,natoms
-     if(j==i .or. distmat(i,j)>2*TLen)cycle
+     if(j==i)cycle
      d1 = geom(:,j)-geom(:,i)
      d1 = d1/dnrm2(3,d1,1)
      do k=j+1,natoms
-       if(k==i .or. distmat(i,k)>2*TLen)cycle
-       d2 = geom(:,k)-geom(:,i)
+       if(k==i .or. distmat(j,k)>TLen .or. (distmat(i,j)>TLen .and. distmat(i,k)>TLen) )cycle
+       d2 = geom(:,k)-geom(:,j)
        d2 = d2/dnrm2(3,d2,1)
-       do l=k+1,natoms
-         if(l==i .or. distmat(i,l)>2*TLen.or.hasOOP(l))cycle
-         d3 = geom(:,l)-geom(:,i)
+       do l=i+1,natoms
+         if(l==j .or. l==k  .or. (hasOOP(l).and.hasOOP(i)) .or. &
+             (distmat(j,l)>TLen .and. distmat(k,l)>TLen)  )cycle
+         d3 = geom(:,l)-geom(:,j)
          d3 = d3/dnrm2(3,d3,1)
          cpd(1) = d1(3)*(d2(2)-d3(2))+d2(3)*d3(2)-d2(2)*d3(3)+d1(2)*(d3(3)-d2(3))
          cpd(2) =-d2(3)*d3(1)+d1(3)*(d3(1)-d2(1))+d1(1)*(d2(3)-d3(3)) +d2(1)*d3(3)
@@ -154,8 +155,11 @@ subroutine analysegeom(natoms,geom,aname,anum,masses)
          print "(2x,4(I5,3x),F12.4)",I,J,K,L, 90/Acos(0d0)* &
            asin((-d1(3)*d2(2)*d3(1)+d1(2)*d2(3)*d3(1)+d1(3)*d2(1)*d3(2)       &
                 -d1(1)*d2(3)*d3(2)-d1(2)*d2(1)*d3(3)+d1(1)*d2(2)*d3(3))/      &
-               dnrm2(3,cpd,1))   
+               dnrm2(3,cpd,1))
          hasOOP(l)=.true.
+         hasOOP(i)=.true.
+         if(distmat(i,j)<TLen.and.distmat(l,j)<TLen)hasOOP(k)=.true.
+         if(distmat(i,k)<TLen.and.distmat(l,k)<TLen)hasOOP(j)=.true.
        end do! l
      end do!k
     end do !j
@@ -237,7 +241,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
   double precision            :: nrmG, nrmD,tmp(1)
   double precision, external  :: dnrm2
   double precision,  parameter  :: amu2au=1.822888484514D3,au2cm1=219474.6305d0
-  double precision, parameter   :: MAXD = 1D-1
+  double precision, parameter   :: MAXD = 1D-2
 
   ! allocate arrays
   ndeg = surf2-surf1+1
@@ -333,6 +337,9 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
          lindex=lindex+1
        end do
      end do     
+     do i=1,3*natoms
+       hess(i,i)=hess(i,i)+shift
+     end do
      ! invert the hessian
      call DSYEVD('V','U',neq,hess,neq,w,WORK,LWORK,IWORK,LIWORK,INFO)
      if(info/=0)print *,"DSYEVD failed.  info=",info
@@ -342,7 +349,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
      call DGEMV('T',neq,neq,1d0,hess,neq,dlag,1,0d0,b1,1)
      ! b1' = w^-1*b1
      do i=1,neq
-      if(abs(w(i))<shift)then
+      if(abs(w(i))<1d-10)then
          b1(i)=dble(0)
       else!
          b1(i)=b1(i)/w(i)

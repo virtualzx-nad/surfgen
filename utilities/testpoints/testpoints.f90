@@ -11,14 +11,13 @@
 !Hd, as well as geometry input. 
 program testpoints
   implicit none
-  integer,parameter  ::  MaxGeoms = 10000,MaxAtoms=200
+  integer,parameter  ::  MaxGeoms = 10000
   character(255)     ::  geomfl 
-  integer            ::  npts, i,j,k,natoms,nstates
-  character(3),dimension(MaxAtoms)               :: atoms
-  double precision,dimension(MaxAtoms)           :: anums,masses
+  integer            ::  npts, i,j,k,natoms,nstates,ios,ptid
 
-  double precision,dimension(:),allocatable    :: e
-  DOUBLE PRECISION,dimension(:,:),allocatable  :: cgeoms,h
+  character(3),dimension(:),allocatable        :: atoms
+  double precision,dimension(:),allocatable    :: anums,masses,e
+  double precision,dimension(:,:),allocatable  :: cgeoms,h
   double precision,dimension(:,:,:),allocatable:: cg,dcg
   print *,"-------------------------------------------------"
   print *,"Entering testpoints, a surfgen point testing utility"
@@ -27,11 +26,15 @@ program testpoints
   print *,"  2013 Yarkony group, Johns Hopkins University"
   print *,"-------------------------------------------------"
 
-  geomfl = 'geom.all'
   print *,""
   print *,"Initializing potential"
   call initPotential()
   call getinfo(natoms,nstates)
+
+! allocate arrays
+  allocate(atoms(natoms))
+  allocate(anums(natoms))
+  allocate(masses(natoms))
   allocate(cgeoms(3*natoms,MaxGeoms))
   allocate(e(nstates))
   allocate(h(nstates,nstates))
@@ -41,6 +44,11 @@ program testpoints
   print *," Number of states:",nstates
   print *," Number of natoms:",natoms
  
+  call get_command_argument(number=1,value=geomfl,status=ios)
+  if(ios/=0)then
+    print *,"Cannot get file name from command line.  Using default."
+    write(geomfl,"(A)")"geom.all"
+  end if
   print "(A,I8)","Processing geometry input. Maximum number of geometries allowed:",MaxGeoms
   print "(A)","  Filename:"//trim(geomfl)
   npts = MaxGeoms
@@ -81,4 +89,8 @@ program testpoints
       end do!k
     end do!j
   end do!i
+
+  ! get neighboring point index
+  call getNeighbor(ptid)
+  if(ptid/=0) print *,"Index of Closest Data Point : ", ptid
 end program testpoints

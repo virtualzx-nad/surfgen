@@ -96,6 +96,8 @@ MODULE potdata
 ! Whether to output couplings scaled by inverse energy difference in EvaluatSurfgen.
 ! The default is true.  Use DisableEnergyScaling() and EnableEnergyScaling() to change it.
      LOGICAL                                ::  DoEnergyScaling
+! This variable records which point was the closest point among the reference geometries
+     INTEGER                                ::  NeighborID
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -122,6 +124,7 @@ CONTAINS
        isurftraj = 0
        mdev = -1D0
        DoEnergyScaling = .true.
+       NeighborID = 0
      END SUBROUTINE init
 !-----------------------------------------------------------------------------
 ! calculate the distance, using a set of internal coordinate of choice,
@@ -700,6 +703,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
        end if 
        !calculation minimum distances to all reference points
        call getmind(igeom,mind,ptid,eerr)
+       NeighborID = ptid
        mind=mind/sqrt(dble(nc))
        mdev = max(mdev,mind)
        fnorm = 0d0
@@ -974,6 +978,7 @@ SUBROUTINE setTrajData(ttime, tisurf)
   isurftraj = tisurf
 END SUBROUTINE setTrajData
 
+! retrieve atom number and state number information
 SUBROUTINE getInfo(nat,nst)
   use hddata, only:   nstates
   use progdata, only: natoms
@@ -982,3 +987,12 @@ SUBROUTINE getInfo(nat,nst)
   nat = natoms
   nst = nstates
 END SUBROUTINE
+
+! find out which point was the nearest point for last evaluation
+! basically, report NeighborID 
+SUBROUTINE getNeighbor(ptid)
+  use potdata, only: NeighborID
+  integer , intent(OUT) ::  ptid
+  ptid  = NeighborID
+END SUBROUTINE
+

@@ -19,9 +19,11 @@ module opttools
  contains
 
 !---print out geometry info ---
-subroutine analysegeom(natoms,geom)
+subroutine analysegeom(natoms,geom,aname,anum,masses)
   implicit none
   integer, intent(in)   :: natoms
+  character*3           :: aname(natoms)
+  double precision      :: anum(natoms),masses(natoms)
   double precision,intent(in)  ::  geom(3,natoms)
   double precision, parameter  ::  bohr2ang=0.529177249d0
   integer   ::  i,j,k,l
@@ -29,7 +31,9 @@ subroutine analysegeom(natoms,geom)
   double precision,external  ::   dnrm2
   logical :: hasOOP(natoms)
   print *,"Cartesian Geometries in Atomic Units"
-  print "(2x,3F15.10)",geom
+  do i=1,natoms
+     print "(x,a3,1x,f4.1,3F14.8,F14.8)",aname(i),anum(i),geom(:,i),masses(i)
+  end do
   distmat = 0d0
   print "(/,A)","   Atom1   Atom2   Bond Length(Ang)"
   do i=1,natoms
@@ -58,19 +62,20 @@ subroutine analysegeom(natoms,geom)
   end do   !i    
 
   hasOOP = .false.
-  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Out-of-Plane Angle (Degrees)"
+  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Torsion Angle (Degrees)"
   do i=1,natoms
     do j=1,natoms
-     if(j==i .or. distmat(i,j)>2*TLen)cycle
+     if(j==i)cycle
      d1 = geom(:,j)-geom(:,i)
      d1 = d1/dnrm2(3,d1,1)
      do k=j+1,natoms
-       if(k==i .or. distmat(i,k)>2*TLen)cycle
-       d2 = geom(:,k)-geom(:,i)
+       if(k==i .or. distmat(j,k)>TLen .or. (distmat(i,j)>TLen .and. distmat(i,k)>TLen) )cycle
+       d2 = geom(:,k)-geom(:,j)
        d2 = d2/dnrm2(3,d2,1)
-       do l=k+1,natoms
-         if(l==i .or. distmat(i,l)>2*TLen.or.hasOOP(l))cycle
-         d3 = geom(:,l)-geom(:,i)
+       do l=i+1,natoms
+         if(l==j .or. l==k  .or. (hasOOP(l).and.hasOOP(i)) .or. &
+             (distmat(j,l)>TLen .and. distmat(k,l)>TLen)  )cycle
+         d3 = geom(:,l)-geom(:,j)
          d3 = d3/dnrm2(3,d3,1)
          cpd(1) = d1(3)*(d2(2)-d3(2))+d2(3)*d3(2)-d2(2)*d3(3)+d1(2)*(d3(3)-d2(3))
          cpd(2) =-d2(3)*d3(1)+d1(3)*(d3(1)-d2(1))+d1(1)*(d2(3)-d3(3)) +d2(1)*d3(3)
@@ -80,6 +85,9 @@ subroutine analysegeom(natoms,geom)
                 -d1(1)*d2(3)*d3(2)-d1(2)*d2(1)*d3(3)+d1(1)*d2(2)*d3(3))/      &
                dnrm2(3,cpd,1))   
          hasOOP(l)=.true.
+         hasOOP(i)=.true.
+         if(distmat(i,j)<TLen.and.distmat(l,j)<TLen)hasOOP(k)=.true.
+         if(distmat(i,k)<TLen.and.distmat(l,k)<TLen)hasOOP(j)=.true.
        end do! l
      end do!k
     end do !j
@@ -244,6 +252,7 @@ subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol)
      cgeom = cgeom - b2
      if(nrmG<Etol.and.nrmD<Stol)then
        print *,"Optimization converged"
+       print "(A,10F20.4)","Final energy of all states : ",e*au2cm1
        return
      end if
   end do 
@@ -318,13 +327,14 @@ program findcp
   call readColGeom(geomfile,1,natm,aname,anum,cgeom,masses)
 
   print "(/,A)","-------------- Initial Geometry ------------"
-  call analysegeom(natm,cgeom)
+  call analysegeom(natm,cgeom,aname,anum,masses)
   print "(/,A)","----------- Geometry Optimizations ---------"
   call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-8 ,1d-7)
   print "(/,A)","--------------- Final Geometry -------------"
-  call analysegeom(natm,cgeom)
+  call analysegeom(natm,cgeom,aname,anum,masses)
   print "(/,A)","------------ Harmonic Frequencies ----------"
   call calcHess(natm,cgeom,nst,isurf,1D-4,hess,.true.,skip)
+  call writeHess(hess,3*natm)
   call getFreq(natm,masses,hess,w)
   do i=1,3*natm
     print "(I5,F12.2)",i,w(i)
@@ -340,3 +350,24 @@ program findcp
   deallocate(skip)
 
 end
+
+
+!------ write hessian file to disk, columbus format
+subroutine writeHess(hess,nvibs)
+  implicit none
+  integer, intent(in)         :: nvibs
+  double precision,intent(in) :: hess(nvibs,nvibs)
+  integer,parameter     :: hessfl= 32175
+  integer  :: ios,i
+
+  open (unit=hessfl,file="hessian",status='replace',position='rewind',access='sequential',&
+            action='write',iostat=ios)
+  if(ios/=0)then
+    print *,"Cannot open hessian file for write."
+    return
+  end if
+  do i=1,nvibs
+     write(hessfl,"(8F13.6)")hess(i,:)
+  end do
+  close(hessfl)
+end subroutine

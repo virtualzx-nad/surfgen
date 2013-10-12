@@ -1,3 +1,11 @@
+## 2.6.8 (2013-10-12)
+
+* Fixed torsion angle info output in findmex and findcp to correctly create list of linked torsions.
+* New subroutine `getNeightbor` in potlib.f90 that allows the caller to identify the closest data point from the last evaluation.  If
+distance calculation is not enabled, it returns 0.  
+* tespoints utility now returns also the closest point with respect to the test point.   It now also properly handles the input argument
+and use it as the geometry filename. 
+
 ## 2.6.7 (2013-10-07)
 
 * new utilities program findmex that can be used to search for minimum energy point on N-state intersection seams on fit surface
