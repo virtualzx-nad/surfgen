@@ -2544,6 +2544,8 @@ SUBROUTINE makesurf()
         write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 ((dnrm2(nvibs,dispgeoms(i)%grads(:,j,k),int(1)),k=j,nstates),j=1,nstates)
         write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
+                ((dnrm2(nvibs,fitG(i,:,j,k),int(1)),k=j,nstates),j=1,nstates)
+        write(unit=uerrfl,fmt='('//str1//'(",",E24.16))',advance='no')&
                 (( errGrad(i,j,k),k=j,nstates),j=1,nstates)
         write(unit=uerrfl,fmt='(A)') " "
       end do

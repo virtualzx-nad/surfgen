@@ -73,7 +73,7 @@ program findmex
  
   ! print initial geometry information
   print *,"--------------- Initial Geometries ------------------"
-  call analysegeom(natm,cgeom,aname,anum,masses)
+  call analysegeom(natm,cgeom,aname,anum,masses,1.9d0,.true.)
 
   ! search for intersections
   call findx(natm,nst,cgeom,isurf1,isurf2,99,1d-1,1d0,1d-5)
@@ -89,83 +89,6 @@ program findmex
   deallocate(w)
   deallocate(cgeom)
 end program
-
-!---print out geometry info ---
-subroutine analysegeom(natoms,geom,aname,anum,masses)
-  implicit none
-  integer, intent(in)   :: natoms
-  character*3           :: aname(natoms)
-  double precision      :: anum(natoms),masses(natoms)
-  double precision,intent(in)  ::  geom(3,natoms)
-  double precision, parameter  ::  bohr2ang=0.529177249d0
-  integer   ::  i,j,k,l
-  double precision  ::  distmat(natoms,natoms), TLen = 1.9D0, d,d1(3),d2(3),d3(3),cpd(3)
-  double precision,external  ::   dnrm2
-  logical :: hasOOP(natoms)
-  print *,"Cartesian Geometries in Atomic Units"
-  do i=1,natoms
-     print "(x,a3,1x,f4.1,3F14.8,F14.8)",aname(i),anum(i),geom(:,i),masses(i)
-  end do
-  distmat = 0d0
-  print "(/,A)","   Atom1   Atom2   Bond Length(Ang)"
-  do i=1,natoms
-    do j=i+1,natoms
-      d = dnrm2(3,geom(:,i)-geom(:,j),1)*bohr2ang
-      distmat(i,j) = d
-      distmat(j,i) = d
-      if(d<TLen)print "(2x,I5,3x,I5,3x,F12.8)",i,j,d
-    end do
-  end do
-
-  print "(/,A)","   Atom1   Atom2   Atom3   Bond Angle (Degrees)"
-  do i=1,natoms
-    do j=1,natoms
-     if(j==i .or. distmat(i,j)>TLen)cycle
-     d1 = geom(:,j)-geom(:,i)
-     d1 = d1/dnrm2(3,d1,1)
-     do k=j+1,natoms
-       if(k==i .or. distmat(i,k)>TLen)cycle
-       d2 = geom(:,k)-geom(:,i)
-       d2 = d2/dnrm2(3,d2,1)
-       print "(2x,3(I5,3x),F12.4)",J,I,K, 90/Acos(0d0)* &
-           ACOS(dot_product(d1,d2))
-     end do!k
-    end do !j
-  end do   !i    
-
-  hasOOP = .false.
-  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Torsion Angle (Degrees)"
-  do i=1,natoms
-    do j=1,natoms
-     if(j==i)cycle
-     d1 = geom(:,j)-geom(:,i)
-     d1 = d1/dnrm2(3,d1,1)
-     do k=j+1,natoms
-       if(k==i .or. distmat(j,k)>TLen .or. (distmat(i,j)>TLen .and. distmat(i,k)>TLen) )cycle
-       d2 = geom(:,k)-geom(:,j)
-       d2 = d2/dnrm2(3,d2,1)
-       do l=i+1,natoms
-         if(l==j .or. l==k  .or. (hasOOP(l).and.hasOOP(i)) .or. &
-             (distmat(j,l)>TLen .and. distmat(k,l)>TLen)  )cycle
-         d3 = geom(:,l)-geom(:,j)
-         d3 = d3/dnrm2(3,d3,1)
-         cpd(1) = d1(3)*(d2(2)-d3(2))+d2(3)*d3(2)-d2(2)*d3(3)+d1(2)*(d3(3)-d2(3))
-         cpd(2) =-d2(3)*d3(1)+d1(3)*(d3(1)-d2(1))+d1(1)*(d2(3)-d3(3)) +d2(1)*d3(3)
-         cpd(3) = d1(2)*(d2(1)-d3(1))+d2(2)*d3(1)-d2(1)*d3(2)+d1(1)*(d3(2)-d2(2))
-         print "(2x,4(I5,3x),F12.4)",I,J,K,L, 90/Acos(0d0)* &
-           asin((-d1(3)*d2(2)*d3(1)+d1(2)*d2(3)*d3(1)+d1(3)*d2(1)*d3(2)       &
-                -d1(1)*d2(3)*d3(2)-d1(2)*d2(1)*d3(3)+d1(1)*d2(2)*d3(3))/      &
-               dnrm2(3,cpd,1))
-         hasOOP(l)=.true.
-         hasOOP(i)=.true.
-         if(distmat(i,j)<TLen.and.distmat(l,j)<TLen)hasOOP(k)=.true.
-         if(distmat(i,k)<TLen.and.distmat(l,k)<TLen)hasOOP(j)=.true.
-       end do! l
-     end do!k
-    end do !j
-  end do   !i    
-end subroutine analysegeom
-
 
 !---calculate averaged hessian at a certain geometry
 subroutine calcHess(natoms,cgeom,nstate,state1,state2,stepsize,hessian,LDH)

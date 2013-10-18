@@ -1,3 +1,9 @@
+## 2.6.9 (2013-10-18)
+
+* fitinfo.csv now also contains the norm of fit gradients and couplings
+* a new utility program analyse that can be used to show the internal coordinates of geometries
+* Moved the internal coordinate analysis subroutine that is redundant in a number of utility programs to libutil.f90
+
 ## 2.6.8 (2013-10-12)
 
 * Fixed torsion angle info output in findmex and findcp to correctly create list of linked torsions.
