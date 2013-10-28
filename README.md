@@ -162,16 +162,4 @@ Xiaolei Zhu and David Yarkony, *Toward eliminating the electronic structure bott
 Copyright
 ---------
 
-Copyright (c) 2013, Yarkony Group, Johns Hopkins University
-
-Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is 
-hereby granted, provided that the above copyright notice and this permission notice appear in all copies
-and that any documentation, advertising materials, and other materials related to such distribution and 
-use are provided with proper reference to 
-[surfgen publications](https://github.com/virtualzx-nad/surfgen/blob/master/README.md#references).
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE 
-INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE 
-FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS 
-OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT 
-OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+<a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by/3.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">The Surfgen Program Suite</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="http://www.jhu.edu/~chem/yarkony/" property="cc:attributionName" rel="cc:attributionURL">Yarkony Group, Johns Hopkins University</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>.
