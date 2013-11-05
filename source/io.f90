@@ -569,6 +569,7 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   if(ios/=0)then
     print *,"Failed to open file [", trim(adjustl(gfile)),"]"
     ngeoms = 0
+    close(GUNIT)
     return
   end if
   do i = 1,ngeoms
@@ -576,6 +577,7 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
     read(GUNIT,*,iostat=ios)atoms(j),anums(j),(cgeom(3*(j-1)+k,i),k=1,3),masses(j)
     if(ios/=0)then
         ngeoms=i-1
+        close(GUNIT)
         return
     end if
    enddo
@@ -652,6 +654,7 @@ SUBROUTINE readEner(efile,ngeoms,nstates,eners,st1,st2)
     read(EUNIT,*,IOSTAT=ios)(eners(j,i),j=st1,st2)
     if(ios/=0)then
         ngeoms = i-1
+        close(EUNIT)
         return
     end if
   enddo
@@ -674,6 +677,7 @@ SUBROUTINE readGrads(gfile,ngrads,na,cgrads)
    action='read',position='rewind',status='old',iostat=ios)
   if(ios/=0)then
     ngrads = 0
+    close(GUNIT)
     return
   end if
   do i = 1,ngrads
@@ -682,6 +686,7 @@ SUBROUTINE readGrads(gfile,ngrads,na,cgrads)
     read(GUNIT,*,IOSTAT=ios)(cgrads(3*(j-1)+k,i),k=1,3)
     if(ios/=0)then
         ngrads=i-1
+        close(GUNIT)
         return
     end if
    enddo

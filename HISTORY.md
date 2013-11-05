@@ -1,3 +1,8 @@
+## 2.6.10 (2013-11-4)
+
+* Changed License to CC-BY
+* Fixed a bug where gradient and energy input files are not properly closed.
+
 ## 2.6.9 (2013-10-18)
 
 * fitinfo.csv now also contains the norm of fit gradients and couplings

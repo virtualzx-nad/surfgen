@@ -19,6 +19,7 @@ program testpoints
   double precision,dimension(:),allocatable    :: anums,masses,e
   double precision,dimension(:,:),allocatable  :: cgeoms,h
   double precision,dimension(:,:,:),allocatable:: cg,dcg
+  double precision,external :: dnrm2
   print *,"-------------------------------------------------"
   print *,"Entering testpoints, a surfgen point testing utility"
   print *,""
@@ -76,7 +77,7 @@ program testpoints
     print *,"Cartesian Gradients and Couplings in Adiabatic Representation"
     do j=1,nstates
       do k=1,j
-         print "(A,I3,A,I3,A)"," block (",j,",",k,")"
+         print "(A,I3,A,I3,A,E13.5)"," block (",j,",",k,"),|F|=",dnrm2(3*natoms,cg(1,j,k),1)
          print "(3F18.10)",cg(:,j,k)
       end do!k
     end do!j
