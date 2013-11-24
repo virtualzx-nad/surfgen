@@ -254,7 +254,7 @@ program findcp
   print "(/,A)","----------- Geometry Optimizations ---------"
   call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-8 ,1d-7)
   print "(/,A)","--------------- Final Geometry -------------"
-  call analysegeom(natm,cgeom,aname,anum,masses)
+  call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
   print "(/,A)","------------ Harmonic Frequencies ----------"
   call calcHess(natm,cgeom,nst,isurf,1D-4,hess,.true.,skip)
   call writeHess(hess,3*natm)

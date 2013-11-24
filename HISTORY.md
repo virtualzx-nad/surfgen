@@ -1,3 +1,7 @@
+## 2.6.11 (2013-11-24)
+
+* Minor bug fixes in findcp and readColGeom
+
 ## 2.6.10 (2013-11-4)
 
 * Changed License to CC-BY

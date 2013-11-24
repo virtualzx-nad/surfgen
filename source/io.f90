@@ -554,7 +554,7 @@ end SUBROUTINE cleanup
 SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
   use hddata, only:  getFLUnit
   IMPLICIT NONE
-  CHARACTER(255),INTENT(IN)                             :: gfile
+  CHARACTER(LEN=*),INTENT(IN)                           :: gfile
   INTEGER,INTENT(IN)                                    :: na
   INTEGER,INTENT(INOUT)                                 :: ngeoms
   CHARACTER(3),dimension(na),INTENT(INOUT)              :: atoms
@@ -576,6 +576,7 @@ SUBROUTINE readColGeom(gfile,ngeoms,na,atoms,anums,cgeom,masses)
    do j = 1,na
     read(GUNIT,*,iostat=ios)atoms(j),anums(j),(cgeom(3*(j-1)+k,i),k=1,3),masses(j)
     if(ios/=0)then
+        print *,"  End of file encountered. i=",i,",j=",j
         ngeoms=i-1
         close(GUNIT)
         return
@@ -590,7 +591,7 @@ END SUBROUTINE readColGeom
 ! output COLUMBUS geom file
 SUBROUTINE writeColGeom(gfile,na,atoms,anums,cgeom,masses)
   IMPLICIT NONE
-  CHARACTER(255),INTENT(IN)                      :: gfile
+  CHARACTER(LEN=*),INTENT(IN)                    :: gfile
   INTEGER,INTENT(IN)                             :: na
   CHARACTER(3),dimension(na),INTENT(INOUT)       :: atoms
   DOUBLE PRECISION,dimension(na),INTENT(INOUT)   :: anums,masses
@@ -624,7 +625,7 @@ END SUBROUTINE writeColGeom
 SUBROUTINE readEner(efile,ngeoms,nstates,eners,st1,st2)
   use hddata, only: getFLUnit
   IMPLICIT NONE
-  CHARACTER(255),INTENT(IN)                             :: efile
+  CHARACTER(LEN=*),INTENT(IN)                           :: efile
   INTEGER,INTENT(IN)                                    :: nstates
   INTEGER,INTENT(INOUT)                                 :: ngeoms
   INTEGER,INTENT(OUT)                                   :: st1,st2
@@ -667,7 +668,7 @@ END SUBROUTINE readEner
 SUBROUTINE readGrads(gfile,ngrads,na,cgrads)
   use hddata, only: getFLUnit
   IMPLICIT NONE
-  CHARACTER(255),INTENT(IN)                             :: gfile
+  CHARACTER(len=*),INTENT(IN)                           :: gfile
   INTEGER,INTENT(INOUT)                                 :: ngrads
   INTEGER,INTENT(IN)                                    :: na
   DOUBLE PRECISION,dimension(3*na,ngrads),INTENT(INOUT) :: cgrads
@@ -700,7 +701,7 @@ END SUBROUTINE readGrads
 !
 SUBROUTINE readHessian(gfile,nrc,hess)
   IMPLICIT NONE
-  CHARACTER(255),INTENT(IN)                               :: gfile
+  CHARACTER(LEN=*),INTENT(IN)                             :: gfile
   INTEGER,INTENT(IN)                                      :: nrc
   DOUBLE PRECISION,dimension(nrc*(nrc+1)/2),INTENT(INOUT) :: hess
   INTEGER                                                 :: i,GUNIT,ileft,nread,ndone
@@ -729,7 +730,7 @@ end SUBROUTINE readHessian
 FUNCTION filename(s1,s2,grdptn,cpptn)
   IMPLICIT NONE
   INTEGER,INTENT(IN)          :: s1,s2
-  CHARACTER(255),INTENT(IN)   :: grdptn,cpptn
+  CHARACTER(LEN=*),INTENT(IN) :: grdptn,cpptn
   CHARACTER(255)              :: filename
   CHARACTER(1)                :: st1,st2
   integer :: i
