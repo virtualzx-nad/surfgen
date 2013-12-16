@@ -151,6 +151,13 @@ This program is based on, and would not have been possible without the quadratic
 for vibrational spectroscopy simulation, developed by 
 [Michael Schuurman](ca.linkedin.com/pub/michael-schuurman/7/996/32), then also a member of Yarkony group.
 
+Xiaolei Zhu's Research Profile:
+<a title="Follow me on ResearchGate" href="https://www.researchgate.net/profile/Xiaolei_Zhu4/?cp=shp"><img src="https://www.researchgate.net/images/public/profile_share_badge.png" alt="Follow me on ResearchGate" /></a>
+<a title="My ORCID profile" href="http://orcid.org/0000-0002-7825-4815">
+<img src="http://orcid.org/sites/all/themes/orcid/img/orcid-logo.png" alt="My ORCID profile" border="5"/>
+</a>
+
+
 References
 ----------
   
