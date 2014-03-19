@@ -283,18 +283,9 @@ void PerfRotation(double RotMatP[], double MolGeoP[], int disp, double ShiftVect
 void WriteFile( double Geometry[], double ShiftVector[], int index, int rotation )
 {
 	int i;	
-	char *DirName;
-	
-	if ( rotation == 1 ){
-		DirName = "PointsR1";							// Directory name "Points"
-	} else if ( rotation == 2 ){
-		DirName = "PointsR2";
-	} else if ( rotation == 3 ){
-		DirName = "PointsR3";
-	} else {
-		fprintf(stderr, " Unknown rotation index, %d. Exiting...\n", rotation );
-		exit(1);
-	}
+	char DirName[25];
+
+	sprintf( DirName, "PointsR%d", rotation );				// Directory name	
 	
 	char FileName[25];								// File name
 	FILE *gfP;										// Geometry file pointer
@@ -311,13 +302,7 @@ void WriteFile( double Geometry[], double ShiftVector[], int index, int rotation
 		
 	mkdir( DirName, 0777 );								// Make directory
 	
-	if ( rotation == 1 ){
-		sprintf( FileName, "PointsR1/loopgeom.%d", index );			// Set file name
-	} else if ( rotation == 2 ){
-		sprintf( FileName, "PointsR2/loopgeom.%d", index );
-	} else {
-		sprintf( FileName, "PointsR3/loopgeom.%d", index );
-	}
+	sprintf( FileName, "PointsR%d/loopgeom.%d", rotation, index );	// Name file
 	
 	gfP = fopen( FileName, "w" );							// Open file for writing
 		
