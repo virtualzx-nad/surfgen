@@ -280,7 +280,7 @@ MODULE makesurfdata
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
 !Exact equations will be sorted by point index
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,wvec)
-    use hddata, only: blkmap,nstates,printMaptab
+    use hddata, only: blkmap,nstates
     use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
@@ -474,9 +474,6 @@ MODULE makesurfdata
     end do!i
   1000 format(8X,"Point",I5,", St",2I3,", dir",I3,", grad=",E10.3)
   1001 format(8X,3F14.10)
-  !******************************************************
-  call printMaptab()
-  !******************************************************
   END SUBROUTINE
 !-----------------------------------------------------------------------------------
 !Make H and DH from Hd for a point and solve schrodinger equation to get eigenvectors.
@@ -484,7 +481,7 @@ MODULE makesurfdata
 !Reorder states by best fit of energy gradients if energy difference lower than gorder.
 !Then determine phase of eigenvectors to best fit couplings.
   SUBROUTINE updateEigenVec(hvec,follow)
-    USE hddata, only:nstates,EvaluateHd3
+    USE hddata, only:nstates,EvaluateHd3,printMaptab
     USE progdata, only: abpoint,printlvl,AU2CM1
     USE combinatorial
     IMPLICIT NONE
@@ -539,7 +536,7 @@ MODULE makesurfdata
       phaseList(i,j)=-1
     end do
     !**********************************************
-   ! call printMaptab() ! 
+    call printMaptab() ! 
     !**********************************************
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints

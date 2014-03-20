@@ -1339,43 +1339,28 @@ END SUBROUTINE EvaluateHd3
       type(TMTabBasis), pointer     :: pM
       type(TTermDef),   pointer     :: pT
 	real*8                        :: MSum(nstates,nstates)
-	character(len=30)			:: FileName				! Output file name
-	integer				:: FNunit				! Unit of file
-	integer				:: ioStatFN				! Status of open(file)
-	character(len=100)		:: fmtFNunit			! Format of output
       !----------------------------------------------------------------------------------
-      ! Assign file variables
-      FNunit=92
-      FileName="maptab.out"
-      ! Format of output. Assumes: order .LE. 4
-      fmtFNunit = '(1X, I3, I3, I5, I5, I4, I4, I4, I4, I4)'
-      ! Open file for writing.  We don't know if this file exists, so its status is 'unknown'
-      open( unit=FNunit, FILE=FileName, status="unknown", action="write", iostat=ioStatFN )
-      ! If we cannot open the file, kill program and report error
-      if (ioStatFN .ne. 0) STOP " Could not open file 'maptab.out'! "
       do i=0,order
+            print *, "ORDER=",i
             do j=1,nblks
-                 ! ll=nl(j)
-                 ! rr=nr(j)
-                 ! l1=offs(RowGrp(j))+1
-                 ! l2=offs(RowGrp(j))+ll
-                 ! r1=offs(ColGrp(j))+1
-                 ! r2=offs(ColGrp(j))+rr
-                 ! print '(1X,A,I10)', "BLOCK=",j
+                  ll=nl(j)
+                  rr=nr(j)
+                  l1=offs(RowGrp(j))+1
+                  l2=offs(RowGrp(j))+ll
+                  r1=offs(ColGrp(j))+1
+                  r2=offs(ColGrp(j))+rr
+                  print ('1X,A,I10'), "BLOCK=",j
                   pM=>maptab(i,j)%handle
                   do f=1, maptab(i,j)%nBasis
-                       ! print '(1X,A,I10)', "basis=",f
+                        print ('1X,A,I10'), "basis=",f
                         pM=>pM%pNext
                         do v=1, pM%nTerms
-                            !  print '(1X,A,I10)', "nTerms=",v
-                            !  print '(1X,A,I4,I4,I4,I4,I4)', "  ", pM%term(v)%p%coord
-                              write( unit=FNunit, fmt=fmtFNunit) i, j, f, v, pM%term(v)%p%coord
+                              print ('1X,A,I10'), "nTerms=",v
+                              print ('1X,A,I4,I4,I4,I4,I4'), "  ", pM%term(v)%p%coord
                         end do !v
                   end do!f
             end do !j
       end do !i
-      ! Close maptab.output
-      close(FNunit)
  end subroutine printMaptab
       
       

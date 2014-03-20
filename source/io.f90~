@@ -425,7 +425,7 @@ SUBROUTINE initialize(jobtype)
   if(printlvl>0)print *,"Entering Initialize()"
   if(printlvl>0)print *,"  Generating atom permutations"
   !**
-  print *, "cntfl=", cntfl
+  if (allocated(cntfl))print *, "cntfl=", cntfl
   !**
   Call genAtomPerm()
   if(jobtype<0)then

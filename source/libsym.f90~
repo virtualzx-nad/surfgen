@@ -178,10 +178,6 @@ CONTAINS
     nPmtAll = nPmt
     removed =.false.
     ! skip selection if the file is not specified
-    !>CLM
-    ! Check value of cntfl
-    print *, " cntfl = ", cntfl
-    !
     if(len_trim(cntfl)==0) return
 
     open(unit=CNTUNIT,file=trim(adjustl(cntfl)),access='sequential',&
