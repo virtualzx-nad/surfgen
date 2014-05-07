@@ -98,6 +98,9 @@ MODULE potdata
      LOGICAL                                ::  DoEnergyScaling
 ! This variable records which point was the closest point among the reference geometries
      INTEGER                                ::  NeighborID
+
+! This variable turns off nonadiabatic couplings.
+     LOGICAL            :: no_nad
 !-----------------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------------
@@ -361,12 +364,8 @@ SUBROUTINE prepot
      if(allocated(evecstore))deallocate(evecstore)
      allocate(evecstore(nstates,nstates)) 
      paused = .false. 
-     if(parsing)then 
-       GUNIT = 427
-       open(GUNIT,file='trajdata0.csv',status='REPLACE',action='write')
-     else
-       GUNIT = -1
-     end if
+     GUNIT = -1
+     if(parsing)call openTrajFile(0)
 ! prepare molden output file
      if(molden_p>0)then
         MUNIT=getFLUnit()
@@ -670,14 +669,17 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   end do!i=1,ncoord
   do i=1,nstates-1
     do j=i+1,nstates
+      if(no_nad)then
+        cgrads(1,i,j)=0d0
+        cgrads(1,j,i)=0d0
+        cycle
+      end if
       if(DoEnergyScaling)then
         de=energy(j)-energy(i)
         if(abs(de)<1d-30)de=1d-30
         call dscal(3*natoms,1/de,cgrads(1,i,j),1)
       end if
       call dcopy(3*natoms,cgrads(1,i,j),1,cgrads(1,j,i),1)
-!      cgrads(:,i,j) = cgrads(:,i,j)/de
-!      cgrads(:,j,i) = cgrads(:,i,j)
     end do
   end do
 
@@ -850,7 +852,7 @@ SUBROUTINE readginput(jtype)
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, cvanish,&
                             mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
-                            timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef,forig
+                            timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef,forig,no_nad
 
   atomlabels = ''
 
@@ -867,6 +869,7 @@ SUBROUTINE readginput(jtype)
   inputfl    = ''
   eshift     = dble(0) 
   switchdiab = .false.
+  no_nad=.false.
   
   print *,"Entering readinput()." 
  !----------- GENERAL SECTION ----------------! 

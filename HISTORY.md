@@ -1,3 +1,11 @@
+## 2.6.13 (2014-05-07)
+
+* Fixed a problem where compilation may cause internal compiler error in earlier versions of ifort.
+
+## 2.6.12 (2014-02-05)
+
+* A switch `no_nad` is added to turn of couplings.
+
 ## 2.6.11 (2013-11-24)
 
 * Minor bug fixes in findcp and readColGeom
