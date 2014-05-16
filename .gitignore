@@ -16,3 +16,5 @@ utilities/*/*.x
 bin/setsgenvars.*
 source/*.o
 source/*.mod
+bin/*
+lib/*
