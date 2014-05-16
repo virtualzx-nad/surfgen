@@ -1227,7 +1227,7 @@ CONTAINS
 SUBROUTINE EvaluateHd3 (hvec,nBas,npoints,ipt,nvibs,hmat,dhmat,wmat)
    IMPLICIT NONE
    INTEGER,INTENT(IN)                                              :: npoints,ipt,nvibs,nBas(nblks)
-   DOUBLE PRECISION,DIMENSION(sum(nBas)),INTENT(IN)                :: hvec
+   DOUBLE PRECISION,DIMENSION(*),INTENT(IN)                        :: hvec
    TYPE(T2DDList),DIMENSION(nblks),INTENT(IN)                      :: wmat
    DOUBLE PRECISION,DIMENSION(nstates,nstates),INTENT(OUT)         :: hmat
    DOUBLE PRECISION,DIMENSION(nvibs,nstates,nstates),INTENT(OUT)   :: dhmat
