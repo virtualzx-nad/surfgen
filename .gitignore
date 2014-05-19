@@ -8,7 +8,7 @@ surfgen.xcodeproj/project.xcworkspace/xcuserdata/
 surfgen.xcodeproj/xcuserdata/
 *.xcuserstate
 test/test
-test/TESTING
+test/TESTING/*
 test/test.log
 test/surfgen.out
 test/surfgen.log
