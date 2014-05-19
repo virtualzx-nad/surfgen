@@ -2140,6 +2140,19 @@ SUBROUTINE makesurf()
   double precision  :: NaN
   character(3)                                    ::  str1, str2  ! # of ener and grad data
 
+! CLM
+  INTERFACE
+          subroutine average( Array, ArrayLen, AvOut )
+                  integer, intent(in)                              :: ArrayLen
+                  double precision, dimension(ArrayLen),intent(in) :: Array
+                  double precision, intent( out )                  :: AvOut
+          end subroutine average
+  END INTERFACE
+
+  double precision,dimension(maxiter)             :: iterTimings
+  double precision                                :: iterAverage
+  integer                                         :: iterCount1, iterCount2, &
+                                                     iterCountRate
 
 
 
@@ -2218,6 +2231,8 @@ SUBROUTINE makesurf()
   diff = .false.
   ! ----------  MAIN LOOP ---------------
   do while(iter<maxiter.and.adif>toler)
+   ! Enter timing info
+   call system_clock(COUNT=iterCount1)
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
      c1=""
@@ -2314,10 +2329,19 @@ SUBROUTINE makesurf()
    !-------------------------------------------------------------
    ! Write final eigenvectors to file  
    !-------------------------------------------------------------
+   call system_clock(COUNT=iterCount2,COUNT_RATE=iterCountRate)
+   iterTimings(iter) = dble( iterCount2-iterCount1)/iterCountRate
+
   enddo !while(iter<maxiter.and.adif>toler)
   !----------------------------------
   ! End of self-consistent iterations
   !----------------------------------
+  
+  ! Print iteration information
+  call average( iterTimings, iter, iterAverage )
+  write(OUTFILE, "(3x,/,A,F10.7,A,/)" ) " Average Iteration time = ", iterAverage, &
+          " seconds " 
+
   !print final errors
   call makebvec(bvec,.true.)
   print "(5x,A)","Final RMS Errors of Fitting Equations"

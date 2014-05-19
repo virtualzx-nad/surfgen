@@ -1,0 +1,7 @@
+#PBS -q serial
+#PBS -l pvmem=10gb
+#PBS -l walltime=00:59:00
+#PBS -N surfgen-run
+
+cd $PBS_O_WORKDIR
+/global/homes/m/malbon/surfgen-build/surfgen-master/bin/surfgen 

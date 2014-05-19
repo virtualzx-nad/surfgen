@@ -252,7 +252,7 @@ program findcp
   print "(/,A)","-------------- Initial Geometry ------------"
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
   print "(/,A)","----------- Geometry Optimizations ---------"
-  call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-8 ,1d-7)
+  call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-9 ,1d-5)
   print "(/,A)","--------------- Final Geometry -------------"
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
   print "(/,A)","------------ Harmonic Frequencies ----------"

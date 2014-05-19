@@ -1,0 +1,8 @@
+#PBS -q regular
+#PBS -l mppwidth=1
+#PBS -l walltime=00:02:00
+#PBS -N surfgen.log
+
+cd $PBS_O_WORKDIR
+
+aprun -n 1 surfgen

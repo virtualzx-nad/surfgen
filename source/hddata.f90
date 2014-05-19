@@ -1339,37 +1339,54 @@ END SUBROUTINE EvaluateHd3
       type(TMTabBasis), pointer     :: pM
       type(TTermDef),   pointer     :: pT
 	real*8                        :: MSum(nstates,nstates)
-	character(len=30)			:: FileName				! Output file name
-	integer				:: FNunit				! Unit of file
-	integer				:: ioStatFN				! Status of open(file)
-	character(len=100)		:: fmtFNunit			! Format of output
+      character(len=30)             :: FileName                               ! Output file name
+      integer                       :: FNunit                                 ! Unit of file
+      integer                       :: ioStatFN                               ! Status of open(file)
+      character(len=100)            :: fmtFNunit,fmtFNunit2,fmtFNunit3, &
+                                          fmt1FNunit, fmt2FNunit, fmt3FNunit, &
+                                          fmt4FNunit, fmt5FNunit, fmt6FNunit              ! Format of output
       !----------------------------------------------------------------------------------
       ! Assign file variables
       FNunit=92
       FileName="maptab.out"
       ! Format of output. Assumes: order .LE. 4
-      fmtFNunit = '(1X, I3, I3, I5, I5, I4, I4, I4, I4, I4)'
+      fmtFNunit3= '(1X, I5, I5, I5, I5)'
+      fmtFNunit = '(1X, I5, I5, I5, I5, I5, I5)'
+      fmtFNunit2= '(1X, F10.6, F10.6, F10.6, F10.6 )'  ! Coefiencents of terms in basis 
+      fmt1FNunit= '(1X, A )'
+      fmt2FNunit= '(1X, A, I5)'
+      fmt4FNunit= '(1X, I5)'
+      fmt5FNunit= '(1X, I5, I5)'
+      fmt3FNunit= '(1X, A, I3, I3, I3, I3 )'
       ! Open file for writing.  We don't know if this file exists, so its status is 'unknown'
-      open( unit=FNunit, FILE=FileName, status="unknown", action="write", iostat=ioStatFN )
+      open( unit=FNunit, FILE=FileName, status="unknown", action="write", &
+              access="sequential", form="formatted", position="rewind", iostat=ioStatFN )
       ! If we cannot open the file, kill program and report error
       if (ioStatFN .ne. 0) STOP " Could not open file 'maptab.out'! "
+      write(unit=FNunit, fmt=fmt1FNunit) "MAPTAB OUTPUT FILE"
+      write(unit=FNunit, fmt=fmt1FNunit) "------------------"
+      write( unit=FNunit, fmt=fmt5FNunit )  order, nblks
+      write(unit=FNunit, fmt=fmt1FNunit) " "
       do i=0,order
+            if (i .eq. 0) cycle ! Nothing to print for 0th order
+            write(unit=FNunit, fmt=fmt4FNunit ) i ! Print order
             do j=1,nblks
-                 ! ll=nl(j)
-                 ! rr=nr(j)
-                 ! l1=offs(RowGrp(j))+1
-                 ! l2=offs(RowGrp(j))+ll
-                 ! r1=offs(ColGrp(j))+1
-                 ! r2=offs(ColGrp(j))+rr
-                 ! print '(1X,A,I10)', "BLOCK=",j
+                  ll=nl(j)
+                  rr=nr(j)
+                  l1=offs(RowGrp(j))+1
+                  l2=offs(RowGrp(j))+ll
+                  r1=offs(ColGrp(j))+1
+                  r2=offs(ColGrp(j))+rr
                   pM=>maptab(i,j)%handle
+                  ! Print block, number of basis , etc
+                  write( unit=FNunit, fmt=fmt5FNunit ) j, maptab(i,j)%nBasis
                   do f=1, maptab(i,j)%nBasis
-                       ! print '(1X,A,I10)', "basis=",f
                         pM=>pM%pNext
+                        write( unit=FNunit, fmt=fmt4FNunit )  pM%nTerms ! Print number of terms in block
                         do v=1, pM%nTerms
-                            !  print '(1X,A,I10)', "nTerms=",v
-                            !  print '(1X,A,I4,I4,I4,I4,I4)', "  ", pM%term(v)%p%coord
-                              write( unit=FNunit, fmt=fmtFNunit) i, j, f, v, pM%term(v)%p%coord
+                              ! num. of columns, num. of rows, fcns. of term
+                              write( unit=FNunit, fmt=fmtFNunit) ll, rr, pM%term(v)%p%coord
+                              write( unit=FNunit, fmt=fmtFNunit2) pM%coef(1:ll,1:rr,v)                       
                         end do !v
                   end do!f
             end do !j
@@ -1377,6 +1394,59 @@ END SUBROUTINE EvaluateHd3
       ! Close maptab.output
       close(FNunit)
  end subroutine printMaptab
-      
+!----------------------------------------------------------------------------------------
+!>readMaptab
+!
+! This subroutine reads in maptab information from maptab.out
+!
+! Christopher L. Malbon
+! Yarkony Group
+! The Johns Hopkins University
+! 03-20-2014 - created
+!----------------------------------------------------------------------------------------
+ subroutine readMaptab()
+         implicit none
+         integer                                :: Order, Blocks, NumTerms
+         integer                                :: MTFLunit, ioStatFN
+         character(len=30)                      :: MapTabFL, fmtTitle, fmtOrder, fmtBlock, &
+                                                   fmtTerms
+         character(len=100)                     :: title
+         real*8                                 :: TermCoef
+         integer, dimension(:),allocatable      :: TermInfo
+         integer                                :: i, j, k, testOrder, jBlock, jBasis, kTerms
+         !-------------------------------------------------------------------------------
+         ! Formats
+         fmtTitle = '(1x,A)'
+         fmtOrder = '(1x,I5,I5)'
+         fmtTerms = '(1x,F10.6)'
+         fmtBlock = fmtOrder
+         ! maptab.out contains printed information
+         MapTabFL = "maptab.out"
+         MTFLUnit = 92 
+         open( unit=MTFLUnit, file=MapTabFL, form="formatted", position="rewind", &
+                  action="read", status="old", iostat=ioStatFN )
+         ! Read title (not important)
+         read(MTFLUnit,fmtTitle) title
+         ! Read order of expansion
+         read(MTFLUnit,fmtOrder)  Order, Blocks
+         read(MTFLUnit,fmtTitle) 
+         !do i=1, order
+         !   read(MTFLunit,fmtOrder) testOrder
+         !   if ( testOrder .ne. i ) stop "*** Order .NE. testOrder.readMaptab()"
+         !   do j=1, Blocks
+         !         read(MTFLunit,fmtOrder) jBlock, jBasis
+         !         do k=1,jBasis
+         !               read(MTFLunit,fmtOrder) kTerms
+         !               do l=1, kTerms
+         !                 allocate( TermInfo( 2 + i ))
+         !                 read(MTFLunit,*) TermInfo
+         !                 read(MTFLunit,fmtTerms) TermCoef
+                          ! Use add2maptab to add coefficient in maptab
+                        
+                        
+
+
+ end subroutine readMaptab
+!----------------------------------------------------------------------------------------      
       
 END MODULE HdDATA

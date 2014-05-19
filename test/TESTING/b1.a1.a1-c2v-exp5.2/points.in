@@ -1,0 +1,169 @@
+TITLE
+xx 111112222233333
+wt     0    1 3165
+wt     1    1    1 ! C2v
+wt     1    2   19 ! C2v Loop 
+wt     0    2    3 ! ** Bad C2v points **
+wt     0    8    9 ! ** Bad C2v points **
+wt     1   20   22 ! C2v Loop  ( Recalculated points )
+wt     0   21   21 ! ** Bad C2v points **
+wt     1   23   47 ! C1min =============> C2vsd
+wt     0   47   47 ! ** Bad path point **
+wt     1   48   65 ! C1min Loop
+wt     0   66   83 ! C1min Loop (Doubled)
+wt     0   84  109 ! C1min =============> CSinv
+wt     0  110  128 ! CSinv Loop
+wt     0  129  190 ! C1min =============> CSrot ( Full Rotation )
+wt     0  140  141 ! ** Bad path point **
+wt     0  159  160 ! ** Bad path point **
+wt     0  174  175 ! ** Bad path point **
+wt     0  190  190 ! ** Bad path point **
+wt     0  190  208 ! CSrot Loop
+wt     0  209  239 ! C1min =============> 01mex ( Formaldehyde )
+wt     0  240  258 ! 01mex Loop ( Formaldehyde )
+wt     0  259  309 ! 01mex =============> ASYMPTOTE ( Formaldehyde )
+wt     0  259  270
+wt     0  281  283 ! ** Bad path point **
+wt     0  309  355 ! C1min =============> 21mex ( CIS HCOH )
+wt     0  347  347 ! ** Bad path point **
+wt     0  356  373 ! 21mex Loop ( CIS HCOH )
+wt     0  374  389 ! CSinv =============> 21mex ( TRANS HCOH )
+wt     0  380  380 ! ** Bad path point **
+wt     0  388  388 ! ** Bad path point **
+wt     0  389  407 ! 21mex Loop ( TRANS HCOH )
+wt     0  408  423 ! S2min =============> S2SAD ( TRANS )
+wt     0  424  442 ! S2SAD Loop ( TRANS HCOH )
+wt     0  443  461 ! S2SAD =============> S2SAD
+wt     0  453  453 ! **
+wt     0  454  454 ! ** Bad path point **
+wt     0  458  458 ! **
+wt     0  457  457 ! ** Bad path point **
+wt     0  448  448 ! ** Bad path point **
+wt     0  462  482 ! 21mex =============> 01mex ( CIS )
+wt     0  467  467 ! ** Bad path point **
+wt     0  481  499 ! 01mex Loop-2 ( CIS )
+wt     0  482  483 ! ** Bad Loop Point **
+wt     0  486  488 ! ** Bad Loop Point **
+wt     0  495  495 ! ** Bad Loop Point **
+wt     0  500  530 ! 01mex =============> ASYMPTOTE (CIS )
+wt     0  501  501 ! ** Bad path point **
+wt     0  505  505 ! ** Bad path point **
+wt     0  531  549 ! 21mex =============> 01mex ( TRANS )
+wt     0  541  541 ! ** Bad path point ( sol'n change ) **
+wt     0  551  569 ! ** 01mex Loop ( TRANS )
+wt     0  551  551 ! **
+wt     0  572  600 ! 01mex =============> ASYMPTOTE ( TRANS )
+wt     0  601  647 ! C1min =============> MTHXY
+wt     0  650  687 ! MTHXY =============> Saddle ( MTHXY )
+wt     0  650  651 ! ~~~~ ***** ~~~~~
+wt     0  658  658 ! ** Bad path point **
+wt     0  661  661 ! ** Bad path point **
+wt     0  682  682 ! ** Bad path point **
+wt     0  688  704
+wt     0  688  689 ! ** Bad Loop point **
+wt     0  705  722 ! S2SD Loop ( CIS )
+wt     0  723  732 ! C1min Loop ( 0.05 torsion coordinates )
+wt     0  733  736 ! C1min Loop ( 0.1  torsion coordinates )
+wt     0  737  765 ! Mthxy Saddle  ==============> C2v
+wt     0  741  741 ! ** Bad path Point **
+wt     0  742  742 ! ** Bad path point **
+wt     0  770  787 ! MTHXY ============> 12mex ( MTHXY )
+wt     0  788  826 ! Traj1.4.1----A-
+wt     0  827  845 ! Traj1.4.1----B-
+wt     0  846  862 ! Fill points 0.0 path1
+wt     0  863  875 ! FILL points 0.0 path2
+wt     0  876  892 ! FILL points 0.0 path3
+wt     0  893  907 ! FILL points 0.0 path4
+wt     0  908  926 ! CSinv ====> Mthxy OOP -- 0.0
+wt     0  927  992 ! FILL 3.0-s1    
+wt     0  993 1010 ! FILL 3.0-s0
+wt     0 1011 1041 ! FILL 3.0-s2
+wt     0  932  934 ! **
+wt     0  998  998 ! **
+wt     0 1007 1007 ! **
+wt     0  993 1001 ! ** Redundant points
+wt     0 1042 1259 ! FILL 4.0 & 4.1
+wt     0 1188 1188 ! **
+wt     0 1192 1192 ! **
+wt     0 1203 1203 ! **
+wt     0 1053 1053 ! **
+wt     0 1054 1054 ! **
+wt     0 1102 1102 ! **
+wt     0 1260 1508 ! FILL 5.0-s1 & 5.0-s2
+wt     0 1509 1655 ! Path points
+wt     0 1508 1508 ! **
+wt     0 1523 1523 ! **
+wt     0 1553 1553 ! **
+wt     0 1665 1665 ! **
+wt     0 1567 1567 ! **
+wt     0 1601 1601 ! **
+wt     0 1602 1602 ! **
+wt     0 1610 1611 ! **
+wt     0 1615 1615 ! **
+wt     0 1616 1617 ! **
+wt     0 1619 1619 ! **
+wt     0 1627 1628 ! **
+wt     0 1641 1641 ! **
+wt     0 1644 1645 ! **
+wt     0 1656 1879 ! FILL 6.0-s1 & 6.0-s2
+wt     0 1880 2228 ! FILL 6.1-s2 & 6.1-s2-v & 7.0-s2 & 7.0-v1
+wt     0 2229 2398 ! FILL 8.0-s2 & 8.0-v1
+wt     0 2399 2402 ! CSROT 2 LOOP ( Torsions )
+wt     0 2170 2172
+wt     0 2008 2008
+wt     0 2403 2410 ! TRANS ASY LOOP
+wt     0 2411 2422 ! FORM  ASY LOOP
+wt     0 2423 2434 ! CIS   ASY LOOP
+wt     0 2435 2482 ! Point44-path (8.0-v1)
+wt     0 2443 2443
+wt     0 2482 2482
+wt     0 2483 2714 ! 4.9.0
+wt     0 2715 2775 ! p96
+wt     0 2735 2735 ! **
+wt     0 2756 2767 ! C1min-01mex SURF (CIS)
+wt     0 2768 2779 ! C1min-21mex SURF (CIS)
+wt     0 2756 2756 ! **
+wt     0 2772 2772 ! **
+wt     0 2773 3066 ! 4.10.0
+wt     0 3064 3064 ! **
+wt     0 3067 3148 ! 4.11.0 & 01mex-smalldisps (trans & cis ) & s2min-disps
+eg   280    1    3
+eg   280    2    3
+eg   280    3    3
+eg   281    1    3
+eg   281    2    3
+eg   281    3    3
+eg   282    1    3
+eg   282    2    3
+eg   282    3    3
+eg   283    1    3
+eg   283    2    3
+eg   283    3    3
+eg   284    1    3
+eg   284    2    3
+eg   284    3    3
+eg   285    1    3
+eg   285    2    3
+eg   285    3    3
+eg   286    1    3
+eg   286    2    3
+eg   286    3    3
+eg   287    1    3
+eg   287    2    3
+eg   287    3    3
+eg   288    1    3
+eg   288    2    3
+eg   288    3    3
+eg   573    1    3
+eg   573    2    3
+eg   573    3    3
+eg   574    1    3
+eg   574    2    3
+eg   574    3    3
+eg   617    1    3
+eg   617    2    3
+eg   617    3    3
+eg   618    1    3
+eg   618    2    3
+eg   618    3    3
+

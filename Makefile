@@ -9,7 +9,7 @@
 
 # Objects needed for standalone fitting program
 OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
-            libsym.o libinternal.o localcoord.o makesurf.o io.o linsteps.o surfgen.o 
+            libsym.o libinternal.o localcoord.o average.o makesurf.o io.o linsteps.o surfgen.o 
 
 # Objects needed for runtime interface library
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
@@ -17,7 +17,7 @@ OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
 
 # Objects needed for test programs 
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
-           libsym.o libinternal.o localcoord.o makesurf.o linsteps.o io.o testsurfgen.o
+           libsym.o libinternal.o localcoord.o average.o makesurf.o linsteps.o io.o testsurfgen.o
 
 # Modules stored in the surfgen libraries
 #MODLf   =  hddata.mod potdata.mod potdata.mod cnpi.mod  
