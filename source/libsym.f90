@@ -173,8 +173,10 @@ CONTAINS
     INTEGER,dimension(:,:), allocatable    :: BondList
     ! masks for selection
     logical ::  feasible, found
-    integer ::  ios,i,j,k, newBond(2), nPmtNew,newList(nPmt,natoms)
+    integer ::  ios,i,j,k, newBond(2), nPmtNew
+    integer,allocatable :: newList(:,:)
 
+    allocate(newList(nPmt,natoms))
     nPmtAll = nPmt
     removed =.false.
     ! skip selection if the file is not specified
@@ -240,6 +242,7 @@ CONTAINS
     nPmt = nPmtNew
     allocate(pmtList(nPmt,natoms))
     pmtList = newList(:nPmt,:)
+    deallocate(newList)
 
     ! log the selected permutations
     print *,"     Number of feasible permutations:",nPmt

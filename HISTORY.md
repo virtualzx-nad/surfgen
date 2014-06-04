@@ -1,3 +1,7 @@
+## 2.6.14 (2014-06-04)
+
+* The program should no longer require a very large stacksize to run.
+
 ## 2.6.13 (2014-05-07)
 
 * Fixed a problem where compilation may cause internal compiler error in earlier versions of ifort.
