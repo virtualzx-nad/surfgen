@@ -15,7 +15,7 @@
 program findmex
   implicit none
   integer::   ios,  isurf1, isurf2
-  character*300 geomfile,str 
+  character(len=250):: geomfile,str 
   integer :: natm , nst, ngeoms
   integer :: i,j
   double precision,allocatable  :: anum(:),masses(:),  hess(:,:), w(:)
@@ -73,14 +73,14 @@ program findmex
  
   ! print initial geometry information
   print *,"--------------- Initial Geometries ------------------"
-  call analysegeom(natm,cgeom,aname,anum,masses,1.9d0,.true.)
+  call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
 
   ! search for intersections
   call findx(natm,nst,cgeom,isurf1,isurf2,99,1d-1,1d0,1d-5)
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"
-  call analysegeom(natm,cgeom,aname,anum,masses)
+  call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
 ! deallocate arrays
   deallocate(masses)
   deallocate(anum)
