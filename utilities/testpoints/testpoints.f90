@@ -171,7 +171,7 @@ program testpoints
   ! We now need to generate pt%nvibs
   ! This is accomplished by calling makeLocalIntCoord. 
   !call makeLocalIntCoord(pt,nstates,.true.,1D-3,1D-1,3*natoms-6,0)
-  pt%nvibs=natoms*3-6
+  pt%nvibs=natoms*3     ! Cartesians
   ! We now need to generate pt%ndeggrp and pt%deg_groups
   ! The subroutine genDegs will accopmlish this for us
   degTol=1D-1
