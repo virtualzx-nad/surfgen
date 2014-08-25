@@ -113,23 +113,39 @@ end subroutine calcHess
 
 
 !----search for minimum on adiabatic surfaces 
-subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol)
+subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol,gscale,hess_disp,MAXD, &
+   masses, sadd_srch, converge_test)
   implicit none
   integer, intent(in)                                 ::  natoms,isurf,maxiter,nstate
   double precision,dimension(3*natoms),intent(inout)  ::  cgeom
-  double precision,intent(in)                         ::  shift,Etol,Stol
-
+  integer, intent(inout)                              :: converge_test
+  double precision,intent(in)                         ::  shift,Etol,Stol, gscale, hess_disp
+  double precision, intent(in)                        :: MAXD !Max displacement size
+  character(len=1),intent(in)                         :: sadd_srch
+  
   real*8    ::  h(nstate,nstate),cg(3*natoms,nstate,nstate),dcg(3*natoms,nstate,nstate),e(nstate)
   double precision,dimension(3*natoms)  ::  grad, b1, b2, w
   double precision,dimension(3*natoms,3*natoms)  :: hess,hinv
+  double precision,dimension(natoms)             :: masses
   double precision,dimension(:),allocatable :: WORK
   integer,dimension(:),allocatable :: IWORK
   integer           :: LIWORK, LWORK, itmp(1),INFO  
-  integer  ::  iter  , i
+  integer  ::  iter  , i, eig_start
   double precision            :: nrmG, nrmD, tmp(1)
   double precision, external  :: dnrm2
   double precision,  parameter  :: amu2au=1.822888484514D3,au2cm1=219474.6305d0
-  double precision, parameter   :: MAXD = 1D-1
+  double precision,dimension(:),allocatable  :: rem_modes
+  
+  ! Derived type for normal mode removal in eigenvalue decomposition procedure.
+  type mode_removed
+      double precision  :: freq
+      integer           :: removed 
+  end type mode_removed
+  ! use this type for normal mode removal list
+  type(mode_removed),dimension(:),allocatable :: rem_mode
+  
+  ! Set convergence flag
+  converge_test=0
 
   ! initialize work spaces
   call DSYEVD('V','U',3*natoms,hess,3*natoms,w,tmp,-1,itmp,-1,INFO)
@@ -138,6 +154,12 @@ subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol)
   LIWORK= itmp(1)
   allocate(WORK(LWORK))
   allocate(IWORK(LIWORK))
+  
+  ! Allocate mode matrix
+  ! This array will allow users to see what modes are being removed in the eigenvalue decomposition
+  !   procedure.
+  allocate(rem_modes(3*natoms))
+  allocate(rem_mode(3*natoms))
 
   print "(A,I4,A,I4,A)","Searching for minimum on surface ",isurf," in ",maxiter," iterations."
   print "(A)","  Convergence Tolerances"
@@ -146,23 +168,58 @@ subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol)
      call EvaluateSurfgen(cgeom,e,cg,h,dcg)
      grad = cg(:,isurf,isurf)
      nrmG=dnrm2(3*natoms,grad,1)
-     call calcHess(natoms,cgeom,nstate,isurf,1D-4,hess,.true.)
+     call calcHess(natoms,cgeom,nstate,isurf,hess_disp,hess,.true.)
+     if(iter.eq.1 .or. iter.eq.maxiter)then
+        call writeHess(hess,3*natoms)
+        call getFreq(natoms,masses,hess,w)
+        do i=1,3*natoms
+          print "(I5,F12.2)",i,w(i)
+        end do
+        do i=1,nstate
+            print "(2x,A,I2,A,F12.8)", " Energy of state ", i,"= ", e(i)
+        end do
+     end if
      hinv = hess
      ! invert the hessian
+     ! Call DSYEVD
      call DSYEVD('V','U',3*natoms,hess,3*natoms,w,WORK,LWORK,IWORK,LIWORK,INFO)
+     ! hess now contains the orthonormal eigenvectors of hess(old)
+     ! w contains the eigenvalues from lowest to highest
      if(info/=0)print *,"DSYEVD failed.  info=",info
-     ! hess. w. hess^T = hess_old
-     ! so x= hess_old^-1.b = hess. w^-1. hess^T. b
-     ! b1= hess^T.g       =>
+     ! [Old Hessian] = [hess][w][hess]^T
+     ! Thus, 
+     !    x = [Old Hessian]^-1[b] = ([hess]w)^-1[hess]^T[b]
+     !
+     ! [b1]= [hess]^T[g]       =>
+     ! Call DGEMV. perform [hess]^T[grad]=b1
+     ! First, scale gradient
+     grad=grad*gscale
      call DGEMV('T',3*natoms,3*natoms,1d0,hess,3*natoms,grad,1,0d0,b1,1)
      ! b1' = w^-1*b1
-     do i=1,3*natoms
+     ! Check if saddle point search
+     if( sadd_srch .EQ. 'Y' ) then
+       eig_start=2      ! First eigenvalue should be large and negative, so we skip it
+       b1(1)=b1(1)/w(1)
+     else
+       eig_start=1      ! Otherwise, we continue as normal
+     end if
+     !
+     rem_modes=0
+     do i=eig_start,3*natoms
       if(abs(w(i))<shift)then
-         b1(i)=dble(0)
+         b1(i)=b1(i)
+         rem_mode(i)%freq=w(i)
+         rem_mode(i)%removed=1
       else!
          b1(i)=b1(i)/w(i)
       end if!
      end do!
+     ! Print out to what modes are being removed
+     do i=1, 3*natoms
+       if ( rem_mode(i)%removed .eq. 1 ) then      ! If mode was removed, print info
+         write(*,1001) i, rem_mode(i)%freq
+       end if
+     end do
      ! b2 = hess.b1'
      call DGEMV('N',3*natoms,3*natoms,1d0,hess,3*natoms,b1,1,0d0,b2,1)
      ! cgeom' = cgeom - H^-1.g
@@ -176,11 +233,39 @@ subroutine findmin(natoms,nstate,cgeom,isurf,maxiter,shift,Etol,Stol)
      if(nrmG<Etol.and.nrmD<Stol)then
        print *,"Optimization converged"
        print "(A,10F20.4)","Final energy of all states : ",e*au2cm1
+       converge_test=1
        return
      end if
   end do 
 1000 format("Iteration ",I4,": E=",F20.4,", |Grd|=",E12.5,", |Disp|=",E12.5)
+1001 format("Modes Removed: ",I4,F14.8)
 end subroutine findmin
+!==================================================================================
+!>analysegeom2
+! This subroutine prints the last geometry out to the file new.geom
+!----------------------------------------------------------------------------------
+subroutine analysegeom2(natoms,geom,aname,anum,masses)
+
+  implicit none
+  integer, intent(in)          ::  natoms
+  character*3,intent(in)       ::  aname(natoms)
+  double precision,intent(in)  ::  anum(natoms),masses(natoms)
+  double precision,intent(in)  ::  geom(3,natoms)
+  double precision, parameter  ::  bohr2ang=0.529177249d0
+  integer   ::  i, ios
+  
+  ! Open new file
+  open(unit=9,file="new.geom",status="unknown",position="rewind",iostat=ios)
+  if (ios .ne. 0 ) then ! If file cannot be opened
+      print "(1x,A)", "Could not open new.geom file."
+  end if
+  do i=1,natoms
+     write(unit=9, fmt="(x,a3,1x,f4.1,3F14.8,F14.8)") aname(i),anum(i),geom(:,i),masses(i)
+  end do
+  close(unit=9)
+  return
+end subroutine analysegeom2
+!===================================================================================
 end module opttools 
 
 ! main program
@@ -196,8 +281,28 @@ program findcp
   double precision,allocatable  :: cgeom(:)
   logical,allocatable           :: skip(:)
   double precision,external     :: dnrm2
-  character*300                 ::  geomfile,str
-
+  character*300                 ::  geomfile,str,inputfile
+  double precision,allocatable  :: dchess(:)
+  integer                       :: un_infile
+  integer                       :: converge_test
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  integer               :: niter
+  double precision      :: egrad_tol, shift, disp_tol, grad_scale, hess_disp, maxdisp
+  character*1           :: sadd_search
+! Namelist input for inputfile
+  namelist /cpsearch/   niter, egrad_tol, shift, disp_tol, grad_scale, hess_disp, &
+      maxdisp, sadd_search
+! If not read in, here are the default values:
+  niter=100                         ! Max iterations
+  egrad_tol=1d-9                    ! Energy gradient tolerance for convergence
+  shift=1d-5                        ! Value of shift
+  disp_tol=1d-5                     ! Step size tolerance for convergence
+  un_infile=40                      ! Unit number of input file
+  grad_scale=1.0                    ! Scaling of gradient
+  hess_disp=1d-5                    ! Displacement for hessian calculation
+  maxdisp =1d-1                     ! Size of maximum displacement
+  sadd_search='N'                   ! Saddle point specific searching not implemented yet
+!!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
 
   print *," ***************************************** "
   print *," *    findcp.x                           * "
@@ -218,6 +323,8 @@ program findcp
   allocate(w(3*natm))
   allocate(cgeom(3*natm))
   allocate(skip(natm))
+  allocate(dchess(3*natm))    !Dimension of diagonal correction to hessian
+  dchess=0d0
   skip = .false.
 
 ! process arguments
@@ -246,23 +353,46 @@ program findcp
     end if
   end if
 
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! Reading namelist input
+  call get_command_argument(number=3,value=inputfile,status=ios)
+  if(ios/=0)then      ! If no filename is provided, use default
+    print *, "Cannot find filename from command line options.  Using default."
+    inputfile="findcp.in"
+  endif
+! Open input file
+  open(unit=un_infile,name=inputfile,iostat=ios)
+  if(ios/=0)then        ! Input file not created
+    print *, "No input file found. Continuing with default values."
+  else
+    read(unit=un_infile,nml=cpsearch)
+    close(unit=un_infile)
+  end if
+!!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
   print *,"Reading input from input file "//trim(geomfile)
   call readColGeom(geomfile,1,natm,aname,anum,cgeom,masses)
 
   print "(/,A)","-------------- Initial Geometry ------------"
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
   print "(/,A)","----------- Geometry Optimizations ---------"
-  call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-9 ,1d-5)
+  converge_test=0
+  call findmin(natm,nst,cgeom,isurf,niter,shift,egrad_tol ,disp_tol,grad_scale,hess_disp,&
+    maxdisp, masses, sadd_search, converge_test)
   print "(/,A)","--------------- Final Geometry -------------"
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
   print "(/,A)","------------ Harmonic Frequencies ----------"
-  call calcHess(natm,cgeom,nst,isurf,1D-4,hess,.true.,skip)
+  call calcHess(natm,cgeom,nst,isurf,hess_disp,hess,.true.,skip)
   call writeHess(hess,3*natm)
   call getFreq(natm,masses,hess,w)
   do i=1,3*natm
     print "(I5,F12.2)",i,w(i)
   end do
-
+  
+  if ( converge_test .eq. 0 ) then ! If calculation did not converge, print out final geometry
+      call analysegeom2(natm,cgeom,aname,anum,masses)
+  end if
+  
 ! deallocate arrays
   deallocate(masses)
   deallocate(anum)

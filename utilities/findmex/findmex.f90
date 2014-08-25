@@ -76,7 +76,7 @@ program findmex
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
 
   ! search for intersections
-  call findx(natm,nst,cgeom,isurf1,isurf2,99,1d-1,1d0,1d-5)
+  call findx(natm,nst,cgeom,isurf1,isurf2,199,1d-1,1d0,1d-5)
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"

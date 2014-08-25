@@ -53,7 +53,7 @@ program ghplot
 implicit none
 
 ! Information section  >>>>>>>>>>>>>>>>>>>>>>>>>>>|  change these 
-  integer,parameter :: natm = 13, nst=4         !||
+  integer,parameter :: natm = 5, nst=3          !||
 ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<|
 
 ! definition section  ======shouldn't need to change here
@@ -74,36 +74,28 @@ implicit none
 ! >>>>>>> Initialize the necessary variables. >>>>>>>>>>>>>>>>>>>   CHANGE THESE
 ! cgeom0 is the initial geometry of the origin
 ! the S1-S2 MEX of phenol
-  cgeom0    =(/     -1.71136176,     0.00000000,     -0.00965084,     &
-                    -0.36782782,     0.00000000,     -2.36235648,     &
-                    2.22626539,     0.00000000,     -2.32736351,     &
-                    3.55065740,     0.00000000,     0.00664434,     &
-                    2.22568282,     0.00000000,     2.33210381,     &
-                    -0.37264378,     0.00000000,     2.35055752,     &
-                    -4.11963171,     0.00000000,     0.11212956,     &
-                    -1.42605725,     0.00000000,     -4.10703334,     &
-                    3.26775400,     0.00000000,     -4.08237091,     &
-                    5.59261842,     0.00000000,     0.00434343,     &
-                    3.26037605,     0.00000000,     4.08939387,     &
-                    -1.46705199,     0.00000000,     4.07053107,     &
-                    -4.95464207,     0.00000000,     -1.57906004     /)
+  cgeom0    =(/ 1.05357173,    0.41993810,   -0.26545773, &
+            -1.31116182,    0.02919745,   -0.00291586, &
+            -1.97087721,   -1.87000337,   -0.57933605, &
+            -3.02278578,    1.88979365,    0.96496662, &
+             2.02264645,   -0.99777181,   -0.94564838 /)
 
 ! vx and vy are displacement vectors  
   vx = 0d0
-  vx(37:39)=cgeom0(37:39)-cgeom0(19:21)
+  vx(10:12)=cgeom0(10:12)-cgeom0(4:6)
   print *,"r0=",dnrm2(3*natm,vx,1)*bohr2ang
   call EvaluateSurfgen(cgeom0,e,cg,h,dcg)
   vy = dcg(:,2,3)
 
 ! dx and dy are size of the displacement between grid points 
   dx = 6d-2
-  dy = 2d-2
+  dy = 6d-2
 
 ! starting and ending indicies for the plotting
-  xstart=-5
-  xend  = 40
-  ystart= 0
-  yend  = 40 
+  xstart=-6
+  xend  = 6
+  ystart= -6
+  yend  = 6
 
 ! printevec dictates whether the eigenvectors will be recorded.
   printevec =.true.
