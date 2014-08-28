@@ -20,7 +20,7 @@ OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
            libsym.o libinternal.o localcoord.o average.o makesurf.o linsteps.o io.o testsurfgen.o
 
 # Modules stored in the surfgen libraries
-#MODLf   =  hddata.mod potdata.mod potdata.mod cnpi.mod  
+#MODLf   =  hddata.mod progdata.mod potdata.mod cnpi.mod  
 
 # Objects for version labeling
 OBJVf   =  getver.o
