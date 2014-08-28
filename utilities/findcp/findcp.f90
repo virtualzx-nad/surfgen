@@ -244,20 +244,21 @@ end subroutine findmin
 !>analysegeom2
 ! This subroutine prints the last geometry out to the file new.geom
 !----------------------------------------------------------------------------------
-subroutine analysegeom2(natoms,geom,aname,anum,masses)
+subroutine analysegeom2(natoms,geom,aname,anum,masses,gflname)
 
   implicit none
   integer, intent(in)          ::  natoms
   character*3,intent(in)       ::  aname(natoms)
+  character(len=300),intent(IN)      ::  gflname
   double precision,intent(in)  ::  anum(natoms),masses(natoms)
   double precision,intent(in)  ::  geom(3,natoms)
   double precision, parameter  ::  bohr2ang=0.529177249d0
   integer   ::  i, ios
   
   ! Open new file
-  open(unit=9,file="new.geom",status="unknown",position="rewind",iostat=ios)
+  open(unit=9,file=gflname,status="unknown",position="rewind",iostat=ios)
   if (ios .ne. 0 ) then ! If file cannot be opened
-      print "(1x,A)", "Could not open new.geom file."
+      print "(1x,A)", "Could not open geom file. (analysegeom2)"
   end if
   do i=1,natoms
      write(unit=9, fmt="(x,a3,1x,f4.1,3F14.8,F14.8)") aname(i),anum(i),geom(:,i),masses(i)
@@ -289,6 +290,8 @@ program findcp
   integer               :: niter
   double precision      :: egrad_tol, shift, disp_tol, grad_scale, hess_disp, maxdisp
   character*1           :: sadd_search
+  logical               :: check_inputfl
+  character*300         :: new_geomfl, old_geomfl
 ! Namelist input for inputfile
   namelist /cpsearch/   niter, egrad_tol, shift, disp_tol, grad_scale, hess_disp, &
       maxdisp, sadd_search
@@ -302,6 +305,8 @@ program findcp
   hess_disp=1d-5                    ! Displacement for hessian calculation
   maxdisp =1d-1                     ! Size of maximum displacement
   sadd_search='N'                   ! Saddle point specific searching not implemented yet
+  old_geomfl="old.geom"             ! Old geometry file
+  new_geomfl="new.geom"             ! New geometry file
 !!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
 
   print *," ***************************************** "
@@ -361,12 +366,13 @@ program findcp
     inputfile="findcp.in"
   endif
 ! Open input file
-  open(unit=un_infile,name=inputfile,iostat=ios)
-  if(ios/=0)then        ! Input file not created
-    print *, "No input file found. Continuing with default values."
+  inquire(file=inputfile,exist=check_inputfl)
+  if (check_inputfl) then
+      open(unit=un_infile,name=inputfile,iostat=ios)
+            read(unit=un_infile,nml=cpsearch)
+      close(unit=un_infile)
   else
-    read(unit=un_infile,nml=cpsearch)
-    close(unit=un_infile)
+        print *, "No input file found. Continuing with default values."
   end if
 !!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -375,6 +381,8 @@ program findcp
 
   print "(/,A)","-------------- Initial Geometry ------------"
   call analysegeom(natm,cgeom,aname,anum,masses,2d0,.true.)
+  print "(/,A)"," Printing original geometry "
+  call analysegeom2(natm,cgeom,aname,anum,masses,old_geomfl)
   print "(/,A)","----------- Geometry Optimizations ---------"
   converge_test=0
   call findmin(natm,nst,cgeom,isurf,niter,shift,egrad_tol ,disp_tol,grad_scale,hess_disp,&
@@ -388,10 +396,12 @@ program findcp
   do i=1,3*natm
     print "(I5,F12.2)",i,w(i)
   end do
-  
-  if ( converge_test .eq. 0 ) then ! If calculation did not converge, print out final geometry
-      call analysegeom2(natm,cgeom,aname,anum,masses)
-  end if
+ 
+
+  !if ( converge_test .eq. 0 ) then ! If calculation did not converge, print out final geometry
+  ! Always print
+  call analysegeom2(natm,cgeom,aname,anum,masses,new_geomfl)
+  !end if
   
 ! deallocate arrays
   deallocate(masses)
