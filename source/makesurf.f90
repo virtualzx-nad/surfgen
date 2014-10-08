@@ -2139,7 +2139,7 @@ SUBROUTINE makesurf()
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision  :: NaN
   character(3)                                    ::  str1, str2  ! # of ener and grad data
-
+  logical                                         ::  rex
 ! CLM
   INTERFACE
           subroutine average( Array, ArrayLen, AvOut )
@@ -2229,6 +2229,13 @@ SUBROUTINE makesurf()
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
   adif=toler+1
   diff = .false.
+  
+  ! See if ./restart/ exists. If it does not, create it!
+  inquire( directory=restartdir, exist=rex )
+  if ( rex .eqv. .false. ) then ! make directory
+     call system( "mkdir ./restart/" )
+  end if
+
   ! ----------  MAIN LOOP ---------------
   do while(iter<maxiter.and.adif>toler)
    ! Enter timing info
