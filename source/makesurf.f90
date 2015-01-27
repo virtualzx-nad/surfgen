@@ -183,7 +183,9 @@ MODULE makesurfdata
 
 ! Weights for least squars equations
   DOUBLE PRECISION,dimension(:),allocatable         :: weight
-
+! Weights for each gradient and coupling blocks, caused by energy differences
+! and high energy.
+  DOUBLE PRECISION,dimension(:,:,:),allocatable     :: gWeight
 !Hd predictions for all data points
   DOUBLE PRECISION,dimension(:,:,:,:),allocatable   :: fitG
   DOUBLE PRECISION,dimension(:,:,:),allocatable     :: fitE
@@ -342,7 +344,38 @@ MODULE makesurfdata
     nr=0
     nEqs=0
     nex=0
+    if(allocated(gWeight))deallocate(gWeight)
+    allocate(gWeight(npoints,nstates,nstates))
+    gWeight=1d0
     do i=1,npoints
+      !calculate weights of coupling blocks caused by energy difference
+      if(nrmediff>0)then
+        do s1=1,nstates
+          ! Weights for energy gradients
+          gWeight(i,s1,s1)=w_grad
+          k = 0
+          do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))  !determine the bracket of current energy
+            k = k+1
+            if(k==10)exit
+          end do
+          if(k>0) gWeight(i,s1,s1)= gWeight(i,s1,s1)*highEScale(k)
+          ! Weights for derivative couplings
+          do s2=1,s1-1
+            ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
+            ediff=(ediff+ediffcutoff)/nrmediff
+            gWeight(i,s1,s2)=w_fij/ediff
+            k = 0
+            do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
+              !  determine the bracket of ab initio energy
+              k = k+1
+              if(k==10)exit
+            end do
+            if(k>0) gWeight(i,s1,s2)=gWeight(i,s1,s2)*highEScale(k)
+            gWeight(i,s2,s1)=gWeight(i,s1,s2)
+          end do!s2
+        end do!s1
+      end if!(nrmediff>0)
+
       if(ptWeights(i)<1D-8)cycle             ! Create equations for gradients and derivative couplings
       do s1=1,nstates
         do s2=1,nstates
@@ -359,38 +392,15 @@ MODULE makesurfdata
                   if(nEqs>maxEqs)stop 'makeEqMap: neqs>maxeqs'
                   lseMap(nEqs,:)=(/i,s1,s2,j/)
                   if(s1==s2)then                                            ! Energy gradient
-                    if(gScaleMode==1)then
-                      wvec(nEqs)=ptWeights(i)*w_grad*dispgeoms(i)%scale(j)
-                    else
-                      wvec(nEqs)=ptWeights(i)*w_grad
-                    end if
-                    k = 0 
-                    do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))  !  determine the bracket of current energy
-                      k = k+1
-                      if(k==10)exit
-                    end do
-                    if(k>0) wvec(nEqs) =  wvec(nEqs)*highEScale(k)
+                    wvec(nEqs)=ptWeights(i)*gWeight(i,s1,s1)
+                    if(gScaleMode==1)wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)
                   else  !(s1==s2)                                           ! Derivative couplings
+                    wvec(nEqs)=ptWeights(i)*gWeight(i,s1,s2)
                     if(gScaleMode==3)then
-                      wvec(nEqs)=ptWeights(i)*w_fij*dispgeoms(i)%scale(j)**2
+                      wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)**2
                     else if(gScaleMode>0.or.gScaleMode==-2)then
-                      wvec(nEqs)=ptWeights(i)*w_fij*dispgeoms(i)%scale(j)
-                    else
-                      wvec(nEqs)=ptWeights(i)*w_fij
+                      wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)
                     end if
-                    k = 0
-                    do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
-                                 !  determine the bracket of current energy
-                      k = k+1
-                      if(k==10)exit
-                    end do
-                    if(k>0) wvec(nEqs) =  wvec(nEqs)*highEScale(k)
-                    if(nrmediff>0)then
-                      ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
-                      ediff=(ediff+ediffcutoff)/nrmediff
-                      wvec(nEqs)=wvec(nEqs)/ediff
-                    end if!(nrmediff>0)
-
                   end if!(s1==s2)
                 end if !(g_exact(i,s2,s1))
                else !(gradNorm(i,j,blkMap(s2,s1))>1D-8)                     ! This gradient othorgonal to the basis.
@@ -487,7 +497,7 @@ MODULE makesurfdata
     IMPLICIT NONE
 
     INTERFACE
-      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad)
+      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad,cpw)
         use hddata, only: nstates
         IMPLICIT NONE
         INTEGER,intent(IN)                                        :: nvibs
@@ -495,6 +505,7 @@ MODULE makesurfdata
         double precision,dimension(nvibs,nstates,nstates),intent(in)              :: abgrad
         double precision,dimension(nvibs),intent(in)              :: scale
         DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
+        DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
         LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
         integer,dimension(2**nstates,nstates),INTENT(IN)          :: phaseList
       END SUBROUTINE
@@ -547,7 +558,7 @@ MODULE makesurfdata
         fitE(i,:,:) = hmatPt
         fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitG(i,1:dispgeoms(i)%nvibs,:,:),&
-                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:),gWeight(i,:,:))
         cycle
       end if!i==enfDiab
       fitpt%lb = dispgeoms(i)%lb
@@ -590,9 +601,10 @@ MODULE makesurfdata
         else
 ! determine ordering by matching guide points
           call guideOrder(i,ckl(i,:,:),cklguide(i,:,:),pmtlist,factl(nstates))
+
         end if
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
-                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:))
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:),gWeight(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
         fitG(i,:,:,:)=fitpt%grads
       end if !folPrev
@@ -1508,7 +1520,7 @@ MODULE makesurfdata
     integer  ::  plvl
     
     plvl =  printlvl
-    printlvl = 0
+    printlvl = printlvl-1
     CALL updateEigenVec(asol,followPrev)
     CALL makebvec(bvec,.true.)
     bvec(nex+1:)=bvec(nex+1:)*weight
@@ -2245,7 +2257,6 @@ SUBROUTINE makesurf()
                              ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
      printlvl=printlvl+10
    end if
-
    if(diagHess>0)then
      call solve_diagHess(dCi,dLambda,jaco2,dsol,diagHess)
    else !diagHess>0
@@ -2285,6 +2296,7 @@ SUBROUTINE makesurf()
        dsol=dsol*(maxD/nrmD)
        nrmD = maxD
    end if 
+
    if(linSteps<=0)then
       asol(1:ncons)=asol1(1:ncons)+dsol
       call evaluateError(asol,weight,LSErr,ExErr)
@@ -2616,8 +2628,9 @@ end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
-  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad)
+  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad,cpw)
     use hddata, only: nstates
+    use progdata, only: printlvl
     IMPLICIT NONE
     INTEGER,intent(IN)                                        :: nvibs
     DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)  :: fitgrad
@@ -2625,6 +2638,7 @@ end SUBROUTINE printSurfHeader
     double precision,dimension(nvibs),intent(in)              :: scale
     LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
     DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
+    DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
     integer,dimension(2**(nstates-1),nstates),INTENT(IN)      :: phaseList
 
     INTEGER                                                   :: j,k,l,m,minID
@@ -2633,6 +2647,7 @@ end SUBROUTINE printSurfHeader
     double precision                                          :: errNorm,minerr
     minID=0
     do j=1,2**(nstates-1)
+      if(printlvl>10)print "(A,I3,A,10I3)","Perm#",j,", phases=",phaseList(j,:)
       do k=1,nstates
         phaseMat(k,1:nstates)=phaseList(j,k)*phaseList(j,1:nstates)
       end do
@@ -2641,10 +2656,11 @@ end SUBROUTINE printSurfHeader
         diff=phaseMat*fitgrad(k,:,:)-abgrad(k,:,:)
         do l=2,nstates
           do m=1,l-1
-            if(hasGrad(l,m))  errNorm = errNorm+ diff(l,m)**2 *scale(k)
+            if(hasGrad(l,m))  errNorm = errNorm+ (cpw(l,m)*diff(l,m))**2 *scale(k)
           end do!m
         end do!l
       end do !k=1,nvibs
+      if(printlvl>10)print "('Error^2=',E12.5)",errNorm
       if(minID==0.or.errNorm<minerr)then
         minID=j
         minerr=errNorm
