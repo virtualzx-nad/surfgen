@@ -988,14 +988,13 @@ SUBROUTINE ConformVec(nvibs,nst,st1,st2,grd,ref,ckl,allowedRot)
       end do
     end do
     call getGHErr(nvibs,nst,st1,st2,grd,ref,err_new)
-    print *,"change=",err-err_new
   end do 
 END SUBROUTINE ConformVec
 
 ! rotate states s1 and s2 until error is minimized
 ! st1 and st2 defines the range of degenerate states
 SUBROUTINE findRotMin(nvibs,nst,st1,st2,grd,ref,ckl,s1,s2)
-  USE progdata, only : pi
+  USE progdata, only : pi,printlvl
   implicit none
   integer,intent(in) :: nvibs,nst,s1,s2,st1,st2
   double precision,intent(in)   :: ref(nvibs,nst,nst)
@@ -1077,7 +1076,8 @@ SUBROUTINE findRotMin(nvibs,nst,st1,st2,grd,ref,ckl,s1,s2)
     end select
   end do
   mi=minloc(err,1) 
-  print "(A,2I3,3(A,F12.7))","Rotating states ",s1,s2,", error : ",err0," -> ",err(mi)," , angle=",ang(mi)
+  if(printlvl>3)print "(A,2I3,3(A,F12.7))",&
+           "Rotating states ",s1,s2,", error : ",err0," -> ",err(mi)," , angle=",ang(mi)
   call GivensStep(nvibs,nst,grd,s1,s2,ang(mi),ckl)
 END SUBROUTINE findRotMin
 
