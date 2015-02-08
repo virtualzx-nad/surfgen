@@ -16,7 +16,8 @@ and an installation script.  Below is a list of all utility programs and their u
 
 |  Program Name     |  Description                            
 | ----------------- | --------------------------------------- 
-|  testpoints       | Print out energies in adiabatic and diabatic representation at given geometries. 
+|  testpoints       | Print out energies in adiabatic and diabatic representation at given geometries.
+		        |  testpoints.x also prints orthogonal G and H vectors for ab_initio data. 
 |  ghplot           | Output energy data on a grid along the branching coordinates from a given point  
 |  findcp           | Critical point (minima or saddle points) search with frequency analysis         
 

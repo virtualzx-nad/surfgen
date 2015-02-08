@@ -282,7 +282,7 @@ MODULE makesurfdata
 !exactEqs(maxEqs,4) :  Same as lseMap but those equations will be fitted exactly
 !Exact equations will be sorted by point index
   SUBROUTINE makeEqMap(maxEqs,lseMap,exactEqs,wvec)
-    use hddata, only: blkmap,nstates
+    use hddata, only: blkmap,nstates,printMaptab
     use progdata, only: AU2CM1
     implicit none
     integer,intent(in)                      :: maxEqs
@@ -484,6 +484,9 @@ MODULE makesurfdata
     end do!i
   1000 format(8X,"Point",I5,", St",2I3,", dir",I3,", grad=",E10.3)
   1001 format(8X,3F14.10)
+  !******************************************************
+  call printMaptab()
+  !******************************************************
   END SUBROUTINE
 !-----------------------------------------------------------------------------------
 !Make H and DH from Hd for a point and solve schrodinger equation to get eigenvectors.
@@ -546,6 +549,9 @@ MODULE makesurfdata
       end do
       phaseList(i,j)=-1
     end do
+    !**********************************************
+   ! call printMaptab() ! 
+    !**********************************************
     !generating eigenvectors and conform to intersection adapted coordinations/reorder
     do i=1,npoints
       CALL EvaluateHd3(hvec,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
@@ -2145,7 +2151,20 @@ SUBROUTINE makesurf()
   integer,dimension(0:maxiter,npoints)            ::   sg     ! determinant of eigenvectors at each point
   double precision  :: NaN
   character(3)                                    ::  str1, str2  ! # of ener and grad data
+  logical                                         ::  rex
+! CLM
+  INTERFACE
+          subroutine average( Array, ArrayLen, AvOut )
+                  integer, intent(in)                              :: ArrayLen
+                  double precision, dimension(ArrayLen),intent(in) :: Array
+                  double precision, intent( out )                  :: AvOut
+          end subroutine average
+  END INTERFACE
 
+  double precision,dimension(maxiter)             :: iterTimings
+  double precision                                :: iterAverage
+  integer                                         :: iterCount1, iterCount2, &
+                                                     iterCountRate
 
 
 
@@ -2222,8 +2241,17 @@ SUBROUTINE makesurf()
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
   adif=toler+1
   diff = .false.
+  
+  ! See if ./restart/ exists. If it does not, create it!
+  inquire( directory=restartdir, exist=rex )
+  if ( rex .eqv. .false. ) then ! make directory
+     call system( "mkdir ./restart/" )
+  end if
+
   ! ----------  MAIN LOOP ---------------
   do while(iter<maxiter.and.adif>toler)
+   ! Enter timing info
+   call system_clock(COUNT=iterCount1)
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
      c1=""
@@ -2320,10 +2348,19 @@ SUBROUTINE makesurf()
    !-------------------------------------------------------------
    ! Write final eigenvectors to file  
    !-------------------------------------------------------------
+   call system_clock(COUNT=iterCount2,COUNT_RATE=iterCountRate)
+   iterTimings(iter) = dble( iterCount2-iterCount1)/iterCountRate
+
   enddo !while(iter<maxiter.and.adif>toler)
   !----------------------------------
   ! End of self-consistent iterations
   !----------------------------------
+  
+  ! Print iteration information
+  call average( iterTimings, iter, iterAverage )
+  write(OUTFILE, "(3x,/,A,F10.7,A,/)" ) " Average Iteration time = ", iterAverage, &
+          " seconds " 
+
   !print final errors
   call makebvec(bvec,.true.)
   print "(5x,A)","Final RMS Errors of Fitting Equations"

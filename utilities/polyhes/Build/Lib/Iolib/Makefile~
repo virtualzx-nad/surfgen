@@ -1,0 +1,28 @@
+# Makefile to build iolib.a
+# Necessary for polyhes.x
+#---------------------------------------------------
+# Objects
+OBJS	= iolib1.o iolib2.o pack77.o
+# Compiler
+FC	:= ifort
+#---------------------------------------------------
+iolib	: $(OBJS)
+	@echo "Building iolib.a"
+	-ar rvu iolib.a $(OBJS)
+	ranlib iolib.a
+clean	:
+	rm -rf ./*.o ./*.a
+
+#---------------------------------------------------
+# Build rules for objects.
+./iolib1.o : ./iolib1.f
+	@echo "Building iolib1.o"
+	ifort -c -assume nounderscore -assume byterecl -O -g iolib1.f
+
+./iolib2.o : ./iolib2.f
+	@echo "Building iolib2.o"
+	ifort -c -assume nounderscore -assume byterecl iolib2.f
+
+./pack77.o : ./pack77.f
+	@echo "Building pack77.f"
+	ifort -c -assume nounderscore -assume byterecl-O -g pack77.f

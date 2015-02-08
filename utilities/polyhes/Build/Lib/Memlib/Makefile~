@@ -1,0 +1,29 @@
+# Makefile to build iolib.a
+# Necessary for polyhes.x
+#---------------------------------------------------
+# Objects
+OBJS	= cdatime.o cgetmem.o memmac.o
+# Compiler
+FC	:= ifort
+CC	:= gcc
+#---------------------------------------------------
+memlib	: $(OBJS)
+	@echo "Building memlib.a"
+	ar rvu memlib.a $(OBJS)
+	ranlib memlib.a
+
+clean		:
+	rm -rf ./*.o ./*.a
+#---------------------------------------------------
+# Build rules for objects.
+./memmac.o : ./memmac.f
+	@echo "Building memmac.o"
+	ifort -assume 2underscores -c -O memmac.f
+
+./cgetmem.o : ./cgetmem.c
+	@echo "Building cgetmem.o"
+	gcc -c cgetmem.c
+
+./cdatime.o : ./cdatime.c
+	@echo "Building cdatime.o"
+	gcc -c cdatime.c
