@@ -412,11 +412,11 @@ program findcp
   deallocate(cgeom)
   deallocate(skip)
 
-end
+end program findcp
 
 
 !------ write hessian file to disk, columbus format
-subroutine writeHess(hess,nvibs)
+subroutine zwriteHess(hess,nvibs)
   implicit none
   integer, intent(in)         :: nvibs
   double precision,intent(in) :: hess(nvibs,nvibs)

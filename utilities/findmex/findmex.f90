@@ -11,6 +11,7 @@
 ! (C) 2013 Yarkony Group, Johns Hopkins University
 !-------------------
 ! Oct 2013        Xiaolei Zhu        Created 
+! Jan 2015        Christopher Malbon Modified: input file
 !-------------------
 program findmex
   implicit none
@@ -21,7 +22,7 @@ program findmex
   double precision,allocatable  :: anum(:),masses(:),  hess(:,:), w(:)
   character*3,allocatable       :: aname(:)
   double precision,allocatable  :: cgeom(:)
-
+  
   print *," ***************************************** "
   print *," *    findmex.x                           * "
   print *," ***************************************** "
@@ -143,15 +144,17 @@ end subroutine calcHess
 !Energy part of the Hessian is done numerically
 subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
   implicit none
-  integer, intent(in)                                 ::  natoms,surf1,surf2,maxiter,nstate
-  double precision,dimension(3*natoms),intent(inout)  ::  cgeom
-  double precision,intent(in)                         ::  shift,Etol,Stol
+  integer, intent(in)                                 :: natoms,surf1,surf2, &
+                                                         maxiter,nstate
+  double precision,dimension(3*natoms),intent(inout)  :: cgeom
+  double precision, intent(in)                        :: shift,Etol,Stol
 
   integer   :: ndeg  ! number of degenerate states
   integer   :: noffd ! number of off-diagonals that has to vanish 
   integer   :: nlag  ! number of Lagrange multipliers 
   integer   :: neq   ! total number of equations 
-  real*8    ::  h(nstate,nstate),cg(3*natoms,nstate,nstate),dcg(3*natoms,nstate,nstate),e(nstate)
+  real*8    ::  h(nstate,nstate),cg(3*natoms,nstate,nstate), &
+                dcg(3*natoms,nstate,nstate),e(nstate)
   double precision,dimension(3*natoms)           :: grad !gradient of average energy
   double precision,dimension(:,:),allocatable    :: hess     ! full hessian of lagrangian 
   double precision,dimension(:,:),allocatable    :: B    ! Coordinate-LM cross block and its self product 
@@ -159,12 +162,12 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
   double precision,dimension(:),allocatable :: lam, dlag    !lagrange multipliers and gradient of lagrangian
   double precision,dimension(:),allocatable :: w,b1,b2      ! evals of hessian and intermediate vectors 
   integer,dimension(:),allocatable :: IWORK
-  integer           :: LIWORK, LWORK, itmp(1),INFO  
-  integer  ::  iter  , i,j,lindex
-  double precision            :: nrmG, nrmD,tmp(1)
-  double precision, external  :: dnrm2
-  double precision,  parameter  :: amu2au=1.822888484514D3,au2cm1=219474.6305d0
-  double precision, parameter   :: MAXD = 1D-2
+  integer                          :: LIWORK, LWORK, itmp(1),INFO  
+  integer                          :: iter,i,j,lindex
+  double precision                 :: nrmG, nrmD,tmp(1)
+  double precision, external       :: dnrm2
+  double precision,  parameter     :: amu2au=1.822888484514D3,au2cm1=219474.6305d0
+  double precision, parameter      :: MAXD = 1D-2
 
   ! allocate arrays
   ndeg = surf2-surf1+1
@@ -190,18 +193,18 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
                       surf2," in ",maxiter," iterations."
   print "(A)","  Convergence Tolerances"
   print "(A,E10.2,A,E10.2)","  Energy Gradient: ",Etol,"   Displacement:",Stol
-  lam = 0d0
+  lam = 0d0 ! initialize lagrange multipliers
   do iter=1,maxiter
      call EvaluateSurfgen(cgeom,e,cg,h,dcg,.false.)
      print "(A,I5)","Iteration ",iter
      print *,"Energies:   "
-     print "(10F20.4)",e*au2cm1 
+     print "(12F20.4)",e*au2cm1 
      print *,"Lagrange Multipliers:   "
-     print "(10F20.4)",lam
+     print "(12F20.4)",lam
      ! use h and cg to store partially diagonalized representation and their gradients
      h = 0d0
      do i=1,nstate
-       h(i,i) = e(i)
+       h(i,i) = e(i)  ! energies
      end do
      ! construct Intersection Adapted Partially Diagonalized Representation
      call OrthogonalizeGH(h,cg,surf1,surf2,3*natoms,100,1d-10)
@@ -243,7 +246,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol)
      ! part 2 : off diagonal element
      do i=surf1,surf2-1
        do j=i+1,surf2
-         dlag(1:3*natoms)=dlag(1:3*natoms)+lam(lindex)*cg(:,i,j)
+         dlag(0:3*natoms)=dlag(1:3*natoms)+lam(lindex)*cg(:,i,j)
          lindex=lindex+1
        end do
      end do

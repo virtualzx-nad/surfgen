@@ -1,0 +1,33 @@
+# Makefile for stand-alone polyhes program, interfaced with
+#  surfjay.
+#-------------------------------------------------------------
+# Objects
+OBJS	= polyhes.vnew.o
+# Compiler
+FC 	:= ifort
+# Compiler options
+FCOPT	:= -auto -g -traceback -lpthread -openmp -assume nounderscore
+# Environment
+SOURCE 	:= $(shell pwd)
+# Libraries
+PLYHES_LIB	:= memlib.a iolib.a 
+LIBS		:= libsurfgen-2.6.14-Linux-x86_64.a $(BLAS_LIB) $(PLYHES_LIB)
+# Cleaning
+RM	:= rm -f
+#-------------------------------------------------------------
+polyhes	: $(OBJS)
+	@echo ' '
+	@echo ' Making polyhes.'
+	$(FC) $(FCOPT) -o polyhes.x $(OBJS) $(LIBS)
+	@echo ' Finished building polyhes '
+	@echo ' '
+clean	: 
+	@echo ' '
+	@echo ' Cleaning...'
+	$(RM) ./*.o
+#-------------------------------------------------------------
+./%.o : ./%.f
+	@echo ' Building file: $<'
+	$(FC) $(FCOPT) -lpthread -c -g -w -o $@ $<
+	@echo ' Finished building $<'
+	@echo ' '

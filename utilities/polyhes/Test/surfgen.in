@@ -1,0 +1,227 @@
+/
+&GENERAL
+printlvl=5
+jobtype=1
+natoms=5
+atmgrp=1,2,3,3,4
+cntfl='connect.in'
+ngrp=3
+groupsym=2,1,1
+groupprty=-1,1,1
+order=4
+inputfl='hd.data'
+/
+&MAKESURF
+SearchPath=	'~/DATA-BIN/DATA-C2Vsd-loop','~/DATA-BIN/DATA-C2vsd-1.2.7',
+		'~/DATA-BIN/DATA-C1min-C2Vsd','~/DATA-BIN/DATA-C1min-loop',
+            '~/DATA-BIN/DATA-C1min-CSinv','~/DATA-BIN/DATA-CSinv-loop',
+		'~/DATA-BIN/DATA-C1min-CSrot','~/DATA-BIN/DATA-CSrot-loop',
+		'~/DATA-BIN/DATA-C1min-01mex.form','~/DATA-BIN/DATA-01mex-loop.form',
+		'~/DATA-BIN/DATA-01mex-ASYform.form','~/DATA-BIN/DATA-C1min-12mex.cis',
+		'~/DATA-BIN/DATA-12mex-loop.cis','~/DATA-BIN/DATA-CSinv-12mex.trans'
+		'~/DATA-BIN/DATA-12mex-loop.trans','~/DATA-BIN/DATA-s2min-s2sd.trans',
+		'~/DATA-BIN/DATA-s2sd-loop.trans','~/DATA-BIN/DATA-SDCIS-SDTRANS',
+		'~/DATA-BIN/DATA-12mex-01mex.cis','~/DATA-BIN/DATA-01mex-loop.cis-2'
+		'~/DATA-BIN/DATA-01mex-asy.cis','~/DATA-BIN/DATA-12mex-01mex.trans',
+            '~/DATA-BIN/DATA-01mex-loop.trans-2','~/DATA-BIN/DATA-01mex-asy.trans',
+		'~/DATA-BIN/DATA-C1min-mthxy','~/DATA-BIN/DATA-MTHXY-saddle.mthxy',
+		'~/DATA-BIN/DATA-sadd-loop.mthxy','~/DATA-BIN/DATA-s2sd-loop.cis',
+		'~/DATA-BIN/DATA-c1min-tors-0.05','~/DATA-BIN/DATA-C1min-0.1tors',
+		'~/DATA-BIN/DATA-appxC2v-Mthxy-Saddle','~/DATA-BIN/DATA-appx12mex-MTHXY',
+		'~/DATA-BIN/DATA-traj1.4.1-A','~/DATA-BIN/DATA-traj1.4.1-B',
+		'~/DATA-BIN/DATA-fill-0.0-path1','~/DATA-BIN/DATA-FILL-0.0-path2',
+		'~/DATA-BIN/DATA-fill-0.0-path3','~/DATA-BIN/DATA-fill-0.0-path4',
+		'~/DATA-BIN/DATA-OOP-csinv-mthxy-0.0','~/DATA-BIN/DATA-3.0-s1',
+		'~/DATA-BIN/DATA-3.0-s0','~/DATA-BIN/DATA-3.0-s2',
+		'~/DATA-BIN/DATA-CSROT2-LOOP',
+		'~/DATA-BIN/DATA-TRANS-ASY-LOOP',
+		'~/DATA-BIN/DATA-FORM-ASY-LOOP',
+		'~/DATA-BIN/DATA-CIS-ASY-LOOP',
+		'~/DATA-BIN/DATA-s2min-disps',
+		'~/DATA-BIN/DATA-trans-cis-saddle',
+		'~/DATA-BIN/DATA-Rot-0.1-pos','~/DATA-BIN/DATA-c2v-0.1-pos',
+		'~/DATA-BIN/DATA-cis-sadd-0.1','~/DATA-BIN/DATA-s2-trans-sadd-0.1',
+		'~/DATA-BIN/5.5-DATA-S2-4.3_5.7-1','~/DATA-BIN/DATA-MTHXY-MINIMUM',
+		'~/DATA-BIN/DATA-S2-SADDLE-TRANS-0.1','~/DATA-BIN/DATA-S2-SADDLE-CIS-0.1',
+		'~/DATA-BIN/DATA-01MEX-CIS-0.1-POS','~/DATA-BIN/DATA-01MEX-TRANS-0.1-POS',
+		'~/DATA-BIN/DATA-STATE2-SADD-FORM','~/DATA-BIN/DATA-STATE3-MIN-FORM',
+		'~/DATA-BIN/DATA-STATE3-SADD-FORM',
+		'~/DATA-BIN/5.5-DATA-S2-4.3_5.7-2',
+		'~/DATA-BIN/DATA-4.0-s2','~/DATA-BIN/DATA-4.0-s1','~/DATA-BIN/DATA-4.0-s0',
+		'~/DATA-BIN/DATA-5.0-s1','~/DATA-BIN/DATA-5.0-s2',
+		'~/DATA-BIN/DATA-6.0-s2','~/DATA-BIN/DATA-6.0-s1',
+		'~/DATA-BIN/DATA-7.0-s2',
+		'~/DATA-BIN/DATA-8.0-s2',
+		'~/DATA-BIN/DATA-4.10.0',
+		'~/DATA-BIN/DATA-4.11.0',
+		'~/DATA-BIN/DATA-4.12.1',
+		'~/DATA-BIN/DATA-4.12.2',
+		'~/DATA-BIN/DATA-4.13.1',
+		'~/DATA-BIN/DATA-4.13.2',
+		'~/DATA-BIN/DATA-4.14.1',
+		'~/DATA-BIN/DATA-4.14.2',
+		'~/DATA-BIN/DATA-4.9.0',
+		'~/DATA-BIN/DATA-5.3.16.0',
+		'~/DATA-BIN/DATA-5.3.17.0',
+		'~/DATA-BIN/DATA-5.3.18.0',
+		'~/DATA-BIN/DATA-S2_SADDLE_CIS_0.05',
+		'~/DATA-BIN/DATA-S2_SADDLE_TRANS_0.05',
+		'~/DATA-BIN/DATA-5.3.19.0'
+		'~/DATA-BIN/DATA-StretchedOH-csinv',
+		'~/DATA-BIN/DATA-StretchedCH1',
+		'~/DATA-BIN/DATA-StretchedCH2',
+		'~/DATA-BIN/DATA-s2saddlecis-0.075',
+		'~/DATA-BIN/DATA-s2saddletrans-0.075',
+		'~/DATA-BIN/DATA-S2-saddle-cis-torsions',
+		'~/DATA-BIN/DATA-S2sadd-12MEX-cis',
+		'~/DATA-BIN/DATA-S2sadd-12MEX-trans',
+		'~/DATA-BIN/DATA-FORM-0.05',
+		'~/DATA-BIN/DATA-TRANS-ASY-0.05',
+		'~/DATA-BIN/DATA-CIS-0.05',
+		'~/DATA-BIN/DATA-MTHXY_SADDLEPOINT',
+		'~/DATA-BIN/DATA-5.3.20.0',
+		'~/DATA-BIN/DATA-5.3.21.1',
+		'~/DATA-BIN/DATA-5.3.22.1',
+		'~/DATA-BIN/DATA-5.3.23.1',
+		'~/DATA-BIN/DATA-5.3.24.1',
+		'~/DATA-BIN/DATA-5.3.25.1',
+		'~/DATA-BIN/DATA-5.3.26.1',
+		'~/DATA-BIN/DATA-Reisler-5.3.2',
+		'~/DATA-BIN/DATA-Reisler-5.3.3-S2',
+		'~/DATA-BIN/DATA-MTHXY-0.05-DISPS',
+		'~/DATA-BIN/DATA-FORM-0.075-DISPS',
+		'~/DATA-BIN/DATA-TRANS-0.075-DISPS',
+		'~/DATA-BIN/DATA-CIS-0.075-DISPS',
+		'~/DATA-BIN/DATA-6.1-s2-v',
+		'~/DATA-BIN/DATA-7.0-v1',
+		'~/DATA-BIN/DATA-8.0-v1',
+		'~/DATA-BIN/DATA-4.1-s1',
+		'~/DATA-BIN/DATA-4.1-s2',
+		'~/DATA-BIN/DATA-p21-4.12.1',
+		'~/DATA-BIN/DATA-p3596',
+		'~/DATA-BIN/DATA-p44-path',
+		'~/DATA-BIN/DATA-p96-8.0-v1',
+		'~/DATA-BIN/DATA-path-1053',
+		'~/DATA-BIN/DATA-path-1054',
+		'~/DATA-BIN/DATA-path-1102',
+		'~/DATA-BIN/DATA-path-1188',
+		'~/DATA-BIN/DATA-path-1192',
+		'~/DATA-BIN/DATA-path-1203',
+		'~/DATA-BIN/DATA-path-453',
+		'~/DATA-BIN/DATA-path-458',
+		'~/DATA-BIN/DATA-path-932',
+		'~/DATA-BIN/DATA-path-934',
+		'~/DATA-BIN/DATA-path-point4285',
+		'~/DATA-BIN/DATA-path-point955',
+		'~/DATA-BIN/DATA-DRYCAN-3.8_6.0-s2',
+		'~/DATA-BIN/DATA-6.1-s2',
+		'~/DATA-BIN/DATA-4.15.1',
+		'~/DATA-BIN/DATA-4.15.2',
+		'~/DATA-BIN/DATA-01mex-form-0.1',
+		'~/DATA-BIN/DATA-Cis-0.025',
+		'~/DATA-BIN/DATA-Cis-co4-disps',
+		'~/DATA-BIN/DATA-Cis-co5-disps',
+		'~/DATA-BIN/DATA-mthxy-sadd-0.075',
+		'~/DATA-BIN/DATA-mthxy-saddle-0.1disps',
+		'~/DATA-BIN/DATA-mthxy-saddle-tors0.075',
+		'~/DATA-BIN/DATA-Reisler-5.3-4',
+		'~/DATA-BIN/DATA-mthxy-saddle-tors0.1',
+		'~/DATA-BIN/DATA-Reisler5.5-1',
+		'~/DATA-BIN/DATA-s2transmode7',
+		'~/DATA-BIN/DATA-s2transmode1neg',
+		'~/DATA-BIN/DATA-s2transmode1',
+		'~/DATA-BIN/DATA-s2cismode7neg',
+		'~/DATA-BIN/DATA-s2cismode7',
+		'~/DATA-BIN/DATA-hcohiso-m1',
+		'~/DATA-BIN/DATA-hcohiso-m4',
+		'~/DATA-BIN/DATA-hcohiso-m6',
+		'~/DATA-BIN/DATA-S1minForm',
+		'~/DATA-BIN/DATA-01trans-DISPS2',
+		'~/DATA-BIN/DATA-hcohch2co_MODES',
+		'~/DATA-BIN/DATA-hcohch2co_0.01',
+		'~/DATA-BIN/DATA-mthxy-gs-min',
+		'~/DATA-BIN/DATA-mthxy-min-2',
+		'~/DATA-BIN/DATA-Mthxy-0.1disps',
+		'~/DATA-BIN/DATA-hcoh-iso-mode1.2',
+		'~/DATA-BIN/DATA-hcoh-iso-mode2.2',
+		'~/DATA-BIN/DATA-R5.5-2',
+		'~/DATA-BIN/DATA-h2co_h-Test',
+		'~/DATA-BIN/DATA-R5.5-3',
+		'~/DATA-BIN/DATA-R5.5-4',
+		'~/DATA-BIN/DATA-R5.5-5',
+		'~/DATA-BIN/DATA-R5.5-6',
+		'~/DATA-BIN/DATA-R5.5-7',
+		'~/DATA-BIN/DATA-R5.5-8',
+		'~/DATA-BIN/DATA-R5.5-9',
+		'~/DATA-BIN/DATA-R5.5-9-b',
+		'~/DATA-BIN/DATA-R2-5.5-1',
+		'~/DATA-BIN/DATA-R2-5.5-1.b',
+		'~/DATA-BIN/DATA-R2-5.5-2',
+		'~/DATA-BIN/DATA-R3-5.5-1',
+		'~/DATA-BIN/DATA-R3-5.5-2',
+		'~/DATA-BIN/DATA-R3-5.5-3',
+		'~/DATA-BIN/DATA-R3-5.5-4',
+		'~/DATA-BIN/DATA-R3-5.5-5',
+		'~/DATA-BIN/DATA-hcohth2co-v1',
+		'~/DATA-BIN/DATA-hcohth2co-v2',
+		'~/DATA-BIN/DATA-hcohth2co-v3',
+		'~/DATA-BIN/DATA-hcohth2co-v4',
+		'~/DATA-BIN/DATA-hcohth2co-v5',
+		'~/DATA-BIN/DATA-hcohth2co-v6',
+		'~/DATA-BIN/DATA-hcoh-sadd-v1',
+		'~/DATA-BIN/DATA-hcoh-sadd-v4',
+		'~/DATA-BIN/DATA-hcoh-sadd-v6',	
+		'~/DATA-BIN/DATA-trans-asy-v1',
+		'~/DATA-BIN/DATA-trans-asy-v5',
+		'~/DATA-BIN/DATA-R3-5.5-5.b',
+		'~/DATA-BIN/DATA-R4-5.5-1',
+		'~/DATA-BIN/DATA-form-asy-v1',
+		'~/DATA-BIN/DATA-s2sadtrans-vib1',
+		'~/DATA-BIN/DATA-s2sadtrans-vib7',
+		'~/DATA-BIN/DATA-Mthxy-H2CO',
+		'~/DATA-BIN/DATA-s2-5.33-1/',   
+enfDiab=1
+gscalemode=2
+dijscale=1d0
+dfstart=1
+deg_cap=1.8D-2
+eshift=114.85428096
+intGradS=1D-1
+useIntGrad=.true.
+intGradT=1D-3
+usefij=.true.
+rmsexcl=-2
+restartdir = restart
+cpfptn=236*'cartgrd_total.drt1.state$.drt1.state$.all'
+npoints=6367
+gcutoff=1D-7
+maxiter=4
+toler=1D-3
+LSETol=1.0D-6
+exactTol=1D-10
+maxd=1d0
+tbas=1d-8
+gorder=800
+outputfl='hd.data2'
+flheader='high order tester'
+w_energy=1D0
+w_grad=4D-1
+w_fij=2D-1
+nrmediff=5D3
+ediffcutoff=5D2
+nrmediff2=2D2
+ediffcutoff2=2d2
+ndstart=200
+ndiis=5
+guide='ckl.guide'
+ckl_input=''
+ckl_output='ckl.out'
+printError=.true.
+energyT=5.1D4,5.2D4,5.4D4,5.6D4
+highEScale=7D-1,6D-1,4D-1,2D-1
+followPrev=.false.
+cpcutoff=5.1D4
+gradcutoff=5.6D4
+/
+&potlib
+/

@@ -1,0 +1,278 @@
+TITLE
+xx 111112222233333
+wt     0    1 6367
+wt     1    1    1 ! C2v
+wt     1    2   19 ! C2v Loop 
+wt     0    2    3 ! ** Bad C2v points **
+wt     0    8    9 ! ** Bad C2v points **
+wt     1   20   22 ! C2v Loop  ( Recalculated points )
+wt     0   21   21 ! ** Bad C2v points **
+wt     1   23   47 ! C1min =============> C2vsd
+wt     0   47   47 ! ** Bad path point **
+wt     1   48   65 ! C1min Loop
+wt     0   66   83 ! C1min Loop (Doubled)
+wt     1   84  109 ! C1min =============> CSinv
+wt     1  110  128 ! CSinv Loop
+wt     1  129  190 ! C1min =============> CSrot ( Full Rotation )
+wt     0  140  141 ! ** Bad path point **
+wt     0  159  160 ! ** Bad path point **
+wt     0  174  175 ! ** Bad path point **
+wt     0  190  190 ! ** Bad path point **
+wt     1  191  208 ! CSrot Loop
+wt     1  209  239 ! C1min =============> 01mex ( Formaldehyde )
+wt     1  240  258 ! 01mex Loop ( Formaldehyde )
+wt     1  259  309 ! 01mex =============> ASYMPTOTE ( Formaldehyde )
+wt     0  281  283 ! ** Bad path point **
+wt     1  309  355 ! C1min =============> 21mex ( CIS HCOH )
+wt     0  347  347 ! ** Bad path point **
+wt     1  356  373 ! 21mex Loop ( CIS HCOH )
+wt     1  374  389 ! CSinv =============> 21mex ( TRANS HCOH )
+wt     0  380  380 ! ** Bad path point **
+wt     0  388  388 ! ** Bad path point **
+wt     1  389  407 ! 21mex Loop ( TRANS HCOH )
+wt     1  408  423 ! S2min =============> S2SAD ( TRANS )
+wt     2  424  442 ! S2SAD Loop ( TRANS HCOH )
+wt     2  443  461 ! S2SAD =============> S2SAD
+wt     1  462  482 ! 21mex =============> 01mex ( CIS )
+wt     0  467  467 ! ** Bad path point **
+wt     1  481  499 ! 01mex Loop-2 ( CIS )
+wt     0  482  483 ! ** Bad Loop Point **
+wt     0  486  488 ! ** Bad Loop Point **
+wt     0  495  495 ! ** Bad Loop Point **
+wt     1  500  530 ! 01mex =============> ASYMPTOTE (CIS )
+wt     0  501  501 ! ** Bad path point **
+wt     0  505  505 ! ** Bad path point **
+wt     1  531  549 ! 21mex =============> 01mex ( TRANS )
+wt     0  541  541 ! ** Bad path point ( sol'n change ) **
+wt     0  551  569 ! ** 01mex Loop ( TRANS )
+wt     0  551  551 ! **
+wt     1  572  600 ! 01mex =============> ASYMPTOTE ( TRANS )
+wt     1  601  647 ! C1min =============> MTHXY
+wt     1  650  687 ! MTHXY =============> Saddle ( MTHXY )
+wt     0  650  651 ! ~~~~ ***** ~~~~~
+wt     0  658  658 ! ** Bad path point **
+wt     0  661  661 ! ** Bad path point **
+wt     0  682  682 ! ** Bad path point **
+wt     1  688  704
+wt     0  688  689 ! ** Bad Loop point **
+wt     2  705  722 ! S2SD Loop ( CIS )
+wt     1  723  732 ! C1min Loop ( 0.05 torsion coordinates )
+wt     1  733  736 ! C1min Loop ( 0.1  torsion coordinates )
+wt     1  737  765 ! Mthxy Saddle  ==============> C2v
+wt     0  741  741 ! ** Bad path Point **
+wt     0  742  742 ! ** Bad path point **
+wt     1  770  787 ! MTHXY ============> 12mex ( MTHXY )
+wt     1  788  826 ! Traj1.4.1----A-
+wt     1  827  845 ! Traj1.4.1----B-
+wt     1  846  862 ! Fill points 0.0 path1
+wt     1  863  875 ! FILL points 0.0 path2
+wt     1  876  892 ! FILL points 0.0 path3
+wt     1  893  907 ! FILL points 0.0 path4
+wt     1  908  926 ! CSinv ====> Mthxy OOP -- 0.0
+wt     1  927  992 ! FILL 3.0-s1    
+wt     1  993 1010 ! FILL 3.0-s0
+wt     1 1011 1041 ! FILL 3.0-s2
+wt     1 1042 1045 ! CSROT 2 LOOP ( Torsions )
+wt     1 1046 1052 ! TRANS ASY LOOP
+wt     1 1053 1059 ! FORM  ASY LOOP
+wt     1 1060 1066 ! CIS   ASY LOOP
+wt     1 1067 1085 ! s2min-disps
+wt     1 1086 1092 ! trans-cis-saddle
+wt     1 1093 1123 ! Rot,C2v,s2-sadd(cis,trans) +0.1 disps
+wt     1 1124 1142 ! 5.5-S2-4.3_5.7-1
+wt     1 1163 1172 ! MTHXY-MINIMUM
+wt     2 1173 1182 ! S2-SADDLE-TRANS
+wt     2 1183 1192 ! S2-SADDLE-CIS
+wt    -2 1193 1199 ! 01mex-CIS 0.1 disps
+wt    -2 1200 1204 ! 01mex-TRANS 0.1 disps
+wt     1 1205 1212 ! form state 2 saddle point
+wt     1 1213 1219 ! form state 3 minimum
+wt     1 1220 1223 ! form state 3 saddle point
+wt     1 1224 1247 ! 5.5-S2-4.3_5.7-2
+wt     1 1248 1276 ! 4.0-s2
+wt     1 1277 1322 ! 4.0-s1
+wt     1 1323 1347 ! 4.0-s0
+wt     1 1348 1450 ! 5.0-s1
+wt     1 1451 1586 ! 5.0-s2
+wt     1 1587 1701 ! 6.0-s2
+wt     1 1702 1810 ! 6.0-s1
+wt     1 1811 1893 ! 7.0-s2
+wt     1 1894 1987 ! 8.0-s2
+wt     1 1988 2274 ! 4.10.0
+wt     1 2275 2312 ! 4.11.0
+wt     1 2313 2407 ! 4.12.1
+wt     1 2408 2506 ! 4.12.2
+wt     1 2507 2598 ! 4.13.1
+wt     1 2599 2648 ! 4.13.2
+wt     1 2649 2744 ! 4.14.1
+wt     1 2745 2804 ! 4.14.2
+wt     1 2805 3038 ! 4.9.0
+wt     1 3039 3150 ! 5.3.16.0
+wt     1 3151 3224 ! 5.3.17.0
+wt     1 3225 3293 ! 5.3.18.0
+wt     2 3294 3312 ! 0.05 Cis-Saddle point
+wt     2 3313 3331 ! 0.05 Trans-Saddle point
+wt     1 3332 3387 ! 5.3.19.0       
+wt     1 3388 3407 ! StretchedOH
+wt     1 3408 3427 ! StretchedCH1
+wt     1 3428 3447 ! StretchedCH2
+wt     1 3448 3465 ! S2saddle-cis-0.075
+wt     1 3466 3483 ! S2saddle-trans-0.075
+wt     1 3484 3489 ! S2-saddle-cis-torsions
+wt     1 3490 3499 ! S2saddle -> 12mex (cis)
+wt     1 3500 3509 ! S2saddle -> 12mex (trans)
+wt     1 3510 3522 ! Form 0.05
+wt     1 3523 3532 ! trans0.05
+wt     1 3533 3545 ! cis0.05
+wt     1 3546 3563 ! mthxy-saddlepoint
+wt     1 3564 3610 ! 5.3.20.0
+wt     1 3611 3631 ! 5.3.21.1
+wt     1 3632 3674 ! 5.3.22.1
+wt     1 3675 3705 ! 5.3.23.1 
+wt     1 3706 3738 ! 5.3.24.1
+wt     1 3739 3815 ! 5.3.25.1
+wt     1 3816 3891 ! 5.3.26.1
+wt     1 3892 3977 ! Reisler-5.3-2
+wt     1 3978 4068 ! Reisler-5.3-3-S2
+wt     1 4069 4087 ! MTHXY-0.05 DISPS
+wt     1 4088 4099 ! Formaldehyde 0.075 DISPS
+wt     1 4100 4111 ! HOCH(trans)  0.075 DISPS
+wt     1 4112 4123 ! HCOH(cis)    0.075 DISPS
+wt     1 4123 4174 ! 6.0-s2-v
+wt     1 4175 4315 ! 7.0-v1
+wt     1 4316 4391 ! 8.0-v1
+wt     1 4392 4471 ! 4.1-s1
+wt     1 4472 4519 ! 4.1-s2
+wt     1 4520 4560 ! p21-4.12.1
+wt     1 4561 4610 ! p3596
+wt     1 4611 4658 ! p44-path
+wt     1 4659 4699 ! p96-8.0-v1
+wt     1 4700 4713 ! path-1053
+wt     1 4714 4728 ! path-1054
+wt     1 4729 4743 ! path-1102
+wt     1 4744 4757 ! path-1188
+wt     1 4758 4771 ! path-1192
+wt     1 4772 4786 ! path-1203
+wt     1 4789 4800 ! path-453
+wt     1 4801 4816 ! path-458
+wt     1 4817 4831 ! path-932
+wt     1 4832 4846 ! path-934
+wt     1 4847 4876 ! path-point4285
+wt     1 4877 4908 ! path-point955
+wt     1 4909 4941 ! DRYCAN-3.8_6.0-s2
+wt     1 4942 5015 ! 6.1-s2
+wt     1 5016 5106 ! 4.15.1
+wt     1 5107 5152 ! 4.15.2
+wt     1 5153 5158 ! 01mex-form-0.1
+wt     1 5159 5171 ! Cis-0.025 asy
+wt     1 5172 5180 ! Cis-co4-disps
+wt     1 5181 5190 ! Cis-co5-disps
+wt     1 5191 5209 ! mthxy-saddle 0.075
+wt     1 5210 5228 ! mthxy-saddle 0.1
+wt     1 5229 5230 ! mthxy-saddle torsion 0.075
+wt     1 5231 5288 ! Reisler 5.3 4
+wt     1 5289 5290 ! mthxy-torsion saddle 0.1
+wt     1 5291 5378 ! Reisler 5.5 1
+wt     1 5379 5388 ! s2-trans-mode7
+wt     1 5389 5398 ! s2-trans-mode1/mode1neg
+wt     1 5399 5408 ! s2-cis-mode7/mode7neg
+wt     1 5409 5438 ! hcoh(isomerization saddle) m1, m3, m6
+wt     1 5439 5452 ! s1min form
+wt    -2 5453 5467 ! 01trans DISPS2
+wt     0 5460 5460 ! ***
+wt     1 5468 5477 ! hcoh(cis) --X--> h2co MODES
+wt     1 5478 5493 ! hcoh(cis) --X--> h2co 0.01
+wt     1 5494 5512 ! mthxy-gs-min
+wt     1 5513 5531 ! mthxy-minimum-2
+wt     1 5532 5550 ! Mthxy-0.1disps
+wt     1 5551 5556 ! hcoh-iso-mode1.2
+wt     1 5557 5562 ! hcoh-iso-mode2.2
+wt     1 5563 5607 ! Reisler5.5-2
+wt     0 5607 5607 ! ** BAD POINT
+wt     0 5608 5617 ! *** TEST POINTS *** h2co---h
+wt     1 5618 5655 ! Reisler5.5-3
+wt     1 5656 5682 ! Reisler5.5-4
+wt     1 5683 5741 ! Reisler5.5-5
+wt     1 5742 5789 ! Reisler5.5-6
+wt     1 5790 5829 ! Reisler5.5-7
+wt     1 5830 5874 ! Reisler5.5-8
+wt     0 5853 5853 ! ** BAD POINTS ** (High E)
+wt     0 5872 5872 ! ** BAD POINTS ** (High E)
+wt     1 5875 5958 ! Reisler5.5-9 Reisler5.5-9-b
+wt     1 5959 5967 ! Reisler2-5.5-1
+wt     1 5968 5982 ! Reisler2-5.5-1.b
+wt     1 5983 5995 ! Reisler2-5.5-2
+wt     1 5996 6025 ! Reisler3-5.5-1
+wt     1 6026 6055 ! Reisler3-5.5-2
+wt     1 6056 6066 ! Reisler3-5.5-3
+wt     1 6067 6086 ! Reisler3-5.5-4
+wt     1 6087 6120 ! Reisler3-5.5-5
+wt     0 6105 6105 ! ** BAD Point **
+wt     1 6121 6178 ! hcoh(trans)-->h2co v1-v6
+wt     0 6179 6208 ! hcoh(trans)-->hcoh(cis)
+wt     1 6209 6228 ! hcoh(trans) v1,v5
+wt     1 6229 6248 ! Reisler3-5.5-5.b
+wt     1 6249 6288 ! Reisler4-5.5-1
+wt     1 6289 6293 ! h2co v1 5 points
+wt     1 6294 6303 ! s2 saddle trans v1
+wt     1 6304 6313 ! s2 saddle trans v7
+wt     1 6314 6328 ! Mthxy --> H2CO 
+wt     1 6329 6367 ! Simulation points
+eg   573    1    3
+eg   573    2    3
+eg   573    3    3
+eg   574    1    3
+eg   574    2    3
+eg   574    3    3
+eg   617    1    3
+eg   617    2    3
+eg   617    3    3
+eg   618    1    3
+eg   618    2    3
+eg   618    3    3
+eg   619    1    3
+eg   619    2    3
+eg   619    3    3
+eg   647    1    3
+eg   647    2    3
+eg   647    3    3
+eg   652    1    2
+eg   653    1    2
+eg   654    1    2
+eg   655    1    2
+eg   656    1    2
+eg   657    1    2
+eg   658    1    2
+eg   659    1    2
+eg   660    1    2
+wt     0  932  934
+wt     0  950  955
+wt     0 1007 1007
+wt     0  998  998
+wt     0 3984 3984 !**Bad point, likely due to improper wavefunction.
+wt     0 4068 4068 !**Bad point, likely due to improper wavefunction.
+wt     0 4368 4368 !**Bad point, likely due to high E: GS=54620
+wt     0 4619 4619 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4714 4714 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4744 4744 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4758 4758 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4792 4792 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4793 4793 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 4818 4818 !**Bad point, ""
+wt     0 4819 4819 !**Bad point, ""
+wt     0 4832 4832 !**Bad point, ""
+wt     0 4835 4835 !**Bad point, ""
+wt     0 4836 4836 !**Bad point, ""
+wt     0 4922 4922 !**Bad point, high GS E: 69295 cm-1
+wt     0 5237 5237 !**Bad point, high GS E: 66794
+wt     0 5259 5259 !**Bad point, high GS E: 76772
+wt     0 5323 5323 !**Bad point, high GS E: 64187
+wt     0 5645 5645 !**Bad point, high GS E: 64176
+wt     0 5659 5659 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 5660 5660 !**Bad point, likely due to improper wavefunction/low data density
+wt     0 5680 5680 !**Bad point, high GS E: 60835
+wt     0 5732 5732 !**Bad point, high GS E: 58746; and improper wavefunciton/low data density
+eg   278    2    2 ! Remove gradients -,
+eg   278    3    3 ! Remove gradients -'-> (states swapped)
+eg   280    2    2 ! Remove gradients -,
+eg   280    3    3 ! Remove gradients -'-> (states swapped)
