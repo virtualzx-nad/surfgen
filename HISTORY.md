@@ -1,3 +1,11 @@
+## 2.6.15 (2015-01-23)
+
+* Feature added to treat more-than-two-state quasi-degeneracy by orthogonalizing all g and h pairs, as described in JCP 141(17),174109
+* A new data structure gWeight is added, which records the fitting weights of each gradient or coupling block for every data point. 
+  The weight adjustment is due to high energy or large energy difference, and the relative weight assigned to w_fij and w_grad.
+* Automatic assignment of phases in fixphase() now use a weighed sum of errors(using gWeight) instead of plain sum so that the important couplings
+  can receive better representation.  This brings the error in line with actual fitting error.  This should make convergence smoother.
+
 ## 2.6.14 (2014-06-04)
 
 * The program should no longer require a very large stacksize to run.
