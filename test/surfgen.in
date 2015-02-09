@@ -53,8 +53,6 @@ w_grad     = 3D-1
 w_fij      = 3D-1
 nrmediff   = 1D3
 ediffcutoff= 1D2
-nrmediff2  = 1d2
-ediffcutoff2=1d1   
 ndstart    = 200
 ndiis      = 2  
 /

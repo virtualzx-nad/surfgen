@@ -65,7 +65,7 @@ MODULE makesurfdata
 
 ! weights for equations of reproduction of energy, energy gradients, and non-adiabatic coupling
   DOUBLE PRECISION                             :: w_energy,w_grad,w_fij 
-  DOUBLE PRECISION                             :: nrmediff, ediffcutoff, nrmediff2, ediffcutoff2
+  DOUBLE PRECISION                             :: nrmediff, ediffcutoff
 ! ndiis   : size of diis space
 ! ndstart : number of iterations before starting DIIS acceleration for wavefunctions
   INTEGER                                      :: ndiis,ndstart
@@ -101,12 +101,8 @@ MODULE makesurfdata
 ! intGradT     :   Threshold for eigenvalue of B^T.B higher than which the coordinate is considered internal
 ! intGradS     :   Threshold for eigenvalue of B^T.B lower than which the coordinate will be scaled with a
 !                  factor    eval/intGrad,   where eval is the eigenvalue
-! gScaleMode:     =0   Do not scale
-!                 >0   Scale all coordinates
-!                 <0   Scale couplings only
   LOGICAL                                      :: useIntGrad
   DOUBLE PRECISION                             :: intGradT,intGradS 
-  INTEGER                                      :: gScaleMode
 
 ! nvibs:  number of coordinates along which gradients will be taken.
 !  3*natoms when useIntGrad=.FALSE.,  3*natoms-5 when useIntGrad=.TRUE. 
@@ -186,9 +182,34 @@ MODULE makesurfdata
 ! Weights for each gradient and coupling blocks, caused by energy differences
 ! and high energy.
   DOUBLE PRECISION,dimension(:,:,:),allocatable     :: gWeight
+! Weights for each energy at every data point, caused by high energy thresholds
+  DOUBLE PRECISION,dimension(:,:,:),allocatable     :: eWeight
 !Hd predictions for all data points
   DOUBLE PRECISION,dimension(:,:,:,:),allocatable   :: fitG
   DOUBLE PRECISION,dimension(:,:,:),allocatable     :: fitE
+
+! These parameters control the managed addition of data points.
+! ManagedPts contains the list of points that will be added through the manager.
+! The manager program will monitor these points and add those that are
+! qualitatively corret into the fitting set every iteration.  
+  INTEGER,dimension(:),allocatable                  :: ManagedPts
+! The number of managed points
+  INTEGER                                           :: NManagedPts
+! This stores the full weights of the points that are managed when they are
+! included.  The ptWeights and weight vectors will be adjusted dynamically
+! according to which points are included
+  DOUBLE PRECISION,dimension(:),allocatable         :: TargetWt
+! This vector marks which managed point is already included in the fit
+  LOGICAL,dimension(:),allocatable                  :: IncludePt
+! This vector marks the points that are managed.
+  LOGICAL,dimension(:),allocatable                  :: IsManaged
+! Energy criteria.  A point can only be added if all energy error is lower than
+! this threshold.  This is adjusted by the high enery scaling settings.
+  DOUBLE PRECISION                                  :: mng_ener
+! Gradient criteria.  Error for each gradient or coupling component must be
+! lower than this value.  This is adjusted by the high energy scaling settings
+! and energy difference scaling settings for couplings. 
+  DOUBLE PRECISION                                  :: mng_grad
  CONTAINS
 
   ! determine if each equation will be include / excluded / fitted exactly
@@ -347,35 +368,53 @@ MODULE makesurfdata
     if(allocated(gWeight))deallocate(gWeight)
     allocate(gWeight(npoints,nstates,nstates))
     gWeight=1d0
+    if(allocated(eWeight))deallocate(eWeight)
+    allocate(eWeight(npoints,nstates,nstates))
+    eWeight=1d0
     do i=1,npoints
-      !calculate weights of coupling blocks caused by energy difference
-      if(nrmediff>0)then
-        do s1=1,nstates
-          ! Weights for energy gradients
-          gWeight(i,s1,s1)=w_grad
+      !calculate weights of gradient and coupling blocks caused by energy difference
+      do s1=1,nstates
+        ! Weights for energy gradients
+        gWeight(i,s1,s1)=w_grad
+        k = 0
+        do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))  !determine the bracket of current energy
+          k = k+1
+          if(k==10)exit
+        end do
+        if(k>0) gWeight(i,s1,s1)= gWeight(i,s1,s1)*highEScale(k)
+      ! Weights for derivative couplings
+        do s2=1,s1-1
           k = 0
-          do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))  !determine the bracket of current energy
+          do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
+            !  determine the bracket of ab initio energy
             k = k+1
             if(k==10)exit
           end do
-          if(k>0) gWeight(i,s1,s1)= gWeight(i,s1,s1)*highEScale(k)
-          ! Weights for derivative couplings
-          do s2=1,s1-1
+          if(k>0) gWeight(i,s1,s2)=w_fij*highEScale(k)
+          if(nrmediff>0)then
             ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
             ediff=(ediff+ediffcutoff)/nrmediff
-            gWeight(i,s1,s2)=w_fij/ediff
-            k = 0
-            do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
-              !  determine the bracket of ab initio energy
-              k = k+1
-              if(k==10)exit
-            end do
-            if(k>0) gWeight(i,s1,s2)=gWeight(i,s1,s2)*highEScale(k)
-            gWeight(i,s2,s1)=gWeight(i,s1,s2)
-          end do!s2
-        end do!s1
-      end if!(nrmediff>0)
+            gWeight(i,s1,s2)=gWeight(i,s1,s2)/ediff
+          end if
+          gWeight(i,s2,s1)=gWeight(i,s1,s2)
+        end do!s2
+      end do!s1
 
+      ! calculate the weights of energy equations
+      do s1=1,nstates
+        k=0
+        do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))
+          k=k+1
+          if(k==10)exit
+        end do
+        if(k>0)   eWeight(i,s1,s1) =  w_energy*highEScale(k)
+        do s2=s1+1,nstates
+          eWeight(i,s1,s2)=eWeight(i,s1,s1)
+          eWeight(i,s2,s1)=eWeight(i,s1,s1)
+        end do !s2=1,nstates
+      end do!s1
+
+      ! create gradient and coupling component of weight vector
       if(ptWeights(i)<1D-8)cycle             ! Create equations for gradients and derivative couplings
       do s1=1,nstates
         do s2=1,nstates
@@ -391,17 +430,7 @@ MODULE makesurfdata
                   nEqs=nEqs+1
                   if(nEqs>maxEqs)stop 'makeEqMap: neqs>maxeqs'
                   lseMap(nEqs,:)=(/i,s1,s2,j/)
-                  if(s1==s2)then                                            ! Energy gradient
-                    wvec(nEqs)=ptWeights(i)*gWeight(i,s1,s1)
-                    if(gScaleMode==1)wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)
-                  else  !(s1==s2)                                           ! Derivative couplings
-                    wvec(nEqs)=ptWeights(i)*gWeight(i,s1,s2)
-                    if(gScaleMode==3)then
-                      wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)**2
-                    else if(gScaleMode>0.or.gScaleMode==-2)then
-                      wvec(nEqs)=wvec(nEqs)*dispgeoms(i)%scale(j)
-                    end if
-                  end if!(s1==s2)
+                  wvec(nEqs)=ptWeights(i)*gWeight(i,s1,s2)
                 end if !(g_exact(i,s2,s1))
                else !(gradNorm(i,j,blkMap(s2,s1))>1D-8)                     ! This gradient othorgonal to the basis.
                 resDir=dispgeoms(i)%grads(j,s1,s2)                          ! This implies a symmetry zero or an inadequate
@@ -435,6 +464,8 @@ MODULE makesurfdata
           incener(exactDiff%List(i)%point,exactDiff%List(i)%i,exactDiff%List(i)%j)=.true.
         end if
     end do!i=1,exactDiff%length
+
+    ! create the component of weight vector for energy equations
     do i=1,npoints
         if(ptWeights(i)<1D-8)cycle
         do s1=1,nstates
@@ -448,25 +479,7 @@ MODULE makesurfdata
                 nEqs=nEqs+1
                 if(nEqs>maxEqs)stop 'makeEqMap: neqs>maxeqs'
                 lseMap(nEqs,:)=(/i,s1,s2,0/)
-                wvec(nEqs)=ptWeights(i)*w_energy
-                k=0
-                do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))
-                  k=k+1
-                  if(k==10)exit
-                end do 
-                if(k>0)   wvec(nEqs) =  wvec(nEqs)*highEScale(k)
-                if(s1==s2 .and. s2>0 .and. nrmediff2>0)then
-                  if(s1>1)then
-                    ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s1-1,s1-1))*AU2CM1
-                    ediff=(ediff+ediffcutoff2)/nrmediff2
-                    if(ediff<1D0)wvec(nEqs)=wvec(nEqs)/ediff
-                  end if
-                  if(s1<nstates)then
-                    ediff=abs(dispgeoms(i)%energy(s1+1,s1+1)-dispgeoms(i)%energy(s1,s1))*AU2CM1
-                    ediff=(ediff+ediffcutoff2)/nrmediff2
-                    if(ediff<1D0)wvec(nEqs)=wvec(nEqs)/ediff
-                  end if!(s1<nstates)
-                end if!(s1==s2 .and. s2>0 .and. nrmediff2>0)
+                wvec(nEqs)=ptWeights(i)*eWeight(i,s1,s2)
               end if
             end if
           end do !s2=1,nstates
@@ -1047,8 +1060,8 @@ MODULE makesurfdata
                         dnrm2(nvpt,dispgeoms(j)%grads(:nvpt,k,l)*sqrt(dispgeoms(j)%scale(:nvpt)),1)
              if(dcp>4d-2*ncp.and.dcp2>3d-2.and.printlvl>2.and.ncp>1d0.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))&
                         print "(4x,A,I5,A,2I2,A,F9.2,A,E12.4,A,F9.2,A)",    &
-                        	"Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,&
-				"% out of ", sqrt(ncp),", ",dcp2*100,"% cp*dE"
+                                "Large coupling error at pt",j," bkl",k,l,": ",sqrt(dcp/ncp)*100,&
+                                "% out of ", sqrt(ncp),", ",dcp2*100,"% cp*dE"
              nrmdcp = nrmdcp+dcp
              nrmcp  = nrmcp +ncp
            end if! coupling included
@@ -1077,10 +1090,10 @@ MODULE makesurfdata
              gnrm = dot_product(dispgeoms(j)%grads(:nvpt,k,k),dispgeoms(j)%grads(:nvpt,k,k)*dispgeoms(j)%scale(1:nvpt))
              dgrd = dgrd / gnrm 
              if(((dgrd>1D-2.and.gnrm>1d-4).or.(gnrm*dgrd>1D-4.and.gnrm<=1D-4)).and.&
-			printlvl>2.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))then
+                  printlvl>2.and.(dispgeoms(j)%energy(k,k)<energyT(1).or.printlvl>3))then
                print "(4x,A,I5,A,I2,A,F10.3,A,E12.4)", &
                   "Large gradient error at pt",j," state",k," : ",sqrt(dgrd)*100,"% out of ", sqrt(gnrm)
-  	     end if
+             end if
              if(gnrm>1D-4) then
                 nrmgrad = nrmgrad + dgrd
                 avggrad = avggrad + sqrt(dgrd)
@@ -1868,6 +1881,7 @@ MODULE makesurfdata
 ! initialize variables for makesurf
 ! Allocate memory for shared structures and construct coefficient and
 ! equations maps.
+! Construct equation list and weight vectors.
   SUBROUTINE initMakesurf()
     use hddata, only: nblks,nstates,order,nBasis,makeCoefMap
     use progdata, only: printlvl
@@ -2053,6 +2067,82 @@ MODULE makesurfdata
 !CALL DGEMV('T',nex,ncons,1d0,B,nex,y,1,1d0,tmp,1)
 !PRINT *,"RMSE IN g1:",SQRT(DOT_PRODUCT(TMP,TMP)/NCONS)
   END SUBROUTINE solve_diagHess
+!---------------------------------------------
+! This subroutine check the list of managed points to find out which ones can be
+! added the next iteration.  The IncludePt vector is adjusted accordingly
+  SUBROUTINE AddManagedPoints  
+    use progdata, only : printlvl
+    use hddata,only: nstates
+    IMPLICIT NONE
+    integer   :: i,s1,s2,ptid,g,NAdd,Added(NManagedPts)
+    double precision :: e_error, g_error
+    NAdd=0
+    do i=1,NManagedPts
+      if(IncludePt(i))cycle
+      ptid=ManagedPts(i)
+      do s1=1,nstates
+        do s2=s1,nstates
+          if(hasEner(ptid,s1).and.hasEner(ptid,s2))then
+            e_error=abs((dispgeoms(ptid)%energy(s1,s2)-fitE(ptid,s1,s2)))*eWeight(ptid,s1,s2)
+            if(e_error>mng_ener)exit
+          end if
+        end do!s2
+        if(e_error>mng_ener)exit
+      end do!s1
+      if(e_error>mng_ener)cycle
+      do s1=1,nstates
+        do s2=s1,nstates
+          if(hasGrad(ptid,s1,s2))then
+            do g=1,nvibs
+              g_error= &
+                  abs((dispgeoms(ptid)%grads(g,s1,s2)-fitG(ptid,g,s1,s2))*gWeight(ptid,s1,s2))
+              if(g_error>mng_grad)exit
+            end do!g
+          end if
+          if(g_error>mng_grad)exit
+        end do!s2
+        if(g_error>mng_grad)exit
+      end do!s1
+      if(g_error>mng_grad)cycle
+      IncludePt(i)=.true.
+      NAdd=NAdd+1
+      Added(NAdd)=ptid
+    end do!i=1,NManagedPts
+    if(printlvl>1) print "(2X,I5,A)",NAdd," points added to the fitting set by Point Manager."
+    if(printlvl>2) then
+      print *,"  List of added points:"
+      print "(4X,12I6)",Added(1:NAdd)
+    end if
+  END SUBROUTINE AddManagedPoints
+!---------------------------------------------
+! This subroutine updates the ptWeights and weight vectors for managed points
+  SUBROUTINE updateWeights 
+    IMPLICIT NONE
+    integer   :: i,s1,s2,g,pt
+    
+    !update the ptWeights vector
+    do i=1,NManagedPts
+      if(IncludePt(i))then
+        ptWeights(ManagedPts(i))=TargetWt(i)
+      else
+        ptWeights(ManagedPts(i))=0d0
+      end if
+    end do
+
+    !update weight vector
+    do i=1,neqs
+      pt=EqMap(i+nex,1)    ! point index 
+      if(.not.IsManaged(pt))cycle
+      s1=EqMap(i+nex,2)    ! state index 1
+      s2=EqMap(i+nex,3)    ! state index 2
+      g =EqMap(i+nex,4)    ! gradient component index 
+      if(g==0)then
+        weight(i)=eWeight(pt,s1,s2)*ptWeights(pt)
+      else
+        weight(i)=gWeight(pt,s1,s2)*ptWeights(pt)
+      end if
+    end do 
+  END SUBROUTINE updateWeights 
 END MODULE
 !---------------------------------------------
 ! Transform Hd with a block-by-block transformation ZBas
@@ -2209,6 +2299,8 @@ SUBROUTINE makesurf()
       end do
     end if
   end do
+  call AddManagedPoints
+  call updateWeights
   asol = asol1
   CALL getCGrad(asol,dCi,dLambda,lag,jaco)
   CALL optLag(jaco,nex,dCi,asol,jaco2)
@@ -2224,6 +2316,11 @@ SUBROUTINE makesurf()
   diff = .false.
   ! ----------  MAIN LOOP ---------------
   do while(iter<maxiter.and.adif>toler)
+   !update weights
+   if(iter>1)then
+     call AddManagedPoints
+     call updateWeights
+   end if
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
      c1=""
@@ -2317,9 +2414,6 @@ SUBROUTINE makesurf()
    ! write iteration information to output file
    write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
    print *,"   Norm of coefficients:  ",dnrm2(ncons,asol,int(1))
-   !-------------------------------------------------------------
-   ! Write final eigenvectors to file  
-   !-------------------------------------------------------------
   enddo !while(iter<maxiter.and.adif>toler)
   !----------------------------------
   ! End of self-consistent iterations
@@ -2838,16 +2932,18 @@ SUBROUTINE readMakesurf(INPUTFL)
   integer :: i
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
-                      ediffcutoff,nrmediff,ediffcutoff2,nrmediff2,rmsexcl,useIntGrad,intGradT,intGradS,gScaleMode,  &
+                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff
-                      
+                      gradcutoff,cpcutoff,mng_ener,mng_grad
+  ! set default for the parameters                    
   npoints   = 0
   gradcutoff= 100000.
   cpcutoff  = -1.
   printError= .false.
   maxiter   = 3
+  mng_ener  = 2.d3
+  mng_grad  = 1d-1
   orderall  = .true.
   diagHess  = -1d0
   dconv     = 1d-4
@@ -2872,7 +2968,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   maxd      = 1D0
   energyT   = 1D30
   highEScale = 1D0
-  gScaleMode = 0
   toler     = 1D-3
   gorder    = 1D-3
   gcutoff   = 1D-14
@@ -2889,8 +2984,6 @@ SUBROUTINE readMakesurf(INPUTFL)
   w_fij         = dble(1)
   nrmediff      = 2.D4
   ediffcutoff   = 20.
-  nrmediff2     = 100.
-  ediffcutoff2  = 1.
   rmsexcl       = 0
   SearchPath    = ''
   SearchPath(1) ='.'
@@ -2899,7 +2992,12 @@ SUBROUTINE readMakesurf(INPUTFL)
   gmfptn        ='geom.all'
   grdfptn       ='cartgrd.drt1.state$.all'
   cpfptn        ='cartgrd.nad.drt1.state$.drt2.state$.all'
+
+  ! Read the values from surfgen.in
   read(unit=INPUTFL,NML=MAKESURF)
+
+  ! Process the settings
+  mng_ener=mng_ener/au2cm1
   if(useIntGrad)then
     nvibs=3*natoms-6
   else
@@ -2927,13 +3025,13 @@ SUBROUTINE readMakesurf(INPUTFL)
 END SUBROUTINE readMakesurf
 
 ! load pointwise options
-SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO,ptWt)
+SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO)
   use hddata, only:nstates
   use progdata, only: PTFL,printlvl
-  use makesurfdata,only:TEqList,npoints
+  use makesurfdata,only:TEqList,npoints,NManagedPts,ManagedPts,ptWeights,TargetWt, &
+              IsManaged, IncludePt
   IMPLICIT NONE
   TYPE(TEqList),INTENT(OUT):: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
-  double precision,dimension(npoints),intent(out)  :: ptWt
   character(255)           :: comment
   integer                  :: ptid,i,j,ios,tmp,lsID
   character(2)             :: job
@@ -2941,7 +3039,9 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER,DIMENSION(6)                                ::tpCount 
   double precision   ::  wt
 
-  ptWt=dble(1)
+  if(allocated(ptWeights))deallocate(ptWeights)
+  allocate(ptWeights(npoints))
+  ptWeights=dble(1)
   if(printlvl>0)print *,"   Reading point specific options."
   open(unit=PTFL,file='points.in',access='sequential',form='formatted',&
     status='old',action='read',position='rewind',iostat=ios)
@@ -2958,6 +3058,10 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   read(PTFL,1000,IOSTAT=ios) comment
   read(PTFL,1000,IOSTAT=ios) comment
   tpCount=0
+
+  if(allocated(IsManaged))deallocate(IsManaged)
+  allocate(IsManaged(npoints))
+  IsManaged=.false.
   do while(ios==0)
     read(PTFL,1001,IOSTAT=ios) job,ptid,i,j
     if(ios/=0)exit
@@ -2973,16 +3077,28 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
       else
         wt=ptid
       end if
-      if(printlvl>0)print *,"    Job:",job,", Point Range",i,j,", wt=",wt
+      if(printlvl>0)print "(3A,2I7,A,F12.7)","    Job:",job,", Point Range",i,j,", wt=",wt
       if(i<1.or.j>npoints)then
         print *,"Point index out of range. "
         i=max(i,1)
         j=min(j,npoints)
       end if
-      ptWt(i:j)=wt
+      ptWeights(i:j)=wt
       cycle
     end if
-    if(printlvl>0)print *,"    Job:",job,", Point",ptid,",states",i,j
+    if(job=='MN'.or.job=='mn'.or.job=='Mn'.or.job=='mN')then
+      if(printlvl>0)print "(3A,2I7)","    Job:",job,", Point Range",i,j
+      if(i<1.or.j>npoints)then
+        print *,"Point index out of range. "
+        i=max(i,1)
+        j=min(j,npoints)
+      end if
+      do ptid=i,j
+        IsManaged(ptid)=.true.
+      end do
+      cycle
+    end if
+    if(printlvl>0)print "(3A,I7,A,2I4)","    Job:",job,", Point",ptid,",states",i,j
     if(ptid<1.or.ptid>npoints)then
       print *,"Point index out of range."
       cycle
@@ -3024,6 +3140,25 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   call fillout(exactDiff,5)
   call fillout(enfGO,6)
   close(unit=PTFL)
+! set up the list of managed points
+  NManagedPts=count(IsManaged)
+  if(allocated(ManagedPts))deallocate(ManagedPts)
+  Allocate(ManagedPts(NManagedPts))
+  if(allocated(TargetWt))deallocate(TargetWt)
+  Allocate(TargetWt(NManagedPts))
+  if(allocated(IncludePt))deallocate(IncludePt)
+  Allocate(IncludePt(NManagedPts))
+  IncludePt=.false.
+  ptid=1
+  do i=1,npoints
+   if(IsManaged(i))then
+     ManagedPts(ptid)=i
+     TargetWt(ptid)=ptWeights(i)
+     ptid=ptid+1
+   end if
+  end do 
+  if(ptid.ne.NManagedPts+1)stop "Number of Managed Points is Incorrect! Aborting Execution"
+  if(printlvl>1)print "(2X,I5,A)",NManagedPts," points controlled by Point Manager."
 1000 format(a72)
 1001 format(a2,x,i5,i5,i5)
 CONTAINS
@@ -3324,7 +3459,7 @@ SUBROUTINE readdisps()
         print "(15F8.3)",(dnrm2(3*natoms,dispgeoms(l)%bmat(j,1),ncoord),j=1,ncoord)
     end if
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
-    CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs,gScaleMode)
+    CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs)
     if(printlvl>3)then
        print *,"  Wilson B Matrix in fitting coordinate system"
        do j=1,ncoord
@@ -3357,9 +3492,7 @@ SUBROUTINE readdisps()
 
   call printDisps(int(1),npoints)
 
-  if(allocated(ptWeights))deallocate(ptWeights)
-  allocate(ptWeights(npoints))
-  call readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO,ptWeights)
+  call readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO)
 
 1000 format(7X,A)
 1001 format(4X,A)

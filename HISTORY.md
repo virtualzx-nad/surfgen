@@ -1,3 +1,17 @@
+## 2.7.0 (2015-02-05)
+
+* A procedure to identify the symmetry of each coordinate at every data point is tested to facilitate a future functionality
+  that allows the fitting of points with states that carry degenerate representations.
+* A point management feature is added.  The user can assign a set of points to be managed by the program by using the 
+  MN keyword in `points.in` :   MN     X     I    J
+  Here I and J defines the range of points to be managed.   Managed points will be excluded unless they are reasonably
+  predicted by the fit.  New points that meet the criteria are added every iteration.
+* Options nrmediff2 and ediffcutoff2 have been removed.  Energies are no longer scaled by energy difference, because they 
+  are likely treated by a quasi-degeneracy when this is the case and the energy difference in non-diagonal representation is
+  not meaningful.  This is in opposition to the gradient and coupling scaling, which only happens when energy difference is 
+  large and a diagonal representation is likely used.
+* Option gScaleMode has been removed.  Scaling can be turned off by setting intGradS=intGradT=0d0
+
 ## 2.6.15 (2015-01-23)
 
 * Feature added to treat more-than-two-state quasi-degeneracy by orthogonalizing all g and h pairs, as described in JCP 141(17),174109

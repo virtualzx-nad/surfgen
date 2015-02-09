@@ -6,12 +6,12 @@
   ! with an eigenvalue larger than intGT will be considered internal.
   ! Number of internal degrees of freedom will be stored in field nvibs 
   !---------------------------------------------------------------------
-  SUBROUTINE makeLocalIntCoord(ptdata,nstates,useIntG,intGT,intGS,nvibs,gsMode)
+  SUBROUTINE makeLocalIntCoord(ptdata,nstates,useIntG,intGT,intGS,nvibs)
     USE hddata, ONLY: ncoord
     USE progdata, ONLY: abpoint,natoms,printlvl
     IMPLICIT NONE
     TYPE(abpoint),intent(inout)  :: ptdata
-    INTEGER,intent(IN)           :: nstates,nvibs,gsMode
+    INTEGER,intent(IN)           :: nstates,nvibs
     LOGICAL,intent(IN)           :: useIntG
     DOUBLE PRECISION,intent(IN)  :: intGT,intGS
     integer                      :: i,n1,n2
@@ -52,35 +52,29 @@
       print "(10F10.4)",ptdata%eval
     end if
     ptdata%scale=dble(1)
-    if(gsMode<0)then
-      alpha = 3/intGS
-      do i=1,3*natoms
-        if(ev(3*natoms+1-i)>intGT)ptdata%nvibs=i
-        ptdata%scale(i)=2/(1+exp(-alpha*ev(3*natoms+1-i)))-1
-      end do ! i=1,3*natoms
-    else !gsmode<0
-      do i=1,3*natoms
-        if(ev(3*natoms+1-i)>intGT)then
-          ptdata%nvibs=i
-          if(i>nvibs)then
-            print *,"PT",ptdata%id,"NVIBS(PT) = ",i,", natoms = ",natoms
-            print *, "GEOM:"
-            print "(3F11.7)",ptdata%CGEOM
+    do i=1,3*natoms
+      if(ev(3*natoms+1-i)>intGT)then
+        ptdata%nvibs=i
+        if(i>nvibs)then
+        ! Degrees of freedom greater than 3N-5.  Something must have gone
+        ! wrong if it ever gets here.
+          print *,"PT",ptdata%id,"NVIBS(PT) = ",i,", natoms = ",natoms
+          print *, "GEOM:"
+          print "(3F11.7)",ptdata%CGEOM
 
-            print *, "B Matrix "
-            do n1=1,ncoord
-              print "(12E11.2)",ptdata%bmat(n1,:)
-            end do
-            print *,"EV:",ev
-            stop "Error: Number of degrees of freedom exceeded theoretical maximum"
-          end if
-          if(ev(3*natoms+1-i)<intGS)ptdata%scale(i)=ev(3*natoms+1-i)/intGS
-        else
-          ptdata%scale(i:)=dble(0)
-          exit
+          print *, "B Matrix "
+          do n1=1,ncoord
+            print "(12E11.2)",ptdata%bmat(n1,:)
+          end do
+          print *,"EV:",ev
+          stop "Error: Number of degrees of freedom exceeded theoretical maximum"
         end if
-      end do !i=1,3*natoms
-    end if !gsMode<0
+        if(ev(3*natoms+1-i)<intGS)ptdata%scale(i)=ev(3*natoms+1-i)/intGS
+      else
+        ptdata%scale(i:)=dble(0)
+        exit
+      end if
+    end do !i=1,3*natoms
     do n1=1,nstates
       do n2=1,nstates
         do i=1,3*natoms
@@ -88,12 +82,6 @@
         end do
         ptdata%grads(:,n1,n2)=grad
         nrmerr=dnrm2(3*natoms-ptdata%nvibs,grad(ptdata%nvibs+1:),1)
-        if(gsMode<0.and.(n1.ne.n2))then
-          print *,"Gradient scaled.  Old    ==>   New"
-          PRINT "(12F9.4)",ptdata%grads(:,n1,n2)
-          ptdata%grads(:,n1,n2)=ptdata%grads(:,n1,n2)*ptdata%scale
-          PRINT "(12F9.4)",ptdata%grads(:,n1,n2)
-        end if
         if(nrmerr*0d0 .eq. 0d0 .and. nrmerr.eq.nrmerr)then
             if(printlvl>1.and.nrmerr>1D-10.or.printlvl>2)print 1000,"residual norm of external gradients for block",&
                      n1,n2,dnrm2(3*natoms-ptdata%nvibs,grad(ptdata%nvibs+1:),1)

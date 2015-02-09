@@ -14,7 +14,29 @@ MODULE CNPI
  INTEGER,PARAMETER             :: MaxParents = 100
 
  !----DERIVED TYPES------------------------------------------
- ! derived type for permutation cycle
+ ! Derived type for a permutation cycle
+ ! A permutation cycle contains all the terms that are symmetry related to a
+ ! specific term, which is homomorphic to a subgroup of the molecular symmetry
+ ! group. The structure also contains the group structure of this subgroup and 
+ ! its relation with the molecular symmetry group.
+ !
+ ! Symbols :
+ ! G        Molecular symmetry group
+ ! R        One symmetry operation of the molecular symmetry group
+ ! P_R      The transformation operator corresponding to the symmetry operation
+ !          R.  Also known as the Wigner operator of R.  
+ ! fA       The root term from which the whole cycle is generated.
+ ! W        The set of symmetry operations under which fA is invariant.  In
+ !          other words this is the set of operations which take fA back to
+ !          itself.  W is a subgroup if G.
+ ! U        The set of symmetry operation which takes fA to -fA.  U is a left
+ !          coset of W in G.
+ ! V        V contains all the unique terms that are symmetry related to fA.
+ !          Each element of V correspond to a left coset of (W+U) in G.  V is
+ !          therefore also homomorphic to a subgroup of G.  In fact, G is a
+ !          direct product group of (U+W) and V.
+ ! U,V and W are used to compute the projection of the term to a specific
+ ! representation.
  type TPermCycle
    integer                                :: nterms=1
    !term contains all P_R(fA) of l-cosets of U+W
