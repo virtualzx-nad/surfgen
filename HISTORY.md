@@ -1,3 +1,10 @@
+## 2.7.1UNFINISHED (2015-02-10)
+
+* Preliminary code to identify degenerate coordinates in the local coordinate generation process.  The rotation among them has
+  not been implemented yet.
+* New parameters `mng_scale_ener` and `mng_scale_grad` control if the scaled values or original values will be used by the 
+  point manager.
+
 ## 2.7.0 (2015-02-05)
 
 * A procedure to identify the symmetry of each coordinate at every data point is tested to facilitate a future functionality

@@ -6,10 +6,22 @@
   ! with an eigenvalue larger than intGT will be considered internal.
   ! Number of internal degrees of freedom will be stored in field nvibs 
   !---------------------------------------------------------------------
+  ! This subroutine is used to construct a local coordinate system that
+  ! is used for the fitting.  All gradients and couplings will be fitted
+  ! with this coordinate, which is made form linear combinations of the 
+  ! 3*N cartesian coordinates, but has translation/rotation and dissappearing
+  ! vibrations from dissociation separated from vibrational coordinates.
+  ! The coordinates will also reflect the symmetry of the point, because 
+  ! right singular vectors of the B matrix is used, which carries the full
+  ! symmetry of the point as long as the internal coordinates are symmetric
+  ! (which is always the case).
+  ! Note: v2.7 the subroutine will now try to rotate the vectors which have
+  ! degenerate eigenvalues so that they carry proper symmetry. 
   SUBROUTINE makeLocalIntCoord(ptdata,nstates,useIntG,intGT,intGS,nvibs)
     USE hddata, ONLY: ncoord
     USE progdata, ONLY: abpoint,natoms,printlvl
     IMPLICIT NONE
+    double precision, parameter  :: degcap=1d-3 ! threshold for degeneracy
     TYPE(abpoint),intent(inout)  :: ptdata
     INTEGER,intent(IN)           :: nstates,nvibs
     LOGICAL,intent(IN)           :: useIntG
@@ -21,7 +33,13 @@
     double precision             ::  nrmerr, alpha
     integer                      ::  INFO
     character(3)                 ::  str
- 
+   ! Number of degeneracies among coordinates
+    integer     :: ndeg
+   ! The list of coordinate ranges that are degenerate.  
+    integer     :: degcoords(nvibs,2) 
+   ! The starting index of the degenerate block. Coordinates from this index to
+   ! index i-1 are all degenerate.
+    integer     ::  degstart
     double precision,external :: dnrm2
 
     if(.not. useIntG)then
@@ -41,7 +59,9 @@
     do i=1,3*natoms/2
       CALL DSWAP(3*natoms,btb(:,i),int(1),btb(:,3*natoms+1-i),int(1))
     end do
-    
+     
+    ndeg=0
+    degstart=1
     ptdata%bmat=matmul(ptdata%bmat,btb)
     ptdata%lmat=btb
     do i=1,3*natoms
@@ -54,6 +74,18 @@
     ptdata%scale=dble(1)
     do i=1,3*natoms
       if(ev(3*natoms+1-i)>intGT)then
+        !update the list of degenerate modes
+        if(i>1)then
+          if(abs(ptdata%eval(i)-ptdata%eval(i-1))>degcap)then
+          !this mode is not degenerate with the previous  
+             if(degstart<i-1)then !there are more than one degenerate coordiante
+               ndeg=ndeg+1
+               degcoords(ndeg,1)=degstart
+               degcoords(ndeg,2)=i-1
+             end if
+             degstart=i
+          end if
+        end if
         ptdata%nvibs=i
         if(i>nvibs)then
         ! Degrees of freedom greater than 3N-5.  Something must have gone
@@ -72,9 +104,20 @@
         if(ev(3*natoms+1-i)<intGS)ptdata%scale(i)=ev(3*natoms+1-i)/intGS
       else
         ptdata%scale(i:)=dble(0)
+        if(degstart<i-1)then
+          ndeg=ndeg+1
+          degcoords(ndeg,1)=degstart
+          degcoords(ndeg,2)=i-1
+        end if
         exit
       end if
     end do !i=1,3*natoms
+    if(printlvl>1)then
+      print "(A,I7)","     Number of internal degrees of freedom : ",ptdata%nvibs
+      print "(A,I7)","     Number of degenerate internal motions : ",ndeg
+    end if
+
+    ! construct local coordinates
     do n1=1,nstates
       do n2=1,nstates
         do i=1,3*natoms
@@ -89,10 +132,18 @@
         end if
       end do
     end do ! n1=1,nstates
+
+    ! Make linear combinations of degenerate internal coordinates to symmetrize
+    ! them.
+    do i=1,ndeg
+      if(printlvl>2)print "(3X,2(A,I4))","Symmetrizing coordinate range ",degcoords(i,1)," to ",degcoords(i,2)
+      
+    end do
+
+    ! Print out information about the final coordinate system
     if(ptdata%nvibs<3*natoms-6.or.printlvl>1)then
       write(str,'(I3)') 3*natoms
       print "(7X,A,"//trim(str)//"F7.3)","scaling factors of local coordinates: ",ptdata%scale
-      print *,"      nvibs = ",ptdata%nvibs
       if(ptdata%nvibs<3*natoms-6) then
         print *,"      Local coordinate system has reduced dimensionalities."
         if(printlvl>2)then

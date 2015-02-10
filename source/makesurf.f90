@@ -204,12 +204,20 @@ MODULE makesurfdata
 ! This vector marks the points that are managed.
   LOGICAL,dimension(:),allocatable                  :: IsManaged
 ! Energy criteria.  A point can only be added if all energy error is lower than
-! this threshold.  This is adjusted by the high enery scaling settings.
+! this threshold.  This is adjusted by the high enery scaling settings if
+! mng_scale_ener is set to .True.
   DOUBLE PRECISION                                  :: mng_ener
+! This parameter dictates if the scaled energy will be used instead of real
+! energy to determine the addition of managed points.
+  LOGICAL                                           :: mng_scale_ener 
 ! Gradient criteria.  Error for each gradient or coupling component must be
 ! lower than this value.  This is adjusted by the high energy scaling settings
-! and energy difference scaling settings for couplings. 
+! and energy difference scaling settings for couplings if mng_scale_grad is set
+! to .True. 
   DOUBLE PRECISION                                  :: mng_grad
+! This parameter dictates if the scaled gradients and couplings will be used
+! instead of real values to determine the addition of managed points.
+  LOGICAL                                           :: mng_scale_grad 
  CONTAINS
 
   ! determine if each equation will be include / excluded / fitted exactly
@@ -2083,7 +2091,8 @@ MODULE makesurfdata
       do s1=1,nstates
         do s2=s1,nstates
           if(hasEner(ptid,s1).and.hasEner(ptid,s2))then
-            e_error=abs((dispgeoms(ptid)%energy(s1,s2)-fitE(ptid,s1,s2)))*eWeight(ptid,s1,s2)
+            e_error=abs((dispgeoms(ptid)%energy(s1,s2)-fitE(ptid,s1,s2)))
+            if(mng_scale_ener)e_error=e_error*eWeight(ptid,s1,s2)
             if(e_error>mng_ener)exit
           end if
         end do!s2
@@ -2094,8 +2103,8 @@ MODULE makesurfdata
         do s2=s1,nstates
           if(hasGrad(ptid,s1,s2))then
             do g=1,nvibs
-              g_error= &
-                  abs((dispgeoms(ptid)%grads(g,s1,s2)-fitG(ptid,g,s1,s2))*gWeight(ptid,s1,s2))
+              g_error=abs((dispgeoms(ptid)%grads(g,s1,s2)-fitG(ptid,g,s1,s2)))
+              if(mng_scale_grad)g_error=g_error*gWeight(ptid,s1,s2)
               if(g_error>mng_grad)exit
             end do!g
           end if
@@ -2935,13 +2944,15 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS,  &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad
   ! set default for the parameters                    
   npoints   = 0
   gradcutoff= 100000.
   cpcutoff  = -1.
   printError= .false.
   maxiter   = 3
+  mng_scale_ener = .false.
+  mng_scale_grad = .true.
   mng_ener  = 2.d3
   mng_grad  = 1d-1
   orderall  = .true.
