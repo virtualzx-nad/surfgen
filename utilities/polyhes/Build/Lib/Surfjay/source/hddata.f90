@@ -658,7 +658,7 @@ CONTAINS
    LOGICAL,INTENT(IN)               :: writedef
    INTEGER                          :: i,j,ios,SURFOUT
    CHARACTER(72)  :: ver
-   ver="sJay Version"
+   call getver(ver)
    if(filename=='')return
    SURFOUT=getFlUnit() !obtain a file unit index
    open(unit=SURFOUT,file=trim(adjustl(filename)),access='sequential',form='formatted',&
@@ -703,7 +703,7 @@ CONTAINS
    CHARACTER(255)                   :: comment,title
    CHARACTER(72)                    :: ver,verhd
 
-   ver="sJay ver"
+   call getver(ver)
 
    if(filename=='')return
    SURFIN=getFLUnit() !obtain file unit index

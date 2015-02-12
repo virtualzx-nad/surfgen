@@ -6,7 +6,7 @@ OBJS	= polyhes.vnew.o
 # Compiler
 FC 	:= ifort
 # Compiler options
-FCOPT	:= -auto -g -traceback -lpthread -openmp -assume nounderscore
+FCOPT	:= -auto -g -traceback -i8 -assume byterecl -lpthread -openmp -assume nounderscore
 # Environment
 SOURCE 	:= $(shell pwd)
 # Libraries
@@ -29,5 +29,10 @@ clean	:
 ./%.o : ./%.f
 	@echo ' Building file: $<'
 	$(FC) $(FCOPT) -lpthread -c -g -w -o $@ $<
+	@echo ' Finished building $<'
+	@echo ' '
+./%.o : ./%.f90
+	@echo ' Building file: $<'
+	$(FC) $(FCOPT) -lpthread -c -g -o $@ $<
 	@echo ' Finished building $<'
 	@echo ' '

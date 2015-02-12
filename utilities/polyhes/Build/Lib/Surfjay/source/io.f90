@@ -484,7 +484,7 @@ SUBROUTINE printTitle(jobtype)
 
   CHARACTER(72) :: ver
 
-  ver="sJay ver"
+  call getver(ver)
 
   open(unit=OUTFILE,file='surfgen.out',access='sequential',form='formatted')
   write(OUTFILE,1000)'-----------------------------------------------------------'

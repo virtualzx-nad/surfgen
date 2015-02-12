@@ -1,70 +1,58 @@
-      PROGRAM POLYHES
-      IMPLICIT REAL*8 (A-H,O-Z)                                               
-CCLM: removed. unnecessary. will define in subroutine
-C      DIMENSION RS8(100)                                                 
-C      DIMENSION IRS8(2)
-C      EQUIVALENCE(RS8(1),IRS8(1)) 
-      DATA NCOR/1500000/ 
-      REAL*4 XT0,XU0,XS0,XT1,XU1,XS1,XT,XU,XS
-      CHARACTER*(24) FDATE
-      DATA IFAIL/0/
-C-------------------------------------------------------
-CCLM: calls not necessary, so we are removing them                        
-C      CALL GETSIZ(ICORE)
-C      CALL GETMEM(ICORE,IRS8,IAP,IFAIL)
-C      CALL GETMEM(ICORE,IRS8,IAP)
-C      IF(IFAIL.NE.0)GO TO 900
-C      NCOR=ICORE-1
-C      IAP=(IAP+2)/2
-C---------------------------------------------------------
-      IAP=1
-C                                                       
-      NPFLG=2 
-C---------------------------------------------------------
-CCLM: systime call not necessary so we are removing them
-C      CALL SYSTIME(XT0,XU0,XS0)
-C---------------------------------------------------------
-C
-      WRITE(6,*)' POLYHES CLOCK STARTS: ',FDATE()
-C call to main polyhes driving subroutine
-      print *, " ALLOCATING 2*", NCOR
-      CALL VMAIN( NCOR )
-      WRITE(6,*)' POLYHES CLOCK ENDS:   ',FDATE() 
-C---------------------------------------------------------
-CCLM
-C      CALL SYSTIME(XT1,XU1,XS1)
-C---------------------------------------------------------
-C
-      XT=XT1-XT0
-      XU=XU1-XU0
-      XS=XS1-XS0
-      WRITE(6,10) XT,XU,XS
-   10 FORMAT(//,' FINAL TIMING RESULTS ',/,
+c subroutine to find conical intersections
+      subroutine polyhes( icode )
+      implicit real*8 (a-h,o-z)                                               
+c data is the size of core memory to use
+      data           ncor/1500000/ 
+c these single precision words are used for timing results
+      real*4         xt0,xu0,xs0,xt1,xu1,xs1,xt,xu,xs
+c fdate returns the date
+      character*(24) fdate
+c ifail is an error variable
+      data           ifail/0/
+
+      iap=1
+      npflg=2 
+
+      write(6,*)' Polyhes clock starts: ',FDATE()
+c print allocation information
+      write(6,"(1x,A,I10,A)") " Allocating ", 2*ncor, " bytes"
+c call main polyhes driver
+      call vmain( ncor, icode )
+      write(6,*)' Polyhes clock ends:   ',FDATE() 
+
+      xt=xt1-xt0
+      xu=xu1-xu0
+      xs=xs1-xs0
+      write(6,10) xt,xu,xs
+   10 format(//,' Final timing results: ',/,
      1 '  TOTAL TIME (SEC.S)       USER TIME          SYSTEM TIME ',/,
      2 3(3X,F10.3,7X))
-      STOP 'NORMAL END OF POLYHES'
+      print *, "icode=",icode
+      return
   900 continue
-      STOP ' MEMORY ALLOCATION FAILURE '
-      END 
-      subroutine vmain( NCOR )
-C      SUBROUTINE VMAIN(A,IA,NCOR)
-C main polyhes subroutine.
-C
-      IMPLICIT INTEGER (A-Z)
-      real*8 A(150000),IA(150000)
-C
-      REWIND 74
-      CALL NUMATM(74,0,NATOMS)
-C
-CCLM: this print is for debugging       
-      PRINT *, "NATOMS = ", NATOMS
-      IF(NATOMS.GT.10)STOP ' NATOMS > 10 '
-C
-      MFIXDIR=30
-      MATOMS=MAX0(NATOMS,10)
-      M3=NATOMS*3
-      N3=MATOMS*3
-      NDIM=N3+MFIXDIR
+      stop ' MEMORY ALLOCATION FAILURE '
+      end
+      subroutine vmain( ncor )
+c     main polyhes subroutine.
+c     Input:
+c      ncor  = allocated memory
+c      icode = convergence flag
+      implicit integer (a-z)
+      integer ncor
+      real*8 a(150000),ia(150000)
+c     rewind unit 74 (geometry input file)
+      rewind 74
+c     get number of atoms from unit 74
+      call numatm(74,0,natoms)
+c     if too many atoms, stop
+      if (natoms .gt. 10) stop ' natoms > 10 '
+c     mfixdir is
+      mfixdir=30
+c     matoms is maximum of natoms and 10
+      matoms=max0(natoms,10)
+      m3=natoms*3
+      n3=matoms*3
+      ndim=n3+mfixdir
       ND1=NDIM*(NDIM+2)
       N31=(N3+1)*N3
       N3S=N3*N3
@@ -101,15 +89,13 @@ C
       IF(ITOP.GT.NCOR)STOP 'INSUFFICIENT MEMORY IN POLYHES'
 CCLM: this print is for debugging
       PRINT *, "CALLING POLYHSD..."
-      PRINT *, "PRINTING LOCATION OF HESSS", HESSS
-      PRINT *, "PRINTING IA(HESSS)", IA(HESSS)
       CALL POLYHSD(IA(NACME),IA(NACME)
      1      ,IA(SCR),IA(HESSS),IA(EGRADH),IA(GGRADH),IA(XGRADH)
      2      ,IA(HESS),IA(GRAD),IA(EVAL),IA(ROOT),IA(VECT)
      3      ,IA(MACME),IA(MACME),IA(LACME),IA(LACME),IA(RVECT)
      4      ,IA(BVECT),IA(SCR1),IA(SCR2),IA(TVECT),IA(VVECT)
      5      ,IA(LAMBDA),IA(KAMBDA),IA(ICHAR),IA(ISYMTR)
-     6      ,N3,M3,MATOMS,MFIXDIR)
+     6      ,N3,M3,MATOMS,MFIXDIR,icode)
       RETURN
  1000 FORMAT(/2X,'NACME SCR HESSS EGRADH GGRADH XGRADH HESS GRAD',/8I6,
      1       /2X,'EVAL ROOT VECT MACME LACME RVECT BVECT   SCR1',/8I6, 
@@ -124,7 +110,7 @@ CCLM: this print is for debugging
      3      ,MACME,RMACME,LACME,RLACME,RVECT
      4      ,BVECT,SCR1,SCR2,TVECT,VVECT,LAMBDA,KLASS
      5      ,CHAR,SYMTRN  
-     6      ,N3,M3,MATOMS,MFIXDIR)
+     6      ,N3,M3,MATOMS,MFIXDIR,icode)
       IMPLICIT REAL*8(A-H,O-Z)
       CHARACTER*6 VERB
       CHARACTER*19 KMES(3)
@@ -147,7 +133,7 @@ C         polyhes has inequality test NATOMS < 10,
 C         so JGRADS has dimension (3*natoms,nstates,nstates)
 C         We have chosen to assume 3 states. Other arrays won't be
 C         used: SCGD1 SCENG
-      dimension JGRADS(30,3,3), SCGD1(30,3,3), SCENG(10)
+      real*8 JGRADS(15,3,3), SCGD1(15,3,3), SCENG(5)
       DIMENSION GRAD1(3),GRAD2(3),GRAD3(3), GRD(3,3),ipflag(5)
       EQUIVALENCE(GRD(1,1),GRAD1),(GRD(1,2),GRAD2),(GRD(1,3),GRAD3)
       COMMON/VIBORD/IVBORD(30),IVBORD2(30)
@@ -277,9 +263,6 @@ C
 CCLM: this print is for debugging
       PRINT *, "CALLING LOCATOR..."
       CALL LOCATOR(INP,10H**NACINT  ,IERRI)
-      PRINT *, "LEFT LOCATOR..."
-      PRINT *, "IERR1= ", IERR1
-      PRINT *, "IERRI= ", IERRI
       IF(IERRI*IERR1.NE.0)THEN
       WRITE(IOUT,1030)INP,I73
       CALL EXIT(100)
@@ -404,15 +387,29 @@ C
       RMAG=LAMBDA(NFIXDIR+2,1)
       GO TO 410
   130 CONTINUE
-C
-C CLM: Call surfgen for energies,gradients,etc
+c
+c     rewind unit 74 (input geometry file)
+      rewind i74
+c     read in geometry
+      read(i74,path)
+      write(iout,1022) i74
+      go to 160
+ 150  continue
+      write(iout,1023)
+      write(iout,1021) (j,(gm(i,j),i=1,3),j=1,natoms)
+ 160  continue
+c     initialize surfgen potential
       call initPotential()
+c     evaluate surface
+      jgrads=0d0
       call EvaluateSurfgen77(NATOMS,3,GM,EVAL,JGRADS,
      1     SCGD1,SCENG)
-      PRINT *, "SURFGEN CALL SUCCESSFUL"
+      print *, "surfjay call successful"
 C      CALL RDT30(ICIU1,EVAL,NRTU1,IOUT,IERR)
       NCIU=ICIU1
       IF(IERR.NE.0)GO TO 900
+      print *, "Evaluating intersection between states: ", STATE1
+     & , " and ", state2
       EJMEIA=EVAL(STATE1)
       ES1=EVAL(STATE1)
 C      IF(.NOT.SAME)CALL RDT30(ICIU2,EVAL,NRTU2,IOUT,IERR)
@@ -422,14 +419,15 @@ C      IF(.NOT.SAME)CALL RDT30(ICIU2,EVAL,NRTU2,IOUT,IERR)
       ES2=EVAL(STATE2) 
       WRITE(IOUT,1026)ICIU1,ICIU2,EJMEIA
 C
-      REWIND I74
-      READ(I74,PATH)
-      WRITE(IOUT,1022)I74
-      GO TO 160
-  150 CONTINUE
-      WRITE(IOUT,1023)
-      WRITE(IOUT,1021)(J,(GM(I,J),I=1,3),J=1,NATOMS)
-  160 CONTINUE
+C      REWIND I74
+C      READ(I74,PATH)
+C      WRITE(IOUT,1022)I74
+C CLM: removed go to 02-09-2015
+C      GO TO 160
+C  150 CONTINUE
+C      WRITE(IOUT,1023)
+C      WRITE(IOUT,1021)(J,(GM(I,J),I=1,3),J=1,NATOMS)
+C  160 CONTINUE
 C
 C CLM: These calls unnecessary.
 C          ENERGY  GRADIENTS
@@ -451,8 +449,8 @@ C      ENDIF
 C      CALL WREADW(ITAP10,NACME,INTOWP(3*NATOMS),IPNTN,JUNK)
 C CLM: rnacme is the energy gradient
       DO I=1,3*NATOMS
-         RNACME(I) = JGRADS(I,1,1)
-         PRINT *, JGRADS(I,1,1)
+         RNACME(I) = JGRADS(I,STATE2,STATE2)
+         print *, rnacme(i)
       END DO
       WRITE(IOUT,1003)'ENERGY',(RNACME(I),I=1,3*NATOMS)
 
@@ -474,7 +472,11 @@ C      WRITE(IOUT,1024)ITAP11
 C      CALL EXIT(100)
 C      ENDIF
 C      CALL WREADW(ITAP11,MACME,INTOWP(3*NATOMS),IPNTN,JUNK)
-C      WRITE(IOUT,1003)'E-DIF ',(RMACME(I),I=1,3*NATOMS)
+C CLM: compute energy difference gradients
+      DO I=1,3*NATOMS
+         RMACME(I) = JGRADS(I,STATE2,STATE2) - JGRADS(I,STATE1,STATE1)
+      END DO
+      WRITE(IOUT,1003)'E-DIF ',(RMACME(I),I=1,3*NATOMS)
 C
 C      CALL RZERO(LACME,3*NATOMS)
 C      IF(SAME)THEN
@@ -492,7 +494,11 @@ C      WRITE(IOUT,1024)ITAP14
 C      CALL EXIT(100)
 C      ENDIF
 C      CALL WREADW(ITAP14,LACME,INTOWP(3*NATOMS),IPNTN,JUNK)
-C      WRITE(IOUT,1003)'H(IJ) ',(RLACME(I),I=1,3*NATOMS)
+C CLM: couplings 
+      DO I=1,3*NATOMS
+         RLACME(I) = JGRADS(I,STATE1,STATE2)
+      END DO
+      WRITE(IOUT,1003)'H(IJ) ',(RLACME(I),I=1,3*NATOMS)
 C      ENDIF
 C
    50 CONTINUE
@@ -679,6 +685,7 @@ C         O.N. INTERNAL MOTION BASIS
 C
   430 CONTINUE
 C       NEXT DISPLACEMENT FOR HESSIAN
+      print *, "ksec = ", ksec
       IF(KSEC.EQ.0)THEN
       DO 431 I=1,NDEGF
   431 SCR(I)=ZERO
@@ -689,7 +696,9 @@ C       NEXT DISPLACEMENT FOR HESSIAN
       SCR(IGO)=DISP(IGO)
   433 CONTINUE
       CALL INTMO(NATOMS,GM,SCR,KILLER)
+      print *, "Calling gmwrit 1"
       CALL GMWRIT(NATOMS,GM,IOUT,NSFIG,I75)
+      print *, "Calling exit(50)"
       CALL EXIT(50)
       ELSE
 C           SYMMETRY EQUIVALENT CENTER PATH
@@ -764,6 +773,8 @@ c        transpose the matrix
   460 continue
       IF(RLAG.EQ.0.D0)THEN
       CALL RESTLAG(NDEGF,RNACME,RMACME,RLAG,IOUT)
+C CLM: This print is for debugging
+      PRINT *, "RESTLAG SUCCESSFUL"
       LAMBDA(NFIXDIR+1,1)=RLAG
       LAMBDA(NFIXDIR+2,1)=RMAG
       ENDIF
@@ -788,6 +799,7 @@ C        CORRECT GRADIENT FOR CONSTRAINTS
 C         CONVERT GRADIENT TO INTERNAL COORDINATES
       IF(IHESS.NE.0)GO TO 253
       LOOPON=0
+C     CLM: This print is for debugging
       IF(NROT.EQ.0)GO TO 252
       CALL GETGM(N32,NATOMS,GM,IOUT)
       CALL MROTV(NATOMS,ORIGIN,RVECT,GM,KZ,KILLER)
@@ -797,6 +809,8 @@ C         CONVERT GRADIENT TO INTERNAL COORDINATES
       CALL CHKR(NDEGF,GRAD,  RVECT,IOUT,NROT,TOLROT,4)
   252 CONTINUE
       CALL MVIBV(NATOMS,NDEGFI,NDEGF,TVECT,VVECT,I76,KILLER)
+C CLM: This print is for debugging
+      print *, " Calling ibasis... "
       CALL IBASIS(NROT,RVECT,VVECT,NDEGF,BVECT,SCR,IOUT,IPFLG,IFAIL,
      X            NFIXDIR+NCGNT)
       IF(IFAIL.EQ.0)GO TO 253
@@ -921,6 +935,7 @@ C
       IF(DAMPV(I).EQ.0.D0)DAMPV(I)=DAMP
   321 CONTINUE
       WRITE(IOUT,1039)(DAMPV(I),I=1,NINTI)
+c     this print is for debugging
       CALL SOLNR(NINTI,GRAD,VECT,ROOT,ZEIG,DAMPV,DISP,SCR,IOUT,
      X           SADDLE,NFIXDIR+NCGNT)
       CALL CHKI(NINTI,HESS,GRAD,DISP,SCR,IOUT)
@@ -981,7 +996,8 @@ C
       CALL GMWRIT(NATUN,GM,IOUT,NSFIG,I77)
       call mkcp(killer,natoms,origin,n32,iout)
 C
-      CALL EXIT(ICODE)
+      print *, "icode = ", icode
+      return
   900 CONTINUE
       WRITE(IOUT,1019)NCIU
       CALL EXIT(100)
@@ -3191,8 +3207,11 @@ C
       NAMELIST/PROGRS/GM,EDIF,NEWDIR,EGRAD,GGRAD,SCALE,HESS,
      1                LAMBDA,RHSN,ESTATE1,LAMBDAR,XGRAD
 C
+      WRITE(IOUT,"(1x,A)") "REWINDING PROGRESS FILE"
       REWIND IPRU
+      WRITE(IOUT,"(1x,A)") "READING PROGRS NAMELIST..."
       READ(IPRU,PROGRS,END=950)
+      WRITE(IOUT,"(1x,A)") "READ COMPLETE."
       DO 105 I=1,3*NATOMS
       GMC(I)=GM(I)
   105 CONTINUE
@@ -3483,6 +3502,11 @@ C
    45 CONTINUE
    46 CONTINUE
 C
+C CLM: this print is for debugging
+      print *, "NF=", nf
+      do i=1, NF
+         write(*,"(1x,i3,15f15.8)") i, SCR((i-1)*NF:i*NF)
+      end do
       CALL SCHMO(NF,SCR,IOUT,IFAIL)
 C
       IF(IFAIL.EQ.0)GO TO 70
@@ -3732,6 +3756,7 @@ C
   
       SUBROUTINE MROTV(NATOMS,IONE,V,GM,KZ,KILLER)
       IMPLICIT REAL*8(A-H,O-Z)
+      INTEGER I
       DIMENSION GM(2),V(2),ICROSS(3,3),LOOP(3),KILLER(2)
       DATA ICROSS/0,-3,2, 3,0,-1, 2,-1,0/
       LOOP(1)=KZ
@@ -3762,6 +3787,7 @@ C
       END
       SUBROUTINE MVIBV(NATOM,NVIB,NDEGF,V,VR,I76,KILLER)
       IMPLICIT REAL*8(A-H,O-Z)
+      INTEGER I
       DIMENSION VR(2),KILLER(2),JSEC(50),V(2)
       COMMON/VIBORD/IVBORD(30),IVBORD2(30)
       MASK=2*16-1

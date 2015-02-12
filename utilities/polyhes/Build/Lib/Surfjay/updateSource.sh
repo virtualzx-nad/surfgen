@@ -1,0 +1,5 @@
+#!/bin/bash
+# Remove old source directory
+rm -r source/
+# Copy current source directory.
+cp -r $SURFJAY/source ./

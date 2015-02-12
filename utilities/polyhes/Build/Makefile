@@ -2,7 +2,7 @@
 #  surfjay.
 #-------------------------------------------------------------
 # Objects
-OBJS	= polyhes.vnew.o
+OBJS	= polyhes.vnew.o driver.o
 # Compiler
 FC 	:= ifort
 # Compiler options
@@ -18,7 +18,7 @@ RM	:= rm -f
 polyhes	: $(OBJS)
 	@echo ' '
 	@echo ' Making polyhes.'
-	$(FC) $(FCOPT) -o polyhes.x $(OBJS) $(LIBS)
+	$(FC) $(FCOPT) -o driver.x $(OBJS) $(LIBS)
 	@echo ' Finished building polyhes '
 	@echo ' '
 clean	: 
@@ -29,5 +29,10 @@ clean	:
 ./%.o : ./%.f
 	@echo ' Building file: $<'
 	$(FC) $(FCOPT) -lpthread -c -g -w -o $@ $<
+	@echo ' Finished building $<'
+	@echo ' '
+./%.o : ./%.f90
+	@echo ' Building file: $<'
+	$(FC) $(FCOPT) -lpthread -c -g -o $@ $<
 	@echo ' Finished building $<'
 	@echo ' '

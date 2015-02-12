@@ -117,9 +117,9 @@ else
   # set default compiler flags
   ifneq ($(findstring ifort,$(COMPILER)),)
     ifdef NO_I8
-      CPOPT    := -auto -lpthread -openmp -assume nounderscore
+      CPOPT    := -auto -lpthread -assume byterecl -openmp -assume nounderscore
     else
-      CPOPT    := -auto -lpthread -no-opt-matmul -assume nounderscore
+      CPOPT    := -auto -lpthread -assume byterecl -i8 -no-opt-matmul -assume nounderscore
     endif
     LKOPT    := -auto -lpthread -parallel
   else

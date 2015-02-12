@@ -13,7 +13,7 @@ OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
 
 # Objects needed for runtime interface library
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
-            io.o potlib.o
+            io.o potlib.polyhes.o
 
 # Objects needed for test programs 
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \

@@ -8,7 +8,7 @@ program surfgen
     character(72) :: ver
 
     print *,"Entering surfgen"
-    ver="sJay ver"
+    call getver(ver)
     print "(A)","Program version: "//trim(ver)
 
     call readinput(jobtype)
