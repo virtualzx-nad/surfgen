@@ -56,17 +56,17 @@ c     rewind unit 74 (geometry input file)
 c     get number of atoms from unit 74
       call numatm( 74, 0, natoms)
 c     if too many atoms, stop
-      if (natoms .gt. 10) stop ' natoms > 10 '
+      if ( natoms .gt. 10 ) stop ' natoms > 10 '
 c     mfixdir is
       mfixdir = 30
 c     matoms is maximum of natoms and 10
-      matoms = max0(natoms,10)
-      m3     = natoms*3
-      n3     = matoms*3
-      ndim   = n3+mfixdir
-      nd1    = ndim*(ndim+2)
-      n31    = (n3+1)*n3
-      n3s    = n3*n3
+      matoms = max0( natoms, 10)
+      m3     = natoms * 3
+      n3     = matoms * 3
+      ndim   = n3 + mfixdir
+      nd1    = ndim * (ndim + 2)
+      n31    = (n3 + 1) * n3
+      n3s    = n3 * n3
       nprec  = intowp(1)
 c
       write(6,1001) matoms, n3, n31, n3s, nprec
@@ -110,26 +110,38 @@ c exit if not enough memory was allocated
 c
 c loop for intersection searching
       maxiter = 1
-      do 10 i=1, maxiter
+      i   = 1
+      igo = 0
+ 10   if ( igo .eq. 0 .and. i .le. maxiter ) then
          write(6,"(1x,' Iteration ',i3)") i
-c     call polyhsd
          call polyhsd(     ia(nacme),  ia(nacme),    ia(scr), ia(hesss),
      &        ia(egradh), ia(ggradh), ia(xgradh),   ia(hess),  ia(grad),
      &        ia(eval),     ia(root),   ia(vect),  ia(macme), ia(macme),
      &        ia(lacme),   ia(lacme),  ia(rvect),  ia(bvect),  ia(scr1),
      &        ia(scr2),    ia(tvect),  ia(vvect), ia(lambda),ia(kambda),
      &        ia(ichar),  ia(isymtr),   n3,   m3,     matoms,   mfixdir,
-     &        icode )
- 10   continue
+     &        igo )
+         i = i + 1
+         go to 10
+      else if ( igo .eq. 1  .and. i .le. maxiter ) then
+c        calculation converged
+         write(6,"(1x,A)") "Calculation converged. Intersection found."
+c        copy new geometry to file "geom.final"
+c
+      else if ( igo .eq. -1 .and. i .le. maxiter ) then
+c        calculation failed
+         write(6,"(1x,A)") "Calculation failed."
+c
+      else if ( igo .eq. 0  .and. i .gt. maxiter ) then
+c        calcuation did not converge
+         write(6,"(1x,A)") "Calcuation did not converge."
+      else
+         write(6,"(1x,A,i3,A,i5)") 
+     &   "What's this scenario?? igo=",igo,", i=",i
+      end if
 
-c      CALL POLYHSD(IA(NACME),IA(NACME)
-c     1      ,IA(SCR),IA(HESSS),IA(EGRADH),IA(GGRADH),IA(XGRADH)
-c     2      ,IA(HESS),IA(GRAD),IA(EVAL),IA(ROOT),IA(VECT)
-c     3      ,IA(MACME),IA(MACME),IA(LACME),IA(LACME),IA(RVECT)
-c     4      ,IA(BVECT),IA(SCR1),IA(SCR2),IA(TVECT),IA(VVECT)
-c     5      ,IA(LAMBDA),IA(KAMBDA),IA(ICHAR),IA(ISYMTR)
-c     6      ,N3,M3,MATOMS,MFIXDIR,icode)
-      RETURN
+
+      return
  1000 FORMAT(/2X,'NACME SCR HESSS EGRADH GGRADH XGRADH HESS GRAD',/8I6,
      1       /2X,'EVAL ROOT VECT MACME LACME RVECT BVECT   SCR1',/8I6, 
      2       /2X,'SCR2 TVECT VVECT LAMBDA KAMBDA ICHAR ISYMTR ITOP',

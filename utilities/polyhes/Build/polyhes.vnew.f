@@ -110,8 +110,10 @@ c exit if not enough memory was allocated
 c
 c loop for intersection searching
       maxiter = 1
-
-      do 10 i=1, maxiter
+      i   = 0
+      igo = 0
+ 10   if ( igo .eq. 0 .and. i .lt. maxiter ) then
+         i = i + 1
          write(6,"(1x,' Iteration ',i3)") i
          call polyhsd(     ia(nacme),  ia(nacme),    ia(scr), ia(hesss),
      &        ia(egradh), ia(ggradh), ia(xgradh),   ia(hess),  ia(grad),
@@ -119,8 +121,24 @@ c loop for intersection searching
      &        ia(lacme),   ia(lacme),  ia(rvect),  ia(bvect),  ia(scr1),
      &        ia(scr2),    ia(tvect),  ia(vvect), ia(lambda),ia(kambda),
      &        ia(ichar),  ia(isymtr),   n3,   m3,     matoms,   mfixdir,
-     &        icode )
- 10   continue
+     &        igo )
+         go to 10
+      else if ( igo .eq. 1  .and. i .le. maxiter ) then
+c        calculation converged
+         write(6,"(1x,A)") "Calculation converged. Intersection found."
+c        copy new geometry to file "geom.final"
+c
+      else if ( igo .eq. -1 .and. i .le. maxiter ) then
+c        calculation failed
+         write(6,"(1x,A)") "Calculation failed."
+c
+      else if ( igo .eq. 0  .and. i .gt. maxiter ) then
+c        calcuation did not converge
+         write(6,"(1x,A)") "Calcuation did not converge."
+      else
+         write(6,"(1x,A,i3,A,i5)") 
+     &   "What's this scenario?? igo=",igo,", i=",i
+      end if
 
 
       return
