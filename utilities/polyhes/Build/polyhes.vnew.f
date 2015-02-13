@@ -1,102 +1,129 @@
-c subroutine to find conical intersections
-      subroutine polyhes( icode )
-      implicit real*8 (a-h,o-z)                                               
-c data is the size of core memory to use
+c========================================================
+c program to find conical intersections                 =
+c written by David R. Yarkony                           =
+c modified by cthree-40                                 =
+c                                                       =
+c Yarkony Group                                         =
+c The Johns Hopkins University                          =
+c========================================================
+      program polyhes
+      
+      implicit none                                               
+c     data  = size of core memory to use
+c     fdate = date of program execution
+c     ifail = error variable
+      integer        ncor, ifail, iap, npflg
+      character*24   fdate
       data           ncor/1500000/ 
-c these single precision words are used for timing results
-      real*4         xt0,xu0,xs0,xt1,xu1,xs1,xt,xu,xs
-c fdate returns the date
-      character*(24) fdate
-c ifail is an error variable
       data           ifail/0/
-
+c
+c     clm: unsure what these variables do. set at DRY suggestion (02-13-15)
       iap=1
       npflg=2 
-
-      write(6,*)' Polyhes clock starts: ',FDATE()
-c print allocation information
+c
+c
+      write(6,*)' Polyhes clock starts: ',fdate()
+c     print allocation information
       write(6,"(1x,A,I10,A)") " Allocating ", 2*ncor, " bytes"
-c call main polyhes driver
-      call vmain( ncor, icode )
-      write(6,*)' Polyhes clock ends:   ',FDATE() 
+c     call main polyhes driver
+      call vmain(ncor)
+      write(6,*)' Polyhes clock ends:   ',fdate() 
+c      
+      end program
+c----------------------------------------------------------------------
+c----------------------------------------------------------------------
+      subroutine vmain( ncor )
 
-      xt=xt1-xt0
-      xu=xu1-xu0
-      xs=xs1-xs0
-      write(6,10) xt,xu,xs
-   10 format(//,' Final timing results: ',/,
-     1 '  TOTAL TIME (SEC.S)       USER TIME          SYSTEM TIME ',/,
-     2 3(3X,F10.3,7X))
-      print *, "icode=",icode
-      return
-  900 continue
-      stop ' MEMORY ALLOCATION FAILURE '
-      end
-      subroutine vmain( ncor, icode )
 c     main polyhes subroutine.
-c     Input:
-c      ncor  = allocated memory
-c      icode = convergence flag
-      implicit integer (a-z)
-      integer ncor
-      real*8 a(150000),ia(150000)
+      implicit none
+c     Input
+      integer         ncor
+c
+      real*8          a( ncor ), ia( ncor )
+      integer         natoms, mfixdir, matoms,     m3,     n3,  ndim 
+      integer         nd1,        n31,    n3s,  nprec,  nacme,   scr 
+      integer         hesss,   egradh, ggradh, xgradh,   hess,  grad   
+      integer         eval,      root,   vect,  macme,  lacme, rvect  
+      integer         bvect,     scr1,   scr2,  tvect,         vvect
+      integer         lambda,  kambda,  ichar, isymtr,  icode,  itop
+      integer         intowp, maxiter,    igo
+      integer         i
+c
+      common          /convchk/ igo
+c
 c     rewind unit 74 (geometry input file)
       rewind 74
 c     get number of atoms from unit 74
-      call numatm(74,0,natoms)
+      call numatm( 74, 0, natoms)
 c     if too many atoms, stop
-      if (natoms .gt. 10) stop ' natoms > 10 '
+      if ( natoms .gt. 10 ) stop ' natoms > 10 '
 c     mfixdir is
-      mfixdir=30
+      mfixdir = 30
 c     matoms is maximum of natoms and 10
-      matoms=max0(natoms,10)
-      m3=natoms*3
-      n3=matoms*3
-      ndim=n3+mfixdir
-      ND1=NDIM*(NDIM+2)
-      N31=(N3+1)*N3
-      N3S=N3*N3
-      NPREC=INTOWP(1)
-      WRITE(6,1001)MATOMS,N3,N31,N3S,NPREC
-      NACME=  1
-      SCR=    NACME+N3*NPREC
-      HESSS=  SCR+ND1*NPREC
-      EGRADH= HESSS+ND1/2*NPREC
-      GGRADH= EGRADH+N31*2*NPREC
-      XGRADH= GGRADH+N31*2*NPREC
-      HESS=   XGRADH+N31*2*NPREC
-      GRAD=   HESS+ND1*NPREC
-      EVAL=   GRAD+NDIM*NPREC
-      ROOT=   EVAL+N3*NPREC
-      VECT=   ROOT+N3*NPREC
-      MACME=  VECT+N3S*NPREC
-      LACME=  MACME+N3*NPREC
-      RVECT=  LACME+N3*NPREC
-      BVECT=  RVECT+N3*3*NPREC
-      SCR1=   BVECT+N3S*NPREC
-      SCR2=   SCR1+ND1*NPREC
-      TVECT=  SCR2+ND1*NPREC
-      VVECT=  TVECT+N31*NPREC
-      LAMBDA= VVECT+N31*NPREC
-      KAMBDA= LAMBDA+MFIXDIR*2*NPREC
-      ICHAR=  KAMBDA+MFIXDIR
-      ISYMTR= ICHAR + N3*11*NPREC
-      ITOP=   ISYMTR+ N3S*NPREC 
-C
-      WRITE(6,1000)NACME,SCR,HESSS,EGRADH,GGRADH,XGRADH,HESS,GRAD,
-     1             EVAL,ROOT,VECT,MACME,LACME,RVECT,BVECT,SCR1,SCR2,
-     2             TVECT,VVECT,LAMBDA,KAMBDA,ICHAR,ISYMTR,ITOP
-      IF(ITOP.GT.NCOR)STOP 'INSUFFICIENT MEMORY IN POLYHES'
-CCLM: this print is for debugging
-      PRINT *, "CALLING POLYHSD..."
-      CALL POLYHSD(IA(NACME),IA(NACME)
-     1      ,IA(SCR),IA(HESSS),IA(EGRADH),IA(GGRADH),IA(XGRADH)
-     2      ,IA(HESS),IA(GRAD),IA(EVAL),IA(ROOT),IA(VECT)
-     3      ,IA(MACME),IA(MACME),IA(LACME),IA(LACME),IA(RVECT)
-     4      ,IA(BVECT),IA(SCR1),IA(SCR2),IA(TVECT),IA(VVECT)
-     5      ,IA(LAMBDA),IA(KAMBDA),IA(ICHAR),IA(ISYMTR)
-     6      ,N3,M3,MATOMS,MFIXDIR,icode)
-      RETURN
+      matoms = max0( natoms, 10)
+      m3     = natoms * 3
+      n3     = matoms * 3
+      ndim   = n3 + mfixdir
+      nd1    = ndim * (ndim + 2)
+      n31    = (n3 + 1) * n3
+      n3s    = n3 * n3
+      nprec  = intowp(1)
+c
+      write(6,1001) matoms, n3, n31, n3s, nprec
+c pointers for ia(ncor) array
+      nacme  = 1
+      scr    = nacme  + (n3      * nprec)
+      hesss  = scr    + (nd1     * nprec)
+      egradh = hesss  + (nd1 / 2 * nprec) 
+      ggradh = egradh + (n31 * 2 * nprec)
+      xgradh = ggradh + (n31 * 2 * nprec)
+      hess   = xgradh + (n31 * 2 * nprec)
+      grad   = hess   + (nd1     * nprec)
+      eval   = grad   + (ndim    * nprec) 
+      root   = eval   + (n3      * nprec)
+      vect   = root   + (n3      * nprec)
+      macme  = vect   + (n3s     * nprec)
+      lacme  = macme  + (n3      * nprec) 
+      rvect  = lacme  + (n3      * nprec)
+      bvect  = rvect  + (n3  * 3 * nprec)
+      scr1   = bvect  + (n3s     * nprec)
+      scr2   = scr1   + (nd1     * nprec)
+      tvect  = scr2   + (nd1     * nprec)
+      vvect  = tvect  + (n31     * nprec)
+      lambda = vvect  + (n31     * nprec)
+      kambda = lambda + (mfixdir * 2 * nprec)
+      ichar  = kambda + (mfixdir)
+      isymtr = ichar  + (n3 * 11 * nprec)
+      itop   = isymtr + (n3s     * nprec) 
+c
+      write(6,1000) nacme, scr, hesss, egradh, ggradh, xgradh, hess,
+     1              grad, eval, root, vect, macme, lacme, rvect,
+     3              bvect, scr1, scr2, tvect, vvect, lambda, kambda,
+     2              ichar, isymtr, itop
+c
+c exit if not enough memory was allocated
+      if ( itop .gt. ncor ) then
+         write(6,"(1x,a)") ' Insufficient memory in polyhes'
+         write(6,"(1x,a)") ' Please adjust ncor and recompile.'
+         stop ' Exiting...'
+      end if
+c
+c loop for intersection searching
+      maxiter = 1
+
+      do 10 i=1, maxiter
+         write(6,"(1x,' Iteration ',i3)") i
+         call polyhsd(     ia(nacme),  ia(nacme),    ia(scr), ia(hesss),
+     &        ia(egradh), ia(ggradh), ia(xgradh),   ia(hess),  ia(grad),
+     &        ia(eval),     ia(root),   ia(vect),  ia(macme), ia(macme),
+     &        ia(lacme),   ia(lacme),  ia(rvect),  ia(bvect),  ia(scr1),
+     &        ia(scr2),    ia(tvect),  ia(vvect), ia(lambda),ia(kambda),
+     &        ia(ichar),  ia(isymtr),   n3,   m3,     matoms,   mfixdir,
+     &        icode )
+ 10   continue
+
+
+      return
  1000 FORMAT(/2X,'NACME SCR HESSS EGRADH GGRADH XGRADH HESS GRAD',/8I6,
      1       /2X,'EVAL ROOT VECT MACME LACME RVECT BVECT   SCR1',/8I6, 
      2       /2X,'SCR2 TVECT VVECT LAMBDA KAMBDA ICHAR ISYMTR ITOP',
@@ -561,6 +588,7 @@ C
    71 CONTINUE
       STOP ' ONLY NR SEARCHES ALLOWED'
    70 CONTINUE
+c remove Exit(100)...make return statement
       WRITE(IOUT,1025)'FAILED'
       CALL EXIT(100)     
    80 CONTINUE
@@ -2240,10 +2268,12 @@ C        MAGNITUDE OF ENERGY DIFFERENCE INCREASED
       IPATH=1
       RETURN
   206 CONTINUE
-      IF(NEWDIR.LT.MAXIT)RETURN
+C      IF(NEWDIR.LT.MAXIT)RETURN
+      IPATH=-1
+      IF(NEWDIR.LE.MAXIT)IPATH=0
       WRITE(IOUT,1003)'NOT',NEWDIR,GNORM,EDIFC,CONV,MAXIT
       WRITE(IOUT,1007)(LAMBDA(I),I=1,NFIXDIR+NCGNT)
-      IPATH=1
+C      IPATH=1
       RETURN
 C
  1000 FORMAT(5X,'NO PROGRESS FILE-INITIALZING FILE=',I3)  
