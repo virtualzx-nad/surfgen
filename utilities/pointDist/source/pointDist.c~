@@ -1,53 +1,233 @@
-/* This program generates a point distribution based upon
- * bond distances given in an input file: (given at CL)
- * Written by: cthree-40
+/* program to compute coordinate values at data points
+ * Written by cthree-40
  */
 #include <stdio.h>
 #include <stdlib.h>
-struct geom {
-  double x;
-  double y;
-  double z;
+#include <math.h>
+
+struct point {
+  int          index;
+  double      *coord;
+  struct point *next;
 };
-struct pointGeom {
-  int               index; /* index of point */
-  struct geom      *gdata; /* molecular geometry */
-  struct pointGeom  *next; /* pointer to next node in ll */
+
+struct xyz {
+  double     x;
+  double     y;
+  double     z;
 };
-struct pointDist {
-  int              index; /* index of point */
-  double           *dist; /* computed distance array */
-  struct pointDist *next; /* pointer to next node in ll */
+
+struct geometry {
+  int                 index;
+  struct xyz          *atom;
+  struct geometry     *next;
 };
-/*void     readInput1 (             int natoms, int ngeoms, int *bonds );
-void     readInput2 ( int natoms, int ngeoms, struct pointGeom *data );
-void    processData ( int natoms, int ngeoms, struct pointDist *outd );
-double     compDist (                         int  atom1, int  atom2 );
-void      printData (             int ngeoms, struct pointDist *outd );
-*/
+
+/* subfunctions */
+void   readinput   ( int natoms, int nrgeoms, struct geometry *refgeoms );
+void   computedist ( int  *dist, int nrgeoms, struct geometry *refgeoms,
+		     struct point *data );
+double dist3d      ( struct xyz *vec1, struct xyz *vec2 );
+void   printoutput ( int nrgeoms,  struct point *data );
+
 /* main */
-main ( int argc, char *argv[] )
+main( int argc, char *argv[] )
 {
-  /* 
-   * natoms = number of atoms
-   * ngeoms = number of geometries
-   * data   = (index; geom atom 1, geom atom 2, etc )
-   * outd   = (index; dist1, dist2, etc )
-   */
-  int                          natoms, ngeoms;
-  char                               *inputfl;
-  struct pointGeom                      *data;
-  struct pointDist                      *outd;
-  /* process command line arguments:  [input file name] */
-  if ( argc != 2 ) { /* argc should be 2 */
-    printf( "\n Usage; %s [input filenmame]\n", argv[0] );
-    printf( "\n Exiting...\n");
-    exit(1); /* exit */
+
+  int                natoms, nrgeoms;
+  int                          *dist;
+  struct geometry           *refgeom, *ptr2, *tmp2;
+  struct point               *ptdata, *ptr1, *tmp1;
+
+  /* process command line arguments */
+  if ( argc == 3 ) { /* argc should be 3 */
+    natoms  = strtol( argv[1], NULL, 10 ); /* number of atoms */
+    nrgeoms = strtol( argv[2], NULL, 10 ); /* number of geoms */
   } else {
-    inputfl = argv[1];
-    printf( "\n User input file: %s", inputfl );
-  };
-    
-  /* read user made input file */
+    printf( "\n usage: %s [num. atoms] [num. geoms]\n", argv[0] );
+    exit(1);
+  }
+  /* allocate first node of refgeom */
+  refgeom = malloc( sizeof( struct geometry ) );
+  refgeom->atom = malloc( natoms * sizeof( struct xyz ) );
+  refgeom->next = 0;
+  /* read in refgeom file, building refgeom array */
+  readinput( natoms, nrgeoms, refgeom );
   
-};
+  /* allocate distances array */
+  dist = malloc( (5 * 2) * sizeof( int ) );
+  dist[0] = 1;
+  dist[1] = 2; /* C-O  bond distance */
+  dist[2] = 1;
+  dist[3] = 5; /* O-H  bond distance */
+  dist[4] = 2;
+  dist[5] = 3; /* C-H1 bond distance */
+  dist[6] = 2;
+  dist[7] = 4; /* C-H2 bond distance */
+  dist[8] = 2; 
+  dist[9] = 5; /* C-H3 bond distance */
+  /* allocate first node of data aray */
+  ptdata = malloc( sizeof( struct point ) );
+  ptdata->coord = malloc( 5 * sizeof( double ) );
+  ptdata->next = 0;
+  /* compute distances */
+  computedist( dist, nrgeoms, refgeom, ptdata );
+  
+  /* print distances */
+  printoutput( nrgeoms, ptdata );
+  
+  /* dellocate memory */
+  ptr1 = ptdata;
+  while ( ptr1 != NULL ) {
+    tmp1 = ptr1;
+    ptr1 = ptr1->next;
+    free( tmp1 );
+  }
+  ptdata = NULL;
+  ptr2 = refgeom;
+  while (ptr2 != NULL ) {
+    tmp2 = ptr2;
+    prt2 = ptr2->next;
+    free( tmp2 );
+  }
+  refgeom = NULL;
+}
+
+void readinput( int natoms, int nrgeoms, struct geometry *rgeom )
+{
+  /* read input file, generating rgeom array */
+  FILE                       *rgeomfl;
+  char                    scrstr[100];
+  struct geometry             *crgeom;
+  int                       i, gindex;
+
+  /* set crgeom pointer */
+  crgeom = rgeom;
+  
+  /* open refgeom file */
+  rgeomfl = fopen( "refgeom", "r" );
+  if ( rgeomfl == NULL ) { /* file could not be opened */
+    printf( " Could not open refgeom. Exiting...\n " );
+    exit(1);
+  }
+
+  /* read to end of geom file */
+  /* geometries are separated by empty line */
+  gindex = 1;
+  while ( fscanf( rgeomfl, "%lf %lf %lf\n", &crgeom->atom[0].x,
+	       &crgeom->atom[0].y, &crgeom->atom[0].z ) != EOF ) {
+    for ( i=1; i < natoms; i++ ) {
+      fscanf( rgeomfl, "%lf %lf %lf\n", &crgeom->atom[i].x,
+	      &crgeom->atom[i].y, &crgeom->atom[i].z );
+    }
+
+#ifdef debugging
+    /* print geometry */
+    for ( i = 0; i < natoms; i++ ) {
+      printf( " %lf %lf %lf\n", crgeom->atom[i].x, crgeom->atom[i].y,
+	      crgeom->atom[i].z );
+    }
+#endif
+       
+    /* iterate index */
+    gindex = gindex + 1;
+    /* set next pointer */
+    crgeom->next = malloc( sizeof( struct geometry ) );
+    crgeom = crgeom->next;
+    crgeom->atom = malloc( natoms * sizeof( struct xyz ) );
+    crgeom->next = 0;
+  } /* while */
+  
+  /* check if gindex == nrgeoms */
+  gindex = gindex - 1;
+  if ( gindex != nrgeoms ) {
+    printf( " nrgeoms != gindex : %d != %d \n", nrgeoms, gindex );
+  }
+  
+  /* close file */
+  fclose( rgeomfl );
+}
+void computedist( int *dist, int nrgeoms, struct geometry *rgeoms,
+		  struct point *ptdata )
+{
+  struct point           *currptd;
+  struct geometry        *currrgm;
+  int                   indexp, i;
+  
+  /* set pointers */
+  currrgm = rgeoms;
+  currptd = ptdata;
+  indexp = 1;
+  /* loop over rgeoms */
+  while ( currrgm-> next != 0 ) {
+    /* set index */
+    currptd->index = indexp;
+    /* compute each two atom distance */
+    for ( i = 0; i < 5; i++ ) {
+      currptd->coord[i] = dist3d( &(currrgm->atom[dist[(i * 2)]-1]),
+				  &(currrgm->atom[dist[(i * 2) + 1 ]-1]));
+    } /* i */
+
+#ifdef debugging
+    /* print CO bond distances */
+    printf( " %d C-O distance: %lf \n", currptd->index, currptd->coord[0] );
+#endif
+
+    /* allocate new ptdata node */
+    currptd->next  = malloc( sizeof( struct point ) );
+    currptd = currptd->next;
+    currptd->coord = malloc( 5 * sizeof( double ) );
+    currptd->next = 0;
+    /* move to new geometry */
+    currrgm = currrgm->next;
+    indexp = indexp + 1;
+  } /* while */
+
+}
+double dist3d( struct xyz *vec1, struct xyz *vec2 )
+{
+  /* compute distance between 2 points in 3D */
+  
+  double      xdiff, ydiff, zdiff; 
+  double            xsq, ysq, zsq;
+  double                   result;
+  
+  /* compute distances */
+  xdiff = vec1->x - vec2->x;
+  ydiff = vec1->y - vec2->y;
+  zdiff = vec1->z - vec2->z;
+  
+  /* square distances and take square root of sum */
+  result = sqrt( pow( xdiff, 2 ) + pow( ydiff, 2 ) +
+		 pow( zdiff, 2 ) );
+  return result;
+
+}
+void printoutput( int nrgeoms, struct point *data )
+{
+  /* print bond distance information in .csv format */
+
+  FILE         *outputfl;
+  struct point    *currd;
+  int                  i;
+  
+  /* open output file */
+  outputfl = fopen( "bnddist.csv", "w" );
+  if ( outputfl == NULL ) { /* file could not be opened */
+    printf( " Could not open output file. Exiting..\n" );
+    exit(1);
+  }
+  
+  /* start at first data point */
+  currd = data;
+  while ( currd->next != 0 ) {
+    printf( outputfl, "%lf, %lf, %lf, %lf, %lf \n",
+	    currd->coord[0], currd->coord[1], currd->coord[2],
+	    currd->coord[3], currd->coord[4] );
+    currd = currd->next;
+  }
+
+  /* close output file */
+  fclose(outputfl);
+
+}

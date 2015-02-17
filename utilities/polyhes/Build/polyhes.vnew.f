@@ -14,21 +14,28 @@ c     fdate = date of program execution
 c     ifail = error variable
       integer        ncor, ifail, iap, npflg
       character*24   fdate
+      character*100  workdir, cpgeomcmd
       data           ncor/1500000/ 
       data           ifail/0/
-c
+
 c     clm: unsure what these variables do. set at DRY suggestion (02-13-15)
       iap=1
       npflg=2 
-c
-c
+
+c     set up work directory
+c      call setupjob( workdir )
+c      call chdir( trim(workdir) )
+c      write ( cpgeomcmd, "(a)" ) "cp ../geom.polyhes ../"
+c      call system( cpgeomcmd )
+c      call setupfiles()
+      
       write(6,*)' Polyhes clock starts: ',fdate()
 c     print allocation information
       write(6,"(1x,A,I10,A)") " Allocating ", 2*ncor, " bytes"
 c     call main polyhes driver
       call vmain(ncor)
       write(6,*)' Polyhes clock ends:   ',fdate() 
-c      
+      
       end program
 c----------------------------------------------------------------------
 c----------------------------------------------------------------------
@@ -36,9 +43,9 @@ c----------------------------------------------------------------------
 
 c     main polyhes subroutine.
       implicit none
-c     Input
+c     Input:
+c      ncor  = bytes of memory to be allocated in ia and a
       integer         ncor
-c
       real*8          a( ncor ), ia( ncor )
       integer         natoms, mfixdir, matoms,     m3,     n3,  ndim 
       integer         nd1,        n31,    n3s,  nprec,  nacme,   scr 
@@ -47,14 +54,23 @@ c
       integer         bvect,     scr1,   scr2,  tvect,         vvect
       integer         lambda,  kambda,  ichar, isymtr,  icode,  itop
       integer         intowp, maxiter,    igo
-      integer         i
-c
-      common          /convchk/ igo
-c
+      integer         i, cmdios, close_stat
+      character*10    progfli
+      character*100   cpprogcmd, copygmcmd
+c     Files:
+c      i74  = input   geometry file
+c      i75  = output  geometry file
+c      i78  = scratch geometry file
+      integer         i74, i75, i78
+      parameter       ( i74 = 74 )
+      parameter       ( i75 = 75 )
+      parameter       ( i78 = 78 )
+
+
 c     rewind unit 74 (geometry input file)
-      rewind 74
+      rewind i74
 c     get number of atoms from unit 74
-      call numatm( 74, 0, natoms)
+      call numatm( i74, 0, natoms)
 c     if too many atoms, stop
       if ( natoms .gt. 10 ) stop ' natoms > 10 '
 c     mfixdir is
@@ -68,9 +84,9 @@ c     matoms is maximum of natoms and 10
       n31    = (n3 + 1) * n3
       n3s    = n3 * n3
       nprec  = intowp(1)
-c
+
       write(6,1001) matoms, n3, n31, n3s, nprec
-c pointers for ia(ncor) array
+c set pointers for ia(ncor) array
       nacme  = 1
       scr    = nacme  + (n3      * nprec)
       hesss  = scr    + (nd1     * nprec)
@@ -95,23 +111,24 @@ c pointers for ia(ncor) array
       ichar  = kambda + (mfixdir)
       isymtr = ichar  + (n3 * 11 * nprec)
       itop   = isymtr + (n3s     * nprec) 
-c
+
       write(6,1000) nacme, scr, hesss, egradh, ggradh, xgradh, hess,
      1              grad, eval, root, vect, macme, lacme, rvect,
      3              bvect, scr1, scr2, tvect, vvect, lambda, kambda,
      2              ichar, isymtr, itop
-c
+
 c exit if not enough memory was allocated
       if ( itop .gt. ncor ) then
          write(6,"(1x,a)") ' Insufficient memory in polyhes'
          write(6,"(1x,a)") ' Please adjust ncor and recompile.'
          stop ' Exiting...'
       end if
-c
+
 c loop for intersection searching
-      maxiter = 1
+      maxiter = 2
       i   = 0
       igo = 0
+
  10   if ( igo .eq. 0 .and. i .lt. maxiter ) then
          i = i + 1
          write(6,"(1x,' Iteration ',i3)") i
@@ -121,18 +138,29 @@ c loop for intersection searching
      &        ia(lacme),   ia(lacme),  ia(rvect),  ia(bvect),  ia(scr1),
      &        ia(scr2),    ia(tvect),  ia(vvect), ia(lambda),ia(kambda),
      &        ia(ichar),  ia(isymtr),   n3,   m3,     matoms,   mfixdir,
-     &        igo )
+     &        i, igo )
+         print *, "igo = ", igo
+c     close geometry files
+         close(unit = i74, iostat = close_stat )
+         if ( close_stat .ne. 0 ) stop " ** Could not close file 74. **"
+         close(unit = i75, iostat = close_stat )
+         if ( close_stat .ne. 0 ) stop " ** Could not close file 75. **"
+c     copy geometry files over
+         write(copygmcmd, "(a)") "cp fort.75 fort.74"
+         write(6, "(a)") copygmcmd
+
+         call system( copygmcmd )
+         rewind i74
          go to 10
-      else if ( igo .eq. 1  .and. i .le. maxiter ) then
+      else if ( igo .eq. 1 ) then
 c        calculation converged
          write(6,"(1x,A)") "Calculation converged. Intersection found."
-c        copy new geometry to file "geom.final"
-c
-      else if ( igo .eq. -1 .and. i .le. maxiter ) then
+c        write out final geometry in Columbus format
+         call wrtcolgm( i75, natoms )
+      else if ( igo .eq. -1 ) then
 c        calculation failed
          write(6,"(1x,A)") "Calculation failed."
-c
-      else if ( igo .eq. 0  .and. i .gt. maxiter ) then
+      else if ( igo .eq. 0  .and. i .ge. maxiter ) then
 c        calcuation did not converge
          write(6,"(1x,A)") "Calcuation did not converge."
       else
@@ -142,71 +170,78 @@ c        calcuation did not converge
 
 
       return
- 1000 FORMAT(/2X,'NACME SCR HESSS EGRADH GGRADH XGRADH HESS GRAD',/8I6,
+ 1000 format(/2X,'NACME SCR HESSS EGRADH GGRADH XGRADH HESS GRAD',/8I6,
      1       /2X,'EVAL ROOT VECT MACME LACME RVECT BVECT   SCR1',/8I6, 
      2       /2X,'SCR2 TVECT VVECT LAMBDA KAMBDA ICHAR ISYMTR ITOP',
      3       /8I6)
- 1001 FORMAT(/2X,'MEMORY LOCATION PARAMETERS:MATOMS=',I3,' N3=',I5,
+ 1001 format(/2X,'MEMORY LOCATION PARAMETERS:MATOMS=',I3,' N3=',I5,
      1      ' N31=',I5,' N3S=',I5,' NPREC=',I1)
-      END
-      SUBROUTINE POLYHSD(NACME,RNACME
-     1      ,SCR,HESSS,EGRADH,GGRADH,XGRADH
-     2      ,HESS,GRAD,EVAL,ROOT,VECT
-     3      ,MACME,RMACME,LACME,RLACME,RVECT
-     4      ,BVECT,SCR1,SCR2,TVECT,VVECT,LAMBDA,KLASS
-     5      ,CHAR,SYMTRN  
-     6      ,N3,M3,MATOMS,MFIXDIR,icode)
-      IMPLICIT REAL*8(A-H,O-Z)
-      CHARACTER*6 VERB
-      CHARACTER*19 KMES(3)
-      LOGICAL SAME
-      INTEGER SIMULT,ACROSS,GMFILE,RESTART,ACCEL,SADDLE,
-     1        ATOM(10),STATE1,STATE2,KILLER(30),CDIF,ORIGIN
-C     2       ,ACROSS,FIXDIR(6,30),KLASS(MFIXDIR),ACTUAL
-     2       ,FIXDIR(6,30),KLASS(MFIXDIR),ACTUAL
-C       EQUIVALENT (NACME,RNACME)  (MACME,RMACME)  (LACME,RLACME)
-      REAL*8 MASS(10),GM(3,10),DISP(30),DAMPV(30),xgradr(100)
-     1      ,SCR(2),HESSS(2),EGRADH(N3,2),GGRADH(N3,2),dipolr(50)
-     2      ,HESS(2),GRAD(N3),EVAL(N3),ROOT(N3),VECT(2)
-     3      ,NORM,MACME(3,MATOMS),RMACME(N3),LAMBDA(MFIXDIR,2) 
-     4      ,RVECT(2),BVECT(2),SCR1(2),SCR2(2),VALDIR(30)
-     5      ,TVECT(2),VVECT(2),NACME(3,MATOMS),RNACME(N3)
-     6      ,LACME(3,MATOMS),RLACME(N3),XGRADH(N3,2)
-     7      ,SYMTRN(M3,M3),CHAR(M3,11)
-C    CLM: variables for interfacing with surfJay
-C         polyhes has inequality test NATOMS < 10, 
-C         so JGRADS has dimension (3*natoms,nstates,nstates)
-C         We have chosen to assume 3 states. Other arrays won't be
-C         used: SCGD1 SCENG
-      real*8 JGRADS(15,3,3), SCGD1(15,3,3), SCENG(5)
-      DIMENSION GRAD1(3),GRAD2(3),GRAD3(3), GRD(3,3),ipflag(5)
-      EQUIVALENCE(GRD(1,1),GRAD1),(GRD(1,2),GRAD2),(GRD(1,3),GRAD3)
-      COMMON/VIBORD/IVBORD(30),IVBORD2(30)
-      COMMON/DIATAT/NDIAT(10)
-      COMMON/CHESS/NORR
-      common/pscent/maxnew,psc(30,10),dpsc(30,10),ipsc(30,10)
-      NAMELIST/PATH/GM,NATOMS
-      NAMELIST/NACINT/NCALC,NACOUT,MASS,GM,IDISP,DISP
-     1,              SIMULT,NEWTON,VALDIR,IDBG
-     2,              ZEIG,SCALE,RESTART,ACCEL,IHESS,DAMP
-     3,              DAMPV,FIXDIR,CONV,MAXIT,MHESS,ATOM
-     4,              KZ,CDIF,IPFLG,IHESEQ1,TOLROT,ACTUAL
-     5,              NSFIG,KSCALE,NORR,LINEQ,dpsc,ipsc,ipflag
-      NAMELIST/CROSS/STATE1,STATE2,MOTION,ACROSS,ACTUAL,DERIVC
-C         NEWTON-RAPHSON CONVERGENCE CRITERIA
-      DATA CONV/1.0D-06/,MAXIT/20/,NSFIG/5/,ipflag/5*0/
-C
-      DATA ATOM/1,2,3,4,5,6,7,8,9,10/,FIXDIR/180*0/,VALDIR/30*0.D0/
-      DATA NCALC/1/,NACOUT/2/,SIMULT/0/,INTC/1/,IORG/2/
-      DATA IPFLG/-1/,IDBG/-1/,LINEQ/0/
-      DATA GMFILE/1/,RESTART/0/,ACCEL/0/,DAMP/0.0D+0/
-      DATA IDISP/0/,ZEIG/5.D-6/,SCALE/1.D0/
-     1     ,EIGROT/1.0D-3/,TOLROT/1.0D-3/
-      DATA N32/32/,IHESS/0/,SADDLE/0/,ZERO/0.D0/,MHESS/1/
-      DATA ICIU1,ICIU2/31,41/
-      DATA KZ/3/,CDIF/0/,IHESEQ1/0/,KSCALE/0/
-      DATA KMES/' ENTIRE ','ENTIRE - GEOMETRIC', ' ENERGY PART OF '/
-      DATA GRD/9*1/, NPROP/4/
+
+      end subroutine vmain
+c-----------------------------------------------------------------------
+c-----------------------------------------------------------------------
+      subroutine polyhsd( nacme,  rnacme,   scr,  hesss, egradh, ggradh,
+     &          xgradh,   hess,     grad,  eval,   root,   vect,  macme,
+     &                    rmacme,  lacme, rlacme, rvect,  bvect,   scr1,
+     &                    scr2,    tvect,  vvect,lambda,  klass,   char,
+     &                    symtrn,     n3,     m3,matoms, mfixdir, iter,
+     &                    igo )
+      
+      implicit real*8 (a-h,o-z)
+      character*6    verb
+      character*19   kmes(3)
+      logical        same
+      integer        simult,   across, gmfile,    restart, accel, saddle 
+      integer        atom(10), state1, state2, killer(30),  cdif, origin
+      integer        fixdir(6,30),     klass(mfixdir),      actual
+      integer        igo, iter
+      real*8         mass(10),       gm(3,10), disp(30),  dampv(30) 
+      real*8         xgradr(100),      scr(2), hesss(2), egradh(N3,2)
+      real*8         ggradh(n3,2), dipolr(50),  hess(2),   grad(n3)
+      real*8         eval(n3),       root(n3),  vect(2),   norm
+      real*8         macme(3,matoms), rmacme(n3), lambda(mfixdir,2)
+      real*8         rvect(2), bvect(2), scr1(2), scr2(2), valdir(30)
+      real*8         tvect(2), vvect(2), nacme(3,matoms), rnacme(n3)
+      real*8         lacme(3,matoms), rlacme(n3), xgradh(n3,2)
+      real*8         symtrn(m3,m3), char(m3,11)
+c    CLM: variables for interfacing with surfJay
+c         polyhes has inequality test NATOMS < 10, 
+c         so JGRADS has dimension (3*natoms,nstates,nstates)
+c         We have chosen to assume 3 states. Other arrays won't be
+c         used: SCGD1 SCENG
+      real*8         jgrads(15,3,3), scgd1(15,3,3), sceng(5)
+      dimension      grad1(3), grad2(3), grad3(3), grd(3,3), ipflag(5)
+      equivalence (  grd(1,1), grad1 )
+      equivalence (  grd(1,2), grad2 )
+      equivalence (  grd(1,3), grad3 )
+      common   /vibord /  ivbord(30), ivbord2(30)
+      common   /diatat /  ndiat(10)
+      common   /chess  /  norr
+      common   /pscent /  maxnew, psc(30,10), dpsc(30,10), ipsc(30,10)
+
+      namelist /path   /  gm, natoms
+      namelist /nacint /  ncalc, nacout, mass, gm, idisp, disp, simult,
+     &                    newton, valdir, idbg, zeig, scale, restart,
+     &                    accel, ihess, damp, dampv, fixdir, conv,
+     &                    maxit, mhess, atom, kz, cdif, ipflg, iheseq1,
+     &                    tolrot, actual, nsfig, kscale, norr, lineq,
+     &                    dpsc, ipsc, ipflag
+      namelist /cross  /  state1, state2, motion, across, actual, 
+     &                    derivc
+c         newton-raphson convergence criteria
+      data  conv/1.0d-06/, maxit/20/, nsfig/5/, ipflag/5*0/
+
+      data  atom/1,2,3,4,5,6,7,8,9,10/, fixdir/180*0/, valdir/30*0.D0/
+      data  ncalc/1/, nacout/2/, simult/0/, intc/1/, iorg/2/
+      data  ipflg/-1/, idbg/-1/, lineq/0/
+      data  gmfile/1/, restart/0/, accel/0/, damp/0.0D+0/
+      data  idisp/0/, zeig/5.D-6/, scale/1.D0/, eigrot/1.0d-3/
+      data  tolrot/1.0d-3/
+      data  n32/32/, ihess/0/, saddle/0/, zero/0.D0/, mhess/1/
+      data  iciu1, iciu2/31,41/
+      data  kz/3/, cdif/0/, iheseq1/0/, kscale/0/
+      data  kmes/' entire ', 'entire - geometric', ' energy part of '/
+      data  grd/9*1/, nprop/4/
 C
 C      ITEST  NE 0  NO TAPE10
 C      IDISP  LT 0  NEW GEOM ONLY
@@ -444,7 +479,7 @@ c     read in geometry
       write(iout,1021) (j,(gm(i,j),i=1,3),j=1,natoms)
  160  continue
 c     initialize surfgen potential
-      call initPotential()
+      if ( iter .eq. 1 ) call initPotential()
 c     evaluate surface
       jgrads=0d0
       call EvaluateSurfgen77(NATOMS,3,GM,EVAL,JGRADS,
@@ -4654,13 +4689,110 @@ C1007 FORMAT(' BI MATRIX:',/(2X,3F12.6) )
  1002 FORMAT(1X,A8,'=',5(E20.10,',')/(11X,(5(E20.10,','))))
  1003 FORMAT(1X,A8,'=',15(I5,',')/(11X,(15(I5,','))))
       END
-C---------------------------------------------------------------
-C CLM: removed to stop segfaulting when attempting to access I.
-C      SUBROUTINE EXIT(I)
-C      IF(I.EQ.0)STOP 0
-C      IF(I.EQ.50)STOP 50
-C      IF(I.EQ.100)STOP 100
-C      IF(I.EQ.1)STOP 1
-C      STOP ' INVALID EXIT CODE '
-C      END
-C----------------------------------------------------------------
+c---------------------------------------------------------------------
+c---------------------------------------------------------------------
+      subroutine wrtcolgm( gmunit, natoms )
+
+c     Subtoutine to write out geometry in $unit in columbus format
+      implicit none
+      integer             gmunit, natoms
+      integer             i, ios
+c     namelis for reading in geometry
+      real*8              gm( 30 )
+      namelist /path/     gm
+c     i73 is unit of dependent input file (unit=73)
+      integer             i73
+      parameter           ( i73 = 73 )
+c     ifnlgm is unit of final geometry file (unit=79)
+      integer             ifnlgm
+      parameter           ( ifnlgm = 79 )
+c     namelist for printout
+      real*8              masses( 10 ), numbers( 10 )
+      character*1         names ( 10 )
+      namelist /printout/ names, masses, numbers
+      
+c     open unit 73 and read printout namelist
+      open ( unit = i73, status = "old", action = "read", iostat = ios )
+      if ( ios .ne. 0 ) then
+         write( 6, "(1x,a)" ) "Could not open unit 73."
+         return
+      end if
+      read ( unit = i73, nml = printout )
+c     close file
+      close ( unit = i73 )
+
+c     open unit $unit and read geometry in file
+      open ( unit = gmunit, status = "old", action = "read",
+     &       iostat = ios )
+      if ( ios .ne. 0 ) then
+         write ( 6, "(1x,a)" ) "Could not open old geometry file."
+         return
+      end if
+      read ( unit = gmunit, nml = path )
+c     close file
+      close ( unit = gmunit )
+
+c     print final geometry
+      open ( unit = ifnlgm, status = "new", action = "write", 
+     &       name = "geom.final", iostat = ios )
+      if ( ios .ne. 0 ) then
+         write( 6, "(1x,a)" ) "Could not open new geometry file."
+         return
+      end if
+      do 10 i = 1, natoms
+         write( ifnlgm, 1000 ) names(i), numbers(i),
+     &   gm( (i-1)*3 + 1 ), gm( (i-1)*3 + 2 ), gm( (i-1)*3 + 3 )
+ 10   continue
+c     close file
+      close ( ifnlgm )
+
+      return
+
+c     Columbus geometry format
+ 1000 format(1x,a2,2x,f5.1,4f14.8)
+
+      end subroutine wrtcolgm
+c---------------------------------------------------------------
+c---------------------------------------------------------------
+      subroutine setupjob( workdir )
+c     Set up polyhes calculation for surfgen job
+c     Creates the following directories:
+c       ./Polyhes, ./Polyhes/ProgDir
+c     Returns: workdir
+      implicit none
+      character*100       jobdir,  workdir, progdir
+      character*100       inputfl,  progfl,  geomfl 
+      character*100       mkwkcmd, mkpgcmd
+      character*100       enterwk
+      integer             ios
+      integer             i
+
+c     get current directory
+      call getcwd( jobdir )
+      write( 6,* ) " Current directory: ", trim( jobdir )
+
+c     make work directory
+      workdir = trim( jobdir ) // '/Polyhes'
+      write ( mkwkcmd, "(2a)" ) "mkdir ", workdir
+      call system ( mkwkcmd, ios )
+      if ( ios .ne. 0 ) stop "Could not make work directory."
+  
+c     make progress file directory
+      progdir = trim( workdir ) // '/ProgDir'
+      write ( mkpgcmd, "(2a)" ) "mkdir ", progdir
+      call system ( mkpgcmd, ios )
+      if ( ios .ne. 0 ) stop "Could not make progress directory."
+
+      return
+      
+      end subroutine setupjob
+c-------------------------------------------------------------
+c-------------------------------------------------------------
+      subroutine setupfiles( )
+c     Set up files for polyhes run.
+c     generates: fort.32 (progress file)
+c                fort.74 (input geometry file)
+c                fort.73 (input file)
+      implicit none
+      return
+      end subroutine setupfiles

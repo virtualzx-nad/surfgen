@@ -1,0 +1,7 @@
+To Install:
+	$ cd source/
+	$ make pointDist.x
+	$ make install
+
+Notes:
+	Currently monitors 5 bond distances (by atom number): 1-2, 1-5, 2-3, 2-4, 2-5. (02-17-15)
