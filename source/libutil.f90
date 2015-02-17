@@ -692,18 +692,19 @@ END SUBROUTINE OrthGH_Ab
 ! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
 ! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
 ! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
+SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
   USE hddata, only: nstates
   USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
   TYPE(abpoint),INTENT(IN)                                        :: pt
   INTEGER,INTENT(IN)                                              :: maxiter
   DOUBLE PRECISION,INTENT(IN)                                     :: toler
-  LOGICAL,DIMENSION(nstates,nstates),INTENT(in)         :: hasGrad
+  LOGICAL,DIMENSION(nstates,nstates),INTENT(in)                   :: incGrad
   DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates),INTENT(IN) :: dhmat
-  DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates) :: dhmatnew
+  DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates)            :: dhmatnew
   DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT)       :: ckl
 
+  LOGICAL,DIMENSION(nstates,nstates)                    :: hasGrad
   integer           ::  igrp,i,j,iter,ldeg,udeg
   integer           ::  mi,mj  !location of maximum rotation
   double precision, dimension(nstates,nstates)         :: beta, gh      !desired rotation angles and gh overlaps
@@ -713,6 +714,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,hasGrad)
   ! will not cause a gradient data to mix into a gradient that has not data
   LOGICAL,dimension(nstates,nstates)  :: allowedRot
   if(pt%ndeggrp<=0)return 
+  hasGrad=incGrad.or.transpose(incGrad)
 ! initialize eigenvectors and rotated gradients
   do i=1,pt%nvibs
     gradnew(i,:,:)=matmul(matmul(transpose(ckl),dhmat(i,:,:)),ckl)

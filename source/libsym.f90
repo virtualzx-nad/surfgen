@@ -98,6 +98,13 @@ MODULE CNPI
  INTEGER, DIMENSION(:,:,:),allocatable  :: subPerm
  INTEGER, DIMENSION(:),allocatable      :: nSubPerm
 
+! coordPerm  The the effect on the coordinates by permutations.  Permutation 
+!            i would permute coordinate j into coordPerm(i,j), up to a change
+!            of sign.  Wheter the sign changes or not is recorded in sgnCPerm.
+!            Segment coordPerm(0,:) saves the parity of each coordinate.  In
+!            other word, the character of inversion on coordinate k is
+!            inversion(f_k)=coordPerm(0,k)*f_k
+! sgnCPerm   Sign change associated with each permutation.
  INTEGER, DIMENSION(:,:), allocatable   :: coordPerm
  INTEGER, DIMENSION(:,:), allocatable   :: sgnCPerm
 
@@ -113,6 +120,10 @@ MODULE CNPI
  INTEGER                                :: NBlockSym
  INTEGER, DIMENSION(:),allocatable      :: blockSymLs,blockSymId
 
+! This is the threshold for determining the symmetry of individual geometries.
+! If all coordinate changes are smaller than this value for a certain symmetry
+! operation, we 
+ DOUBLE PRECISION                       :: GeomSymT
 !----SUBROUTINES--------------------------------------------
 CONTAINS
  !***********************************************************************
@@ -910,4 +921,37 @@ CONTAINS
    
    deallocate(RepMat)
  END SUBROUTINE addBlkIrrep
+
+! This subroutine checks a geometry (in internal coordinates) and returns all the permutation
+!-inversions that keep the geometry invariant. 
+ SUBROUTINE CheckGeomSym(igeom,nsym,sympmt,syminv)
+   IMPLICIT NONE
+   DOUBLE PRECISION,dimension(ncoord),intent(IN)    :: igeom
+   INTEGER,intent(OUT)                              :: nsym
+   INTEGER,dimension(:),allocatable,intent(OUT)     :: sympmt
+   INTEGER,dimension(:),allocatable,intent(OUT)     :: syminv
+   integer :: i
+   double precision :: newcoord(ncoord)
+   integer :: sym_pmt(npmt*2),sym_inv(npmt*2)
+   nsym=0
+   do i=1,npmt
+     newcoord(coordPerm(i,:))=igeom*sgnCPerm(i,:)
+     if(maxval(abs(newcoord-igeom))<GeomSymT)then
+       nsym=nsym+1
+       sym_pmt(nsym)=i
+       sym_inv(nsym)=1
+     end if
+     newcoord=newcoord*coordPerm(0,:)
+     if(maxval(abs(newcoord-igeom))<GeomSymT)then
+       nsym=nsym+1
+       sym_pmt(nsym)=i
+       sym_inv(nsym)=-1
+     end if
+   end do 
+   allocate(sympmt(nsym))
+   sympmt=sym_pmt(1:nsym)
+   allocate(syminv(nsym))
+   syminv=sym_inv(1:nsym)
+ END SUBROUTINE
+
 END MODULE CNPI 

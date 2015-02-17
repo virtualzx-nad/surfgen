@@ -41,6 +41,11 @@ module progdata
 !            degenerate group            
 ! lb,ub      INTEGER
 !            Specifies the index range between which ab initio data is available
+! nsym       INTEGER
+!            Number of symmetry operations under which the geometry is invariant.
+! symp,symi  INTEGER,dimension(:),allocatable
+!            Symmetry operations that keep geometry invariant.
+!      
   TYPE abpoint
    INTEGER                                       :: id
    DOUBLE PRECISION,dimension(:),allocatable     :: cgeom
@@ -59,6 +64,8 @@ module progdata
 
    INTEGER,dimension(:,:),allocatable            :: deg_groups
    INTEGER                                       :: ndeggrp
+   INTEGER                                       :: nsym
+   INTEGER,dimension(:),allocatable              :: symp,symi
   end TYPE abpoint
 
  ! derived type for a pointer to a two dimensional integer array

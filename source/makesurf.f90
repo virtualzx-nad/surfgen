@@ -218,6 +218,10 @@ MODULE makesurfdata
 ! This parameter dictates if the scaled gradients and couplings will be used
 ! instead of real values to determine the addition of managed points.
   LOGICAL                                           :: mng_scale_grad 
+
+! If this parameter is set to true, 
+  LOGICAL                                           :: deggrdbinding
+
  CONTAINS
 
   ! determine if each equation will be include / excluded / fitted exactly
@@ -225,7 +229,7 @@ MODULE makesurfdata
     use hddata, only: nstates
     use progdata, only: printlvl
     IMPLICIT NONE
-    INTEGER i,j,s1,s2
+    INTEGER i,j,s1,s2,k,l
 
     if(printlvl>0)print *,"Processing data inclusion/exclusion/exact fit data"
     if(allocated(incgrad))deallocate(incgrad)
@@ -298,6 +302,24 @@ MODULE makesurfdata
       end if
     end do
 
+    ! exclude all gradient and couplings if not all the data are present in a degenerate block if
+    ! deggrdbinding is set to true
+    if(deggrdbinding)then
+     do i=1,npoints
+      do j=1,dispgeoms(i)%ndeggrp
+        s1 = dispgeoms(i)%deg_groups(j,1)
+        s2 = s1-1+dispgeoms(i)%deg_groups(j,2)
+stloop: do k = s1,s2 
+          do l = k,s2 
+            if(.not.(incgrad(i,k,l).or.incgrad(i,l,k)))then
+              incgrad(i,s1:s2,s1:s2)=.false.
+              exit stloop
+            end if
+          end do !l
+        end do stloop!k
+      end do !j
+     end do! i=1,npoints
+    end if
   END SUBROUTINE getPtList
 !-----------------------------------------------------------------------------
 !This subroutine reads in an array of points, then output a list of equations.
@@ -518,7 +540,7 @@ MODULE makesurfdata
     IMPLICIT NONE
 
     INTERFACE
-      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad,cpw)
+      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,incGrad,cpw)
         use hddata, only: nstates
         IMPLICIT NONE
         INTEGER,intent(IN)                                        :: nvibs
@@ -527,7 +549,7 @@ MODULE makesurfdata
         double precision,dimension(nvibs),intent(in)              :: scale
         DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
         DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
-        LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
+        LOGICAL,dimension(nstates,nstates),intent(in)             :: incGrad
         integer,dimension(2**nstates,nstates),INTENT(IN)          :: phaseList
       END SUBROUTINE
     END INTERFACE
@@ -579,7 +601,7 @@ MODULE makesurfdata
         fitE(i,:,:) = hmatPt
         fitG(i,dispgeoms(i)%nvibs+1:nvibs,:,:) = 0d0
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitG(i,1:dispgeoms(i)%nvibs,:,:),&
-                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:),gWeight(i,:,:))
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,incGrad(i,:,:),gWeight(i,:,:))
         cycle
       end if!i==enfDiab
       fitpt%lb = dispgeoms(i)%lb
@@ -594,7 +616,7 @@ MODULE makesurfdata
 
         stop 'error solving eigenvalue equations'
       end if
-      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
+      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:))
       do k=1,dispgeoms(i)%nvibs
         fitpt%grads(k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
       end do!k=1,dispgeoms(i)%nvibs
@@ -625,7 +647,7 @@ MODULE makesurfdata
 
         end if
         call fixphase(dispgeoms(i)%nvibs,dispgeoms(i)%scale(:dispgeoms(i)%nvibs),fitpt%grads(1:dispgeoms(i)%nvibs,:,:),&
-                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,hasGrad(i,:,:),gWeight(i,:,:))
+                 dispgeoms(i)%grads(1:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),phaseList,incGrad(i,:,:),gWeight(i,:,:))
         fitpt%grads(dispgeoms(i)%nvibs+1:,:,:)=dble(0)
         fitG(i,:,:,:)=fitpt%grads
       end if !folPrev
@@ -2101,7 +2123,7 @@ MODULE makesurfdata
       if(e_error>mng_ener)cycle
       do s1=1,nstates
         do s2=s1,nstates
-          if(hasGrad(ptid,s1,s2))then
+          if(incgrad(ptid,s1,s2))then
             do g=1,nvibs
               g_error=abs((dispgeoms(ptid)%grads(g,s1,s2)-fitG(ptid,g,s1,s2)))
               if(mng_scale_grad)g_error=g_error*gWeight(ptid,s1,s2)
@@ -2117,8 +2139,9 @@ MODULE makesurfdata
       NAdd=NAdd+1
       Added(NAdd)=ptid
     end do!i=1,NManagedPts
-    if(printlvl>1) print "(2X,I5,A)",NAdd," points added to the fitting set by Point Manager."
-    if(printlvl>2) then
+    if(printlvl>1.and.NManagedPts>0) &
+         print "(2X,I5,A)",NAdd," points added to the fitting set by Point Manager."
+    if(printlvl>2.and.NManagedPts>0) then
       print *,"  List of added points:"
       print "(4X,12I6)",Added(1:NAdd)
     end if
@@ -2291,7 +2314,7 @@ SUBROUTINE makesurf()
   if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
   do i=1,npoints
     CALL EvaluateHd3(asol1,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
-    if(i.ne.enfDiab)call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,hasGrad(i,:,:))
+    if(i.ne.enfDiab)call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:))
     do k=1,dispgeoms(i)%nvibs
       fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
     end do!k=1,dispgeoms(i)%nvibs
@@ -2321,15 +2344,13 @@ SUBROUTINE makesurf()
   CALL getError(nrmener,avgener,nrmgrad,avggrad)
   adif = dnrm2(ncons,asol,int(1))
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
+  print 1005,iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
+  print *,"   Norm of coefficients:  ",dnrm2(ncons,asol,int(1))
   adif=toler+1
   diff = .false.
   ! ----------  MAIN LOOP ---------------
   do while(iter<maxiter.and.adif>toler)
    !update weights
-   if(iter>1)then
-     call AddManagedPoints
-     call updateWeights
-   end if
    ! Write coefficients of iteration to restart file
    if(trim(restartdir)/='')then !>>>>>>>>>>>>>>>>>>>
      c1=""
@@ -2346,6 +2367,11 @@ SUBROUTINE makesurf()
    iter = iter + 1
    if(printlvl>0)print 1000,iter
    
+   ! add new points if needs to 
+   if(iter>1)then
+     call AddManagedPoints
+     call updateWeights
+   end if
    ! check if should start differential convergence
    if(iter == dfstart)then
      print *,"  Starting differential convergence..."
@@ -2422,11 +2448,17 @@ SUBROUTINE makesurf()
    asol1=asol
    ! write iteration information to output file
    write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
+   print 1005,iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
    print *,"   Norm of coefficients:  ",dnrm2(ncons,asol,int(1))
   enddo !while(iter<maxiter.and.adif>toler)
   !----------------------------------
   ! End of self-consistent iterations
   !----------------------------------
+  !print the list of points that are added through the point manager
+  if(NManagedPts>0.and.printlvl>0)then
+    print *,"Final list of points that are added through the Point Manager:"
+    print "(10I7)",pack(ManagedPts,IncludePt)
+  end if!(NManagedPts>0)then
   !print final errors
   call makebvec(bvec,.true.)
   print "(5x,A)","Final RMS Errors of Fitting Equations"
@@ -2731,7 +2763,7 @@ end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
-  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,hasGrad,cpw)
+  SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,incGrad,cpw)
     use hddata, only: nstates
     use progdata, only: printlvl
     IMPLICIT NONE
@@ -2739,7 +2771,7 @@ end SUBROUTINE printSurfHeader
     DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)  :: fitgrad
     double precision,dimension(nvibs,nstates,nstates),intent(in)     :: abgrad
     double precision,dimension(nvibs),intent(in)              :: scale
-    LOGICAL,dimension(nstates,nstates),intent(in)             :: hasGrad
+    LOGICAL,dimension(nstates,nstates),intent(in)             :: incGrad
     DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
     DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
     integer,dimension(2**(nstates-1),nstates),INTENT(IN)      :: phaseList
@@ -2748,6 +2780,8 @@ end SUBROUTINE printSurfHeader
     integer,dimension(nstates,nstates)                        :: phaseMat
     double precision,dimension(nstates,nstates)               :: diff
     double precision                                          :: errNorm,minerr
+    LOGICAL,dimension(nstates,nstates)                        :: hasGrad
+    hasGrad=incGrad.or.transpose(incGrad)
     minID=0
     do j=1,2**(nstates-1)
       if(printlvl>10)print "(A,I3,A,10I3)","Perm#",j,", phases=",phaseList(j,:)
@@ -2935,26 +2969,29 @@ END SUBROUTINE guideOrder
 SUBROUTINE readMakesurf(INPUTFL)
   USE hddata,only: nstates
   USE progdata,only: natoms, AU2CM1
+  use cnpi,only: GeomSymT 
   USE makesurfdata
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
   integer :: i
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
-                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS,  &
+                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT
   ! set default for the parameters                    
   npoints   = 0
   gradcutoff= 100000.
   cpcutoff  = -1.
+  deggrdbinding=.true.
   printError= .false.
   maxiter   = 3
+  GeomSymT  = 1d-5
   mng_scale_ener = .false.
   mng_scale_grad = .true.
   mng_ener  = 2.d3
-  mng_grad  = 1d-1
+  mng_grad  = 3d-2
   orderall  = .true.
   diagHess  = -1d0
   dconv     = 1d-4
@@ -3151,6 +3188,7 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   call fillout(exactDiff,5)
   call fillout(enfGO,6)
   close(unit=PTFL)
+
 ! set up the list of managed points
   NManagedPts=count(IsManaged)
   if(allocated(ManagedPts))deallocate(ManagedPts)
@@ -3300,6 +3338,7 @@ SUBROUTINE readdisps()
   use hddata
   use progdata,only:natoms,printlvl
   use makesurfdata
+  use cnpi,only:CheckGeomSym
   IMPLICIT NONE
   INTEGER                                      :: i,j,k,l,ios
   DOUBLE PRECISION,dimension(3*natoms,npoints) :: cgrads,cgeoms
@@ -3459,6 +3498,15 @@ SUBROUTINE readdisps()
         print *,"  Internal Coordinates"
         print "(15F8.3)",dispgeoms(l)%igeom
     end if
+    ! analyze symmetry of geometry
+    call CheckGeomSym(dispgeoms(l)%igeom,dispgeoms(l)%nsym,dispgeoms(l)%symp,dispgeoms(l)%symi)
+if(dispgeoms(l)%nsym>1)then
+PRINT *,"NUMBER OF SYMMETRY OPERATIONS AT POINT IS ",dispgeoms(l)%nsym
+PRINT *,"PERMS:"
+PRINT "(12I4)",dispgeoms(l)%symp
+PRINT *,"INVRS:"
+PRINT "(12I4)",dispgeoms(l)%symi
+end if
     if(printlvl>3)then
         print *,"  Wilson B Matrix in nascent coordinate system"
         do j=1,ncoord

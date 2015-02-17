@@ -20,6 +20,7 @@
   SUBROUTINE makeLocalIntCoord(ptdata,nstates,useIntG,intGT,intGS,nvibs)
     USE hddata, ONLY: ncoord
     USE progdata, ONLY: abpoint,natoms,printlvl
+    USE cnpi, ONLY:  coordPerm,sgnCPerm
     IMPLICIT NONE
     double precision, parameter  :: degcap=1d-3 ! threshold for degeneracy
     TYPE(abpoint),intent(inout)  :: ptdata
@@ -40,6 +41,8 @@
    ! The starting index of the degenerate block. Coordinates from this index to
    ! index i-1 are all degenerate.
     integer     ::  degstart
+   ! bmatrix with new coordinates
+    double precision  :: bnew(ncoord,3*natoms)
     double precision,external :: dnrm2
 
     if(.not. useIntG)then
@@ -114,7 +117,7 @@
     end do !i=1,3*natoms
     if(printlvl>1)then
       print "(A,I7)","     Number of internal degrees of freedom : ",ptdata%nvibs
-      print "(A,I7)","     Number of degenerate internal motions : ",ndeg
+      if(ndeg>0)print "(A,I7)","     Number of degenerate internal motions : ",ndeg
     end if
 
     ! construct local coordinates
@@ -135,9 +138,16 @@
 
     ! Make linear combinations of degenerate internal coordinates to symmetrize
     ! them.
+    if(ndeg>0) call dgemm('n','n',ncoord,3*natoms,3*natoms,1d0,ptdata%bmat,ncoord, &
+                 btb,3*natoms,0d0,bnew,ncoord) 
     do i=1,ndeg
       if(printlvl>2)print "(3X,2(A,I4))","Symmetrizing coordinate range ",degcoords(i,1)," to ",degcoords(i,2)
-      
+      if(printlvl>3)then
+        do n1=degcoords(i,1),degcoords(i,2)
+          print *,"  Internal contribution of coordinate ",n1
+          print "(10(x,F10.5))",bnew(:,n1)
+        end do
+      end if
     end do
 
     ! Print out information about the final coordinate system
@@ -162,3 +172,6 @@
     end if
   1000 format(8x,A,I3,",",I3," : ",E11.4)
   END SUBROUTINE makeLocalIntCoord
+
+
+! This subroutine performs permutations of coordinates and 

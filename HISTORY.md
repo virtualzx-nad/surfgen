@@ -1,9 +1,11 @@
-## 2.7.1UNFINISHED (2015-02-10)
+## 2.7.1 (2015-02-16)
 
 * Preliminary code to identify degenerate coordinates in the local coordinate generation process.  The rotation among them has
   not been implemented yet.
 * New parameters `mng_scale_ener` and `mng_scale_grad` control if the scaled values or original values will be used by the 
   point manager.
+* A new parameter `deggrdbinding` forces all gradient/couplings to be include or excluded at the same time if they are in the
+  range of degeneracy.  The default is .true. which is recommended.  .false. will reproduce previous results. 
 
 ## 2.7.0 (2015-02-05)
 

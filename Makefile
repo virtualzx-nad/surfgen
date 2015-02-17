@@ -113,7 +113,6 @@ ifdef DEBUGGING_SYMBOLS
   endif
   LKOPT = 
 else
-  DEBUGFLAG := 
   # set default compiler flags
   ifneq ($(findstring ifort,$(COMPILER)),)
     ifdef NO_I8
