@@ -498,6 +498,11 @@ C      IF(.NOT.SAME)CALL RDT30(ICIU2,EVAL,NRTU2,IOUT,IERR)
       EJMEIA=-(EJMEIA-EVAL(STATE2))
       ES2=EVAL(STATE2) 
       WRITE(IOUT,1026)ICIU1,ICIU2,EJMEIA
+c     if ejmeia less than 1d-8, convergence has been reached.
+      if ( abs(ejmeia) .lt. 1d-8 ) then
+         igo = 1
+         return
+      end if
 C
 C      REWIND I74
 C      READ(I74,PATH)
@@ -4710,38 +4715,40 @@ c     namelist for printout
       real*8              masses( 10 ), numbers( 10 )
       character*1         names ( 10 )
       namelist /printout/ names, masses, numbers
-      
+c     close unit 73 (this unit is left open by polyhes)
+      close( i73 )
 c     open unit 73 and read printout namelist
-      open ( unit = i73, status = "old", action = "read", iostat = ios )
-      if ( ios .ne. 0 ) then
+      open( unit = i73, status = "old", action = "read", iostat = ios )
+      if( ios .ne. 0 ) then
          write( 6, "(1x,a)" ) "Could not open unit 73."
          return
       end if
-      read ( unit = i73, nml = printout )
+      read( unit = i73, nml = printout )
 c     close file
-      close ( unit = i73 )
+      close( unit = i73 )
 
 c     open unit $unit and read geometry in file
-      open ( unit = gmunit, status = "old", action = "read",
+      open( unit = gmunit, status = "old", action = "read",
      &       iostat = ios )
-      if ( ios .ne. 0 ) then
-         write ( 6, "(1x,a)" ) "Could not open old geometry file."
+      if( ios .ne. 0 ) then
+         write( 6, "(1x,a)" ) "Could not open old geometry file."
          return
       end if
-      read ( unit = gmunit, nml = path )
+      read( unit = gmunit, nml = path )
 c     close file
-      close ( unit = gmunit )
+      close( unit = gmunit )
 
 c     print final geometry
-      open ( unit = ifnlgm, status = "new", action = "write", 
+      open( unit = ifnlgm, status = "new", action = "write", 
      &       name = "geom.final", iostat = ios )
-      if ( ios .ne. 0 ) then
+      if( ios .ne. 0 ) then
          write( 6, "(1x,a)" ) "Could not open new geometry file."
          return
       end if
       do 10 i = 1, natoms
          write( ifnlgm, 1000 ) names(i), numbers(i),
-     &   gm( (i-1)*3 + 1 ), gm( (i-1)*3 + 2 ), gm( (i-1)*3 + 3 )
+     &   gm( (i-1)*3 + 1 ), gm( (i-1)*3 + 2 ), gm( (i-1)*3 + 3 ), 
+     &   masses(i)
  10   continue
 c     close file
       close ( ifnlgm )
