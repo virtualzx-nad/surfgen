@@ -303,41 +303,46 @@ C      ITAP11    SAXE TAPE 11    G(A)           11
 C      ITAP14    SAXE TAPE 14    H(A)           14
 C
 C         UNITS
-      ITAP10=10
-      ITAP11=11
-      ITAP14=14
-      INP=5
-      IOUT=6
-      I70=70
-      I73=73
-      I74=74
-      I75=75
-      I76=76
-      I77=77
-      I99=99
-C
-      PI=ACOS(-1.D0)
-      NORR=1
-      DO 6 I=1,MFIXDIR
-      LAMBDA(I,1)=ZERO
-    6 LAMBDA(I,2)=ZERO
-      RMAG=ZERO
-C
-      WRITE(IOUT,1001)
-      REWIND I74
-      CALL NUMATM(I74,0,NATOMS)
-CCLM: this print is for debugging
-      PRINT *, "NATOMS = ", NATOMS
-      DO 2 I=1,NATOMS*3
-      DAMPV(I)=ZERO
-      DISP(I)=0.1D-2
-    2 IVBORD(I)=I
-C
-      REWIND I73
-CCLM: this print is for debugging
-      PRINT *, "CALLING LOCATOR..."
-      CALL LOCATOR(I73,10H**NACINT  ,IERR1)
-      IF(IERR1.EQ.0)READ(I73,NACINT,ERR=920)
+      itap10 = 10
+      itap11 = 11
+      itap14 = 14
+      inp    =  5
+      iout   =  6
+      i70    = 70
+      i73    = 73
+      i74    = 74
+      i75    = 75
+      i76    = 76
+      i77    = 77
+      i99    = 99
+
+      pi = acos(-1.d0)
+      norr = 1
+      do 6 i = 1, mfixdir
+         lambda(i,1) = zero
+         lambda(i,2) = zero
+ 6    continue
+
+      rmag = zero
+
+      write(iout,1001)
+
+      rewind i74
+c     get number of atoms from input geometry file
+      call numatm(i74, 0, natoms)
+
+      do 2 i = 1, natoms*3
+         dampv(i) = zero
+         disp(i) = 0.1d-2
+         ivbord(i) = i
+ 2    continue
+
+c     rewind input file
+      rewind i73
+c     find input namelist NACINT in input file
+c      call locator(i73,10h**NACINT  ,IERR1)
+      call locator(i73, 10h**nacint  , ierr1)
+      if (ierr1 .eq. 0) read(i73, nacint, err=920)
 C
       REWIND INP
 CCLM: this print is for debugging
@@ -3953,31 +3958,46 @@ C
  1002 FORMAT(8(1X,Z8))
  1003 FORMAT(5X,'ERROR MAKING VIB BASIS: HAVE=',I3,' NEED=',I3)
       END
-      SUBROUTINE NUMATM(IUNIT,IP,NATOMS)
-      IMPLICIT REAL*8(A-H,O-Z)
-      DIMENSION GM(3,10)
-      DATA GM/30*123456789./
-      NAMELIST/PATH/GM
-C
-      READ(IUNIT,PATH,END=250)
-      DO 252 I=1,10
-      IF(DABS(GM(1,I)-123456789.).LT.0.1)GO TO 253
-      NATOMS=I
-  252 CONTINUE
-  253 CONTINUE
-      IF(IP.LE.0)GO TO 260
-      WRITE(IP,1004)IUNIT
-      WRITE(IP,1005)(J,(GM(I,J),I=1,3),J=1,NATOMS)
-      GO TO 260
-  250 CONTINUE
-      WRITE(IP,1003)
-      CALL EXIT(100)
-  260 CONTINUE
-      RETURN
- 1003 FORMAT(5X,'**** NO CURRENT GEOMETRY FILE ****' )
- 1004 FORMAT(5X,'**** CURRENT GEOMETRY TAKEN FROM UNIT:',I4 )
- 1005 FORMAT(5X,'CURRENT GEOMETRY:',/(2X,I3,2X,3F12.6) )
-      END      
+c----------------------------------------------------------------
+c----------------------------------------------------------------
+      subroutine numatm(iunit, ip, natoms)
+      
+      implicit none
+      integer          ip, iunit, natoms
+      real*8                    gm(3,10)
+      integer                       i, j
+      data gm /30*123456789./
+      namelist /path/ gm
+
+      read(iunit,path,end=250)
+      do 252 i = 1, 10
+         if (dabs(gm(1,i)-123456789.) .lt. 0.1) go to 253
+         natoms = i
+ 252  continue
+ 
+ 253  continue
+      
+      if (ip .le. 0) go to 260
+      
+      write(ip, 1004) iunit
+      write(ip, 1005)(j, (gm(i,j), i=1, 3), j=1, natoms)
+      go to 260
+ 
+ 250  continue
+      
+      write(ip, 1003)
+      call exit(100)
+ 
+ 260  continue
+      return
+
+ 1003 format(5x,'**** NO CURRENT GEOMETRY FILE ****' )
+ 1004 format(5x,'**** CURRENT GEOMETRY TAKEN FROM UNIT:',i4 )
+ 1005 format(5x,'CURRENT GEOMETRY:',/(2x,i3,2x,3f12.6) )
+      
+      end
+c------------------------------------------------------------------
+c------------------------------------------------------------------
       SUBROUTINE PUTGRD(IPRU,NATOMS,NDEGF,EDIFC,GMC,EGRADC,GGRADC,
      1             XGRADC,LAMBDAC,LAMBDR,IOUT,GNORMP,ES1P,NFIXDIR)
       IMPLICIT REAL*8(A-H,O-Z)
@@ -4747,7 +4767,7 @@ c     print final geometry
       end if
       do 10 i = 1, natoms
          write( ifnlgm, 1000 ) names(i), numbers(i),
-     &   gm( (i-1)*3 + 1 ), gm( (i-1)*3 + 2 ), gm( (i-1)*3 + 3 )
+     &   gm( (i-1)*3 + 1 ), gm( (i-1)*3 + 2 ), gm( (i-1)*3 + 3 ), 
      &   masses(i)
  10   continue
 c     close file
