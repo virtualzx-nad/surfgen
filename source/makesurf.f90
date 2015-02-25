@@ -312,7 +312,8 @@ MODULE makesurfdata
 stloop: do k = s1,s2 
           do l = k,s2 
             if(.not.(incgrad(i,k,l).or.incgrad(i,l,k)))then
-              incgrad(i,s1:s2,s1:s2)=.false.
+              incgrad(i,:,s1:s2)=.false.
+              incgrad(i,s1:s2,:)=.false.
               exit stloop
             end if
           end do !l
@@ -616,7 +617,7 @@ stloop: do k = s1,s2
 
         stop 'error solving eigenvalue equations'
       end if
-      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:))
+      call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:),deggrdbinding)
       do k=1,dispgeoms(i)%nvibs
         fitpt%grads(k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
       end do!k=1,dispgeoms(i)%nvibs
@@ -2314,7 +2315,8 @@ SUBROUTINE makesurf()
   if(printlvl>1)print *,"    Energies from initial Hd and eigenvectors:"
   do i=1,npoints
     CALL EvaluateHd3(asol1,nBas,npoints,i,nvibs,hmatPt,dhmatPt,WMat)
-    if(i.ne.enfDiab)call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:))
+    if(i.ne.enfDiab)&
+        call OrthGH_Hd(dispgeoms(i),dhmatPt(:dispgeoms(i)%nvibs,:,:),ckl(i,:,:),100,gcutoff,incGrad(i,:,:),deggrdbinding)
     do k=1,dispgeoms(i)%nvibs
       fitG(i,k,:,:)=matmul(transpose(ckl(i,:,:)),matmul(dhmatPt(k,:,:),ckl(i,:,:)))
     end do!k=1,dispgeoms(i)%nvibs
@@ -3412,6 +3414,7 @@ SUBROUTINE readdisps()
         dispgeoms(j+npts)%id = j+npts
         dispgeoms(j+npts)%cgeom(1:3*natoms) = cgeoms(1:3*natoms,j)
     enddo!j=1,ptinfile
+    if(printlvl>1)print "(A,I5,A,I5)"," path ["//trim(SearchPath(i))//"] loaded to point range ",1+npts," to ",ptinfile+npts 
     nnew = ptinfile
 
     ! read energy data
@@ -3546,7 +3549,7 @@ end if
  ! generate intersection adapated coordinates
   if(printlvl>0) print *,"Transforming degenerate points to intersection adapted coordinates:"    
   do l=1,npoints
-   call OrthGH_ab(dispgeoms(l),100,gcutoff,hasGrad(l,:,:))
+   call OrthGH_ab(dispgeoms(l),100,gcutoff,hasGrad(l,:,:),deggrdbinding)
   end do
 
   call printDisps(int(1),npoints)

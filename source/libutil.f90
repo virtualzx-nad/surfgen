@@ -494,7 +494,7 @@ end subroutine analysegeom
 ! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
 ! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
 ! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
+SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad,needall)
   USE hddata, only: nstates
   USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
@@ -502,6 +502,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
   INTEGER,INTENT(IN)                                    :: maxiter
   LOGICAL,DIMENSION(nstates,nstates),INTENT(in)         :: hasGrad
   DOUBLE PRECISION,INTENT(IN)                           :: toler
+  LOGICAL,INTENT(in)                                    :: needall
 
   integer           ::  igrp,i,j,iter,ldeg,udeg
   integer           ::  mi,mj  !location of maximum rotation
@@ -528,7 +529,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
       end do
     end do!i=1,nstates
   end if!(printlvl>2)
-  do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degeneracies, loops over all of them       
+grploop: do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degeneracies, loops over all of them       
     max_b=-1
     ldeg=pt%deg_groups(igrp,1)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
@@ -536,6 +537,9 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
     ! check if rotations among these states are allowed.
     if(all(hasGrad))then
       allowedRot(ldeg:udeg,ldeg:udeg)=.true.
+      do i=ldeg,udeg
+        allowedRot(i,i)=.false.
+      end do
     else
       allowedRot(ldeg:udeg,ldeg:udeg)=.false.
       if(printlvl>2)write (*,"(6X,A)",advance='no') "Allowed rotations:"
@@ -555,10 +559,20 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
       if(.not.any(allowedRot(ldeg:udeg,ldeg:udeg)))then
         print *," none"
         print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
-        cycle
+        cycle grploop
       else
         print *,""
       end if
+      if(needall)then
+        do i=ldeg,udeg
+          do j=ldeg,i-1
+            if(.not.allowedRot(i,j))then
+              print *,"  Not all rotations are included.  Skipping block."
+              cycle grploop
+            end if
+          end do
+        end do
+      end if!need all
     end if
     print *,"building g and h vectors"
     !build normalized g and h vectors from Hd and compute rotation angles the first time
@@ -651,7 +665,7 @@ SUBROUTINE OrthGH_ab(pt,maxiter,toler,hasGrad)
           end do
         end do!i=1,nstates
     end if!(printlvl>0)
-  end do!igrp=1,pt%ndeggrp
+  end do grploop!igrp=1,pt%ndeggrp
 1000 format(7X,"no convergence after ",I4," iterations, max residue angle=",F8.2)
 1001 format(7X,"convergence after ",I4," iterations")
 1002 format(14X,'states(',I2,',',I2,'):')
@@ -692,7 +706,7 @@ END SUBROUTINE OrthGH_Ab
 ! This subroutine tries orthogonalize all g-h vectors by an algorithm similar to 
 ! the Jacobi's method for eigenvalues.  The Jacobi transformations here extremize 
 ! the norm of the corresponding coupling block rather than eliminating them.   
-SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
+SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad,needall)
   USE hddata, only: nstates
   USE progdata, only: abpoint,printlvl
   IMPLICIT NONE
@@ -703,6 +717,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
   DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates),INTENT(IN) :: dhmat
   DOUBLE PRECISION,dimension(pt%nvibs,nstates,nstates)            :: dhmatnew
   DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT)       :: ckl
+  LOGICAL,INTENT(in)                                              :: needall
 
   LOGICAL,DIMENSION(nstates,nstates)                    :: hasGrad
   integer           ::  igrp,i,j,iter,ldeg,udeg
@@ -742,7 +757,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
     end do!i=1,nstates
   end if!(printlvl>2)
 ! generate rotations
-  do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degeneracies, loops over all of them       
+grploop:  do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degeneracies, loops over all of them       
     max_gh=-1
     ldeg=pt%deg_groups(igrp,1)
     udeg=pt%deg_groups(igrp,2)+pt%deg_groups(igrp,1)-1
@@ -774,9 +789,19 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
            print *," none"
            print "(4X,A)","Missing data forbit any rotations.  Skipping transformation of degenerate group."
         end if
-        cycle
+        cycle grploop
       else
         if(printlvl>2)print *,""
+      end if
+      if(needall)then
+        do i=ldeg,udeg
+          do j=ldeg,i-1
+            if(.not.allowedRot(i,j))then
+              print *,"  Not all rotations are included.  Skipping block."
+              cycle grploop
+            end if
+          end do
+        end do
       end if
     end if
 
@@ -860,7 +885,7 @@ SUBROUTINE OrthGH_Hd(pt,dhmat,ckl,maxiter,toler,incGrad)
           end do
         end do!i=1,nstates
     end if!(printlvl>0)
-  end do!igrp=1,pt%ndeggrp
+  end do grploop!igrp=1,pt%ndeggrp
   dhmatnew=gradnew
 1000 format(7X,"no convergence after ",I4," iterations, max residue g.h=",F8.2)
 1001 format(7X,"convergence after ",I4," iterations")
