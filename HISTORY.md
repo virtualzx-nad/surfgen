@@ -1,3 +1,6 @@
+## 2.7.2 (2015-03-10)
+* Minor bug fixes and print out improvements
+
 ## 2.7.1 (2015-02-16)
 
 * Preliminary code to identify degenerate coordinates in the local coordinate generation process.  The rotation among them has

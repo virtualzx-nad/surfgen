@@ -2146,6 +2146,9 @@ stloop: do k = s1,s2
       print *,"  List of added points:"
       print "(4X,12I6)",Added(1:NAdd)
     end if
+    if(printlvl>1.and.NManagedPts>0) &
+         print "(2X,A,I6)"," Total number of points with non-zero weight: ",count(ptWeights>1d-8)
+      
   END SUBROUTINE AddManagedPoints
 !---------------------------------------------
 ! This subroutine updates the ptWeights and weight vectors for managed points

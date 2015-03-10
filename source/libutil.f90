@@ -1074,7 +1074,7 @@ SUBROUTINE findRotMin(nvibs,nst,st1,st2,grd,ref,ckl,s1,s2)
         grdtest=grd
         ckltest=ckl
         call GivensStep(nvibs,nst,grdtest,s1,s2,ang(1),ckltest)
-        call getGHErr(nvibs,st1,st2,nst,grdtest,ref,err(1))
+        call getGHErr(nvibs,nst,st1,st2,grdtest,ref,err(1))
         
       case (2)
         if(ang(3)-ang(2)>ang(2)-ang(1))then
