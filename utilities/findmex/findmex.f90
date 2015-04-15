@@ -80,7 +80,7 @@ program findmex
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"
-  call analysegeom(natm,cgeom,aname,anum,masses)
+  call analysegeom(natm,cgeom,aname,anum,masses,1.9d0,.true.)
 ! deallocate arrays
   deallocate(masses)
   deallocate(anum)
