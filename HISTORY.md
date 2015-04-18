@@ -1,3 +1,6 @@
+## 2.7.3 (2015-04-18)
+* Bug fix in potlib.f90 and libutility.f90 that may cause memory leak
+
 ## 2.7.2 (2015-03-10)
 * Minor bug fixes and print out improvements
 

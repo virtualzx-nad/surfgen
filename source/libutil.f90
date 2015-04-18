@@ -254,7 +254,7 @@ SUBROUTINE getCartHd(cgeom,energy,cgrads,hmat,dcgrads)
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
 
-  call buildWBMat(cgeom,igeom,bmat,.false.)
+  call buildWBMat(cgeom,igeom,bmat)
 
 ! calculate raw polynomial terms
   call EvalRawTermsL(igeom)

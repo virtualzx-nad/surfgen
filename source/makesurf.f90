@@ -2339,11 +2339,12 @@ SUBROUTINE makesurf()
   call AddManagedPoints
   call updateWeights
   asol = asol1
-  CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-  CALL optLag(jaco,nex,dCi,asol,jaco2)
-  print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
-            ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-
+  if(maxiter>=0)then
+    CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+    CALL optLag(jaco,nex,dCi,asol,jaco2)
+    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
+              ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
+  end if
   !CALL initDIISg(ndiis,ndstart,ncons,asol,dCi)
   call evaluateError(asol,weight,LSErr,ExErr)
   CALL getError(nrmener,avgener,nrmgrad,avggrad)

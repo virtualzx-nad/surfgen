@@ -605,7 +605,7 @@ SUBROUTINE EvaluateSurfgen(cgeom,energy,cgrads,hmat,dcgrads)
   nth=omp_get_max_threads()
   EvalCount = EvalCount+1
   if(timeeval) call system_clock(COUNT=count1,COUNT_RATE=count_rate)
-  call buildWBMat(cgeom,igeom,bmat,.false.)
+  call buildWBMat(cgeom,igeom,bmat)
   if(timeeval)then
     call system_clock(COUNT=count2)
     teval(1) = dble(count2-count1)/count_rate*1000
@@ -793,7 +793,6 @@ SUBROUTINE getEnergy(cgeom,energy)
   double precision    :: bohr2ang,  mind
   integer   :: i,j,ptid
   integer   :: counter = 1   ! count the number of evaluations
-  character(4)  ::  str,str2
 
   LWORK  = nstates*(nstates+26)
   LIWORK = nstates*10
@@ -802,7 +801,7 @@ SUBROUTINE getEnergy(cgeom,energy)
        print *,"WARNING:  Initializing Hd for pot().  "
        call prepot()
   end if
-  call buildWBMat(cgeom,igeom,bmat,.false.)
+  call buildWBMat(cgeom,igeom,bmat)
  ! construct Hd
   call makehmat(igeom,hmat)
  ! generate eigenvectors and energies at current geometry
@@ -836,17 +835,14 @@ END SUBROUTINE
 SUBROUTINE readginput(jtype) 
   use potdata
   use progdata 
-  use hddata, only: initGrps,ncoord,nstates,order,getFLUnit,CpOrder 
+  use hddata, only: initGrps,order,getFLUnit,CpOrder 
   use CNPI, only: irrep,GrpPrty,GrpSym,nSymLineUps 
   IMPLICIT NONE 
   INTEGER,INTENT(INOUT)           :: jtype 
-  INTEGER                         :: i,j,mkadiabat,ios,k 
+  INTEGER                         :: i,ios
   INTEGER                         :: nGrp,jobtype 
-  INTEGER,dimension(10)           :: surface,updatehess 
-  INTEGER,dimension(50)           :: ci,atmgrp 
-  DOUBLE PRECISION,dimension(500) :: minguess,mexguess 
+  INTEGER,dimension(50)           :: atmgrp 
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty 
-  DOUBLE PRECISION,dimension(50)  :: e_guess
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
                             printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
@@ -927,8 +923,6 @@ SUBROUTINE loadRefGeoms()
   IMPLICIT NONE
   integer              :: i, j, uerrfl, ios
   double precision     :: cgeom(3*natoms,nrpts),igeom(ncoord),bmat(ncoord,3*natoms)
-  character(3),dimension(natoms)               :: atoms
-  double precision,dimension(natoms)           :: anums,masses
   character(3)    ::  ncstr
   integer         :: fid
   PRINT *,"   Minimum distances to a set of reference geometries will be calculated."
@@ -944,7 +938,7 @@ SUBROUTINE loadRefGeoms()
   print *,"   ",nrpts," geometries loaded."
   PRINT *,"   Converting to internal coordinates"
   do i=1,nrpts
-    call buildWBMat(cgeom(:,i),igeom,bmat,.false.)
+    call buildWBMat(cgeom(:,i),igeom,bmat)
     rgeom(i,:)=igeom
   end do
  ! Load point error information if availale
