@@ -299,7 +299,7 @@ END SUBROUTINE getCartHd
 ! the norm of the corresponding coupling block rather than eliminating them.   
 SUBROUTINE OrthogonalizeGH(h,dh,lstate,ustate,nvibs,maxiter,toler)
   USE hddata, only: nstates
-  USE progdata, only: abpoint,printlvl
+  USE progdata, only: abpoint
   IMPLICIT NONE
   DOUBLE PRECISION,INTENT(INOUT),DIMENSION(nvibs,nstates,nstates) :: dh
   DOUBLE PRECISION,INTENT(INOUT),DIMENSION(nstates,nstates)       :: h
@@ -897,11 +897,8 @@ CONTAINS
     IMPLICIT NONE
     INTEGER,INTENT(IN)             :: i,j
     DOUBLE PRECISION,INTENT(OUT)   :: beta,gh
-    DOUBLE PRECISION  :: angles(3)
 
-    double precision, dimension(pt%nvibs)                :: g,h,gnew,hnew
-    double precision  ::  errg, errh, errcurr, errrot,c,s
-    logical :: ss
+    double precision, dimension(pt%nvibs)                :: g,h
 
     if(.not.allowedRot(i,j))then
       beta = 0d0

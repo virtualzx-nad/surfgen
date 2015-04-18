@@ -540,20 +540,20 @@ stloop: do k = s1,s2
     USE combinatorial
     IMPLICIT NONE
 
-    INTERFACE
-      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,incGrad,cpw)
-        use hddata, only: nstates
-        IMPLICIT NONE
-        INTEGER,intent(IN)                                        :: nvibs
-        DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)           :: fitgrad
-        double precision,dimension(nvibs,nstates,nstates),intent(in)              :: abgrad
-        double precision,dimension(nvibs),intent(in)              :: scale
-        DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
-        DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
-        LOGICAL,dimension(nstates,nstates),intent(in)             :: incGrad
-        integer,dimension(2**nstates,nstates),INTENT(IN)          :: phaseList
-      END SUBROUTINE
-    END INTERFACE
+!    INTERFACE
+!      SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,incGrad,cpw)
+!        use hddata, only: nstates
+!        IMPLICIT NONE
+!        INTEGER,intent(IN)                                        :: nvibs
+!        DOUBLE PRECISION,dimension(nvibs,nstates,nstates),intent(inout)           :: fitgrad
+!        double precision,dimension(nvibs,nstates,nstates),intent(in)              :: abgrad
+!        double precision,dimension(nvibs),intent(in)              :: scale
+!        DOUBLE PRECISION,dimension(nstates,nstates),INTENT(INOUT) :: ckl
+!        DOUBLE PRECISION,dimension(nstates,nstates),INTENT(IN)    :: cpw
+!        LOGICAL,dimension(nstates,nstates),intent(in)             :: incGrad
+!        integer,dimension(2**nstates,nstates),INTENT(IN)          :: phaseList
+!      END SUBROUTINE
+!    END INTERFACE
 
     DOUBLE PRECISION,DIMENSION(ncons),intent(IN)     :: hvec   ! vector that defines Hd coefficients
     LOGICAL,INTENT(IN),OPTIONAL                      :: follow ! whether state signs and ordering will be
