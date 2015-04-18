@@ -335,7 +335,7 @@ SUBROUTINE oop(natoms,atms,cgeom,qval,bval,scale)
   DOUBLE PRECISION,DIMENSION(12),INTENT(OUT)      :: bval
 
   INTEGER           :: i, j, sgns(6,4)
-  DOUBLE PRECISION  :: denom, dnorm2(6), dvecs(6,3),&
+  DOUBLE PRECISION  :: denom, dnorm2(6), dvecs(3,6),&
                        geom(4,3), ddvec(3,3)
   DOUBLE PRECISION  :: factor  ! normalization
 
@@ -353,23 +353,23 @@ SUBROUTINE oop(natoms,atms,cgeom,qval,bval,scale)
   end do
 
 ! calculate displacement vectors between these atoms
-  dvecs=matmul(sgns,geom)
+  dvecs=transpose(matmul(sgns,geom))
   do i=1,6
-    dnorm2(i)=dot_product(dvecs(i,:),dvecs(i,:))
+    dnorm2(i)=dot_product(dvecs(:,i),dvecs(:,i))
   end do
 
 ! calculate value of scaled OOP angle and its derivatives
   denom=exp(log(product(dnorm2))/2*scale)
   if(abs(denom)<1d-30)stop "OOP angle cannot be defined when atoms coincide."
-  qval=det3(dvecs(1:3,:))/denom
+  qval=det3(dvecs(:,1:3))/denom
   do i=1,3
     do j=1,3
-      ddvec(i,j)=sum(sgns(:,i)*dvecs(:,j)/dnorm2(:))
+      ddvec(i,j)=sum(sgns(:,i)*dvecs(j,:)/dnorm2(:))
     end do
   end do
-  bval(1:3)=cross(dvecs(2,:),dvecs(3,:))/denom-qval*scale*ddvec(1,:)
-  bval(4:6)=cross(dvecs(3,:),dvecs(1,:))/denom-qval*scale*ddvec(2,:)
-  bval(7:9)=cross(dvecs(1,:),dvecs(2,:))/denom-qval*scale*ddvec(3,:)
+  bval(1:3)=cross(dvecs(:,2),dvecs(:,3))/denom-qval*scale*ddvec(1,:)
+  bval(4:6)=cross(dvecs(:,3),dvecs(:,1))/denom-qval*scale*ddvec(2,:)
+  bval(7:9)=cross(dvecs(:,1),dvecs(:,2))/denom-qval*scale*ddvec(3,:)
   bval(10:12)=-bval(1:3)-bval(4:6)-bval(7:9)
 
 ! calculate the normalization factor
