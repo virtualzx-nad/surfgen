@@ -1762,9 +1762,9 @@ stloop: do k = s1,s2
     n1 = 1
     do i=1,npoints
      call EvalRawTerms(dispgeoms(i)%igeom)
-! In EvaluateVal, the pbas matrix is reshaped so that it is cognized as a [npoints*(nvibs+1),ll*rr*npb(k)] dimensional
-! matrix.   This is equivalent because loops through ll and rr are treated as inner-most in the subroutine
-     CALL EvaluateVal(pbas(n1,1),npoints*(nvibs+1),k,nvibs,dispgeoms(i)%bmat)
+!SUBROUTINE EvaluateVal(V,LDV,iBlk,nvibs,npoints,ptid,bmat)
+
+     CALL EvaluateVal(pbas,k,nvibs,npoints,i,dispgeoms(i)%bmat)
 ! create weighed data matrix
      j=0
      do while(dispgeoms(i)%energy(1,1)>energyT(j+1))

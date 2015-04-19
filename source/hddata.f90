@@ -1268,13 +1268,13 @@ END SUBROUTINE EvaluateHd3
 !---------------------------------------------
 ! generated basis values and derivatives in fitting coordinates for a 
 ! specific block.  the values are directly filled in to data matrix V
- SUBROUTINE EvaluateVal(V,LDV,iBlk,nvibs,bmat)
+ SUBROUTINE EvaluateVal(V,iBlk,nvibs,npoints,ptid,bmat)
   IMPLICIT NONE
-  DOUBLE PRECISION,INTENT(INOUT),DIMENSION(LDV,*) :: V
-  INTEGER,INTENT(IN)                              :: LDV,iBlk,nvibs
-  DOUBLE PRECISION,INTENT(IN),DIMENSION(ncoord,*) :: bmat
+  DOUBLE PRECISION,INTENT(INOUT),DIMENSION(:,:) :: V
+  INTEGER,INTENT(IN)                              :: iBlk,nvibs,npoints,ptid
+  DOUBLE PRECISION,INTENT(IN),DIMENSION(:,:) :: bmat
 
-  integer                 :: i,f,t,m,ll,rr, n, lr
+  integer                 :: i,f,t,m,ll,rr, n, lr,j,shift,stride,n1
   type(TTermDef),pointer  :: pT,pTd
   type(TMTabBasis),pointer:: pM
   double precision,dimension(:),allocatable  :: MCoef,vsum
@@ -1285,12 +1285,14 @@ END SUBROUTINE EvaluateHd3
   ll=nl(iBlk)
   rr=nr(iBlk)
   lr = ll*rr
+  stride=npoints*(nvibs+1)
+  shift=(ptid-1)*(nvibs+1)
   allocate(MCoef(lr))
   allocate(vsum(lr))
   allocate(dsum(lr,ncoord))
   ! cycle through all terms and evaluate
   ! n2 is the index of basis
-  n = 0
+  n = 1
   do i=0,order
     pM=>maptab(i,iBlk)%handle
     do f=1,maptab(i,iBlk)%nBasis
@@ -1310,13 +1312,17 @@ END SUBROUTINE EvaluateHd3
           end do!m=1,ncoord
         end if!i>0
       end do!t=1,pM%nTerms
-      V(1,n+1:n+lr) = vsum
-      if(i>0)then
-        CALL DGEMM('T','T',nvibs,lr,ncoord,1d0,bmat,ncoord,dsum,lr,0d0,V(2,n+1),LDV)
-      else
-        V(2:nvibs+1,n+1:n+lr) = 0d0
-      end if
-      n = n + lr
+      n1=1+shift
+      do j=1,lr
+        V(n1,n)=vsum(j)
+        if(i>0)then
+          CALL DGEMV('T',ncoord,nvibs,1d0,bmat,ncoord,dsum(j,:),1,0d0,V(n1+1:n1+nvibs,n),1)
+        else
+          V(n1+1:n1+nvibs,n) = 0d0
+        end if
+        n1=n1+stride
+      end do!j
+      n = n + 1 
     end do!f=1,maptab(i,iBlk)%nBasis
   end do !i=0,order
   deallocate(MCoef)
