@@ -279,10 +279,10 @@ CONTAINS
 
     ! log the selected permutations
     print *,"     Number of feasible permutations:",nPmt
-    PRINT *,"     Feasible Permutations List:"
+    print *,"     Feasible Permutations List:"
     do i=1,nPmt
         write(unit=*,fmt="(8x,A,I5,A)",Advance="NO") "Pmt #",i,":"
-        PRINT "(20I3)",pmtList(i,:)
+        print "(20I3)",pmtList(i,:)
     end do!i=1,nPmt
     print *,""
     if(nPmtAll>nPmt)removed=.true.
@@ -417,7 +417,7 @@ CONTAINS
            stop "Unsupported coordinate type in genCoordPerm"
        end select !case(CoordSet(m)%Type)
      end do!j=1,ncoord
-     PRINT "(3x,A,I2,A,70I4)","PMT[",i,"]",coordPerm(i,:)*sgnCPerm(i,:)
+     print "(3x,A,I2,A,70I4)","PMT[",i,"]",coordPerm(i,:)*sgnCPerm(i,:)
    end do!i=1,nPmt
    
  END SUBROUTINE genCoordPerm
@@ -592,7 +592,7 @@ CONTAINS
     double precision,dimension(LR,pC%nterms)  ::  coef
     double precision,dimension(LR,pC%nterms,LR*nSymLineUps)  ::  coefSave  ! all added coefficients
     double precision,external :: dnrm2
-    double precision   :: ovlp
+    double precision   :: ovlp, xproj(LR)
     integer   ::  iAdd
     integer   ::  iSym  ! index of symmetry setup
 
@@ -642,13 +642,21 @@ CONTAINS
       end if !if(LR>1)
       ! fill in the output array
       do t=1,nProj
+        if(LR>1)then
+          xproj=0d0
+          do i=1,LR
+            if(JPVT(i)>0)  xproj(JPVT(i))=XT(t,i)
+          end do
+        else
+          xproj(1)=xt(1,1)
+        end if
         coef=dble(0)
         do i=1,ll
          do j=1,rr
            do s=1,pC%nTerms
             do k=1,ll
                coef(i+(j-1)*ll,s)=coef(i+(j-1)*ll,s)+ irrep(lirr)%RepMat(pC%V(s),i,k)* &
-                    sum(XT(t,k*rr-rr+1:k*rr)*irrep(rirr)%RepMat(pC%V(s),j,:))*pC%sgnTerm(s)
+                    dot_product(xproj(k*rr-rr+1:k*rr),irrep(rirr)%RepMat(pC%V(s),j,:))*pC%sgnTerm(s)
             end do ! k
            end do !do s=1,pC%nterms
          end do !do j=1,rr
@@ -770,12 +778,15 @@ CONTAINS
      do j=1,NBlockSym
        if(any(BPerm(tmpBlkLs(j),:).ne.BPerm(i,:)))cycle
        if(any(BPrty(tmpBlkLs(j),:).ne.BPrty(i,:)))cycle
-       id = j
        exit    
      end do
      if(id==0)then
        NBlockSym=NBlockSym+1
        tmpBlkLs(NBlockSym) = i
+       print *,"  Block symmetry # ",j
+       print "(A,10I4)","     Permutation irrep  : ",BPerm(i,:)
+       print "(A,10I4)","     Inversion symmetry : ",BPrty(i,:)
+       id = j
        id = NBlockSym
      end if!(id.ne.0)then
      blockSymID(i) = id    

@@ -1,3 +1,8 @@
+## 2.7.3 (2015-04-27)
+* Fixed a bug that after the QR decomposition with pivoting of projection operators in case of multi-dimensional irredicuble 
+  representations the projection operators were not correctly pivoted back to the original basis.  The program is now tested
+  for degenerate irreducible representations.
+
 ## 2.7.3 (2015-04-18)
 * Fixed a potential memory violation in EvaluateVal() in hddata.f90
 * Bug fix in potlib.f90 and libutility.f90 that may cause memory leak

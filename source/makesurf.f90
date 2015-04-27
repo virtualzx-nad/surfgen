@@ -903,6 +903,7 @@ stloop: do k = s1,s2
      r0 = offs(ColGrp(iblk))
      rr = GrpLen(ColGrp(iblk))
      pv1 =  npoints*(1+nvibs) *ll*rr
+     if(nBas(iBlk).eq.0)cycle
      allocate(VIJ(nBas(iBlk),nvibs,nstates,nstates))    
      allocate(WIJ(nBas(iBlk),nstates,nstates))    
      allocate(DIJ(nBas(iBlk),nstates,nstates))    
@@ -1744,8 +1745,8 @@ stloop: do k = s1,s2
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
-        allocate(ZBas(k)%List(1,1))     ! just a place holder
-        allocate(WMat(k)%List(1,1))
+        allocate(ZBas(k)%List(npoints*(nvibs+1)*ll*rr,1))     ! just a place holder
+        allocate(WMat(k)%List(npoints*(nvibs+1)*ll*rr,1))
         gradNorm(:,:,k) = 0d0
         cycle
     end if
@@ -1871,7 +1872,6 @@ stloop: do k = s1,s2
         deallocate(pbasw)
         deallocate(pbas)
     end if!(TBas>0)
-
 ! generate gradNorm and zero out components that are excluded
     gn0 = 0d0
     ng0 = 0
@@ -2959,11 +2959,11 @@ SUBROUTINE guideOrder(ptid,realckl,guideckl,pmtList,LDP)
     reordered(:,j)=realckl(:,pmtList(maxi,j))
   end do !j
   if(printlvl>3.and.maxi>1)then
-    PRINT *,"Guide ordering at point ",PTID
-    PRINT *,"before:"
-    PRINT "(4F10.6)",REALCKL
-    PRINT *,"after:"
-    PRINT "(4F10.6)",reordered
+    print *,"Guide ordering at point ",PTID
+    print *,"before:"
+    print "(4F10.6)",REALCKL
+    print *,"after:"
+    print "(4F10.6)",reordered
   else
      if(printlvl>0.and.maxi>1.and.ptWeights(ptid)>1d-8)print 1000,ptid,maxovlp/nstates
   end if
@@ -3096,6 +3096,9 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   if(allocated(ptWeights))deallocate(ptWeights)
   allocate(ptWeights(npoints))
   ptWeights=dble(1)
+  if(allocated(IsManaged))deallocate(IsManaged)
+  allocate(IsManaged(npoints))
+  IsManaged=.false.
   if(printlvl>0)print *,"   Reading point specific options."
   open(unit=PTFL,file='points.in',access='sequential',form='formatted',&
     status='old',action='read',position='rewind',iostat=ios)
@@ -3113,9 +3116,6 @@ SUBROUTINE readDispOptions(exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   read(PTFL,1000,IOSTAT=ios) comment
   tpCount=0
 
-  if(allocated(IsManaged))deallocate(IsManaged)
-  allocate(IsManaged(npoints))
-  IsManaged=.false.
   do while(ios==0)
     read(PTFL,1001,IOSTAT=ios) job,ptid,i,j
     if(ios/=0)exit
@@ -3507,13 +3507,13 @@ SUBROUTINE readdisps()
     end if
     ! analyze symmetry of geometry
     call CheckGeomSym(dispgeoms(l)%igeom,dispgeoms(l)%nsym,dispgeoms(l)%symp,dispgeoms(l)%symi)
-if(dispgeoms(l)%nsym>1)then
-PRINT *,"NUMBER OF SYMMETRY OPERATIONS AT POINT IS ",dispgeoms(l)%nsym
-PRINT *,"PERMS:"
-PRINT "(12I4)",dispgeoms(l)%symp
-PRINT *,"INVRS:"
-PRINT "(12I4)",dispgeoms(l)%symi
-end if
+    if(dispgeoms(l)%nsym>1.and.printlvl>2)then
+      print *,"Number of symmetry operations at this point is ",dispgeoms(l)%nsym
+      print *,"permutation component:"
+      print "(12I4)",dispgeoms(l)%symp
+      print *,"inversion component  :"
+      print "(12I4)",dispgeoms(l)%symi
+    end if
     if(printlvl>3)then
         print *,"  Wilson B Matrix in nascent coordinate system"
         do j=1,ncoord
