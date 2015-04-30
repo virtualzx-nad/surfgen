@@ -1676,7 +1676,8 @@ stloop: do k = s1,s2
   integer  :: ll,rr,p,nb
   double precision,allocatable,dimension(:)   :: WORK, eval
   double precision,allocatable,dimension(:,:) :: evec, pbas, dmat, pbasw 
-  double precision   ::  gn0, wt
+  double precision, parameter :: gpw=7.4505806d-9  !  GB per word
+  double precision   ::  gn0, wt,memsize,pbasmem
   integer,allocatable,dimension(:)  :: IWORK,ISUP
   integer  :: INFO, ng0
 
@@ -1684,7 +1685,7 @@ stloop: do k = s1,s2
 
   call system_clock(COUNT_RATE=count_rate)
   gradNorm=dble(0)
-
+  memsize=0d0
   ! allocate global info arrays
 
   if(allocated(npb))deallocate(npb)
@@ -1738,25 +1739,28 @@ stloop: do k = s1,s2
 !**************************************************
   if(printlvl>0) print *,"Generating basis for symmetry unique blocks."
   do l=1,NBlockSym
-    k = blockSymLs(l)
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
+    k = blockSymLs(l)
     ll = nl(k)
     rr = nr(k)
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
-        allocate(ZBas(k)%List(npoints*(nvibs+1)*ll*rr,1))     ! just a place holder
-        allocate(WMat(k)%List(npoints*(nvibs+1)*ll*rr,1))
+        allocate(ZBas(k)%List(1,1))     ! just a place holder
+        allocate(WMat(k)%List(1,1))
         gradNorm(:,:,k) = 0d0
         cycle
     end if
     call system_clock(COUNT=count2)
-    if(printlvl>1)write(*,"(A)",advance='no')"   Evaluating primitive basis... "
 ! pbas contains the values and gradients of all primitive basis matrices.
 !   row number is the index for surface quantities, looping through blocks>point>energy,each gradient component
 ! pbasw are equations weighed by 
+    pbasmem=npoints*(nvibs+1)*ll*rr*npb(k)*gpw
+    if(printlvl>2) print "(A,F10.5,A)","    Peak memory usage will be ",memsize+pbasmem*2+(2*npb(k)**2+npb(k)*3)*gpw," GB"
+    if(printlvl>1) write(*,"(A)",advance='no')"   Evaluating primitive basis... "
     allocate(pbas(npoints*(nvibs+1)*ll*rr,npb(k)))
     allocate(pbasw(npoints*(nvibs+1)*ll*rr,npb(k)))
+    memsize=memsize+pbasmem*2
 
 ! evaluate and tabulate value and gradients of basis at all data points
     pbas = 0D0
@@ -1797,10 +1801,12 @@ stloop: do k = s1,s2
     ! dmat is the dot product (overlap) matrix of primitive basis matrices on the space spanned by the aforementioned
     !   surface quantities.   dmat=pbasw^T.pbasw
         allocate(dmat(npb(k),npb(k)))
+        memsize=memsize+npb(k)**2*gpw
         if(printlvl>1)write(*,"(A)",advance='no')"   Constructing and diagonalizing intermediate basis overlap matrix..."
         CALL DSYRK('U','T',npb(k),npoints*(nvibs+1)*ll*rr,dble(1),pbasw,&
              npoints*(nvibs+1)*ll*rr,dble(0),dmat,npb(k))
         deallocate(pbasw)
+        memsize=memsize-pbasmem
 
         ! diagonalize overlap matrix to obtain orthogonal basis
         allocate(WORK(1))
@@ -1808,6 +1814,7 @@ stloop: do k = s1,s2
         allocate(ISUP(2*npb(k)))
         allocate(evec(npb(k),npb(k)))
         allocate(eval(npb(k)))
+        memsize=memsize+(npb(k)**2+npb(k)*3)*gpw
         CALL DSYEVR('V','A','U',npb(k),dmat,npb(k),0d0,0d0,0,0,TBas/100,n1,eval,&
               evec,npb(k),ISUP,WORK,int(-1),IWORK,int(-1),INFO)
         IF(INFO/=0)stop "genBasis:  DSYEVR workspace query failed."
@@ -1841,19 +1848,23 @@ stloop: do k = s1,s2
         if(printlvl>0)print "(/,A)"," Constructing fitting basis from ab initio data." 
     ! form the transformation matrix.Z=U.L^-1/2
         allocate(ZBas(k)%List(npb(k),nb))
+        memsize=memsize+npb(k)*nb*gpw
         do i=npb(k),npb(k)-nb+1,-1
           ZBas(k)%List(:,npb(k)-i+1) =evec(:,i)
         end do
         deallocate(evec)
         deallocate(eval)
+        memsize=memsize-(2*npb(k)**2+npb(k)*3)*gpw
 
     ! get the values and gradients in the transformed basis
         if(printlvl>1)write(*,"(A)",advance='no')"   Generating values and gradients in transformed basis..." 
         pv1 = npoints*(1+nvibs)*ll*rr
     ! generate new coefficient matrix in the basis.  WMat = pbas.ZBas
         allocate(WMat(k)%List(pv1,nb))
+        memsize=memsize+pv1*nb*gpw
         call DGEMM('N','N',pv1,nb,npb(k),1d0,pbas,pv1,ZBas(k)%List,npb(k),0d0,WMat(k)%List,pv1)  
         deallocate(pbas)
+        memsize=memsize-pbasmem
         call system_clock(COUNT=count1)
         if(printlvl>1)print 1001, " finished in",dble(count1-count2)/count_rate," s"
 !-----------------------------------------------------------------
@@ -1861,6 +1872,7 @@ stloop: do k = s1,s2
         if(printlvl>1)print *,"  TBas<=0, skipping null space removal. Using intermediate basis in fit."
         nBas(k) = npb(k)
         allocate(ZBas(k)%List(npb(k),npb(k)))
+        memsize=memsize+npb(k)**2*gpw
         Zbas(k)%List=0d0
         do i=1,npb(k)
             ZBas(k)%List(i,i) =  1D0
@@ -1868,9 +1880,11 @@ stloop: do k = s1,s2
         pv1 = npoints*(1+nvibs)*ll*rr
         ! generate new coefficient matrix in the basis.  WMat = pbas
         allocate(WMat(k)%List(pv1,npb(k)))
+        memsize=memsize+pv1*npb(k)*gpw
         WMat(k)%List=pbas
         deallocate(pbasw)
         deallocate(pbas)
+        memsize=memsize-2*pbasmem
     end if!(TBas>0)
 ! generate gradNorm and zero out components that are excluded
     gn0 = 0d0
@@ -1892,6 +1906,7 @@ stloop: do k = s1,s2
     if(printlvl>1) print "(3x,A,E12.5,A,I6,A)","Total norm of contribution zeroed out:",sqrt(gn0)," over ",ng0," equations"
     call system_clock(COUNT=count2)
     if(printlvl>1)print 1001, "     Total contribution to each equation generated in ",dble(count2-count1)/count_rate," s"
+    if(printlvl>2)print "(A,F10.5,A)","     Current memory usage: ",memsize," GB"
   end do! l=1,NBlockSym
 !**************************************************
 !*   Clone pointers to basis to nonunique blocks  *
@@ -3358,6 +3373,7 @@ SUBROUTINE readdisps()
 ! nnew     : number of new geometries added
 ! lb, ub   : energies for states between lb and ub are given in energy file
   integer  :: ptinfile, npts, nnew,lb,ub
+  logical  :: hasgradpt(nstates,nstates)
   double precision  :: NaN
   double precision,external :: dnrm2
 
@@ -3553,7 +3569,8 @@ SUBROUTINE readdisps()
  ! generate intersection adapated coordinates
   if(printlvl>0) print *,"Transforming degenerate points to intersection adapted coordinates:"    
   do l=1,npoints
-   call OrthGH_ab(dispgeoms(l),100,gcutoff,hasGrad(l,:,:),deggrdbinding)
+   hasGradPT=hasGrad(l,:,:)
+   call OrthGH_ab(dispgeoms(l),100,gcutoff,hasGradPT,deggrdbinding)
   end do
 
   call printDisps(int(1),npoints)

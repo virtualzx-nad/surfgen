@@ -1278,7 +1278,7 @@ END SUBROUTINE EvaluateHd3
   integer                 :: i,f,t,m,ll,rr, n, lr,j,shift,stride,n1
   type(TTermDef),pointer  :: pT,pTd
   type(TMTabBasis),pointer:: pM
-  double precision,dimension(:),allocatable  :: MCoef,vsum
+  double precision,dimension(:),allocatable  :: MCoef,vsum,dsumb
   double precision,dimension(:,:),allocatable  :: dsum
   
   ! ll,rr is the dimensionality of current basis block
@@ -1291,6 +1291,7 @@ END SUBROUTINE EvaluateHd3
   allocate(MCoef(lr))
   allocate(vsum(lr))
   allocate(dsum(lr,ncoord))
+  allocate(dsumb(ncoord))
   ! cycle through all terms and evaluate
   ! n2 is the index of basis
   n = 1
@@ -1317,7 +1318,8 @@ END SUBROUTINE EvaluateHd3
       do j=1,lr
         V(n1,n)=vsum(j)
         if(i>0)then
-          CALL DGEMV('T',ncoord,nvibs,1d0,bmat,ncoord,dsum(j,:),1,0d0,V(n1+1:n1+nvibs,n),1)
+          dsumb=dsum(j,:)
+          CALL DGEMV('T',ncoord,nvibs,1d0,bmat,ncoord,dsumb,1,0d0,V(n1+1:n1+nvibs,n),1)
         else
           V(n1+1:n1+nvibs,n) = 0d0
         end if
