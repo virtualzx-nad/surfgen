@@ -79,6 +79,11 @@ MODULE makesurfdata
 ! be stored in `error.log`
   LOGICAL                                      :: printError
 
+! This option specifies wheter the value and gradients (in original cartesian coordinates) of each blocks of Hd
+! at all data points will be saved in an external file.  These values are used to reconstruct a new Hd that has
+! different expansion structure from a previous fit.
+  LOGICAL                                      :: parseDiabats
+
   TYPE(abpoint),dimension(:),allocatable       :: dispgeoms
   type(TEqList)                                :: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER                                      :: enfDiab ! index of point where diabatic and adiabatic matches
@@ -1739,8 +1744,8 @@ stloop: do k = s1,s2
 !**************************************************
   if(printlvl>0) print *,"Generating basis for symmetry unique blocks."
   do l=1,NBlockSym
-    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
     k = blockSymLs(l)
+    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
     ll = nl(k)
     rr = nr(k)
     if(npb(k)==0)then
@@ -1767,7 +1772,6 @@ stloop: do k = s1,s2
     n1 = 1
     do i=1,npoints
      call EvalRawTerms(dispgeoms(i)%igeom)
-!SUBROUTINE EvaluateVal(V,LDV,iBlk,nvibs,npoints,ptid,bmat)
 
      CALL EvaluateVal(pbas,k,nvibs,npoints,i,dispgeoms(i)%bmat)
 ! create weighed data matrix
@@ -2719,8 +2723,13 @@ SUBROUTINE makesurf()
       end do
       close(uerrfl)
     endif
-  end if
+  end if  !printError
 
+  !Write down the value and gradients of every data point to external file
+  if(parseDiabats)then
+    call writeDiabats()
+  end if 
+ 
   if(printlvl>0)print *,"    deallocating arrays"
   !------------------------------------------------------------------
   ! deallocate arrays
@@ -2782,6 +2791,52 @@ SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
 1007 format(2x,'Number of Exact Equations:                      ',i5,/)
 end SUBROUTINE printSurfHeader
 
+!-----------------------------------------------------------------------------------
+! Export values and derivatives of the diabats (in cartesian coordinates) to an output
+! file diabat.data.  This can be used by a future fit to reconstruct the current Hd with
+! a different expansion
+SUBROUTINE writeDiabats()
+    use hddata, only:  nstates, ncoord, nblks, LinearizeHd, EvalHdDirect, EvalRawTermsL, &
+                       getFLUnit,RowGrp, ColGrp, offs,nl,nr
+    use progdata, only: printlvl,natoms
+    use makesurfdata, only: npoints,dispgeoms
+
+    implicit none
+    integer  ::  fid,ios,i,iblk,l1,r1,l2,r2,l,r
+    double precision,dimension(nstates,nstates)              ::  hmat
+    double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
+    double precision,dimension(3*natoms)                     ::  gvec
+
+    if(printlvl>0)print *,"Tabulating values and gradients of blocks of Hd at data points"
+    call LinearizeHd()
+    fid=getFLUnit()
+    open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
+       status='replace',action='write',position='rewind',iostat=ios)
+    if(ios/=0)print *,"FAILED TO CREATE FILE diabat.data"
+    write(unit=fid,fmt="(A)") "Number of Blocks"
+    write(unit=fid,fmt="(I5)")nblks 
+    do iblk=1,nblks
+      l1=offs(RowGrp(iblk))+1
+      l2=offs(RowGrp(iblk))+nl(iblk)
+      r1=offs(ColGrp(iblk))+1
+      r2=offs(ColGrp(iblk))+nr(iblk)
+      write(unit=fid,fmt="(A,I3)") "Numbers in block ",iblk
+      write(unit=fid,fmt="(I8)") npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)
+      if(printlvl>1)print "(A,I6)","Block ",iblk," contains ",npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)," numbers."
+      do i=1,npoints
+        call EvalRawTermsL(dispgeoms(i)%igeom)
+        call EvalHdDirect(hmat,dhmat)
+        do l=l1,l2
+          do r=r1,r2
+           CALL DGEMV('T',ncoord,3*natoms,1d0,dispgeoms(i)%cbmat,ncoord,dhmat(:,l,r),1,0d0,gvec,1)
+           write(unit=fid,fmt="(E33.17)") hmat(l,r)
+           write(unit=fid,fmt="(10E33.17)") gvec 
+          end do
+        end do
+      end do
+    end do!iblk
+    close(fid)
+END SUBROUTINE writeDiabats
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
   SUBROUTINE fixphase(nvibs,scale,fitgrad,abgrad,ckl,phaseList,incGrad,cpw)
@@ -3000,9 +3055,10 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats
   ! set default for the parameters                    
   npoints   = 0
+  parseDiabats=.false.
   gradcutoff= 100000.
   cpcutoff  = -1.
   deggrdbinding=.true.
@@ -3389,6 +3445,7 @@ SUBROUTINE readdisps()
      allocate(dispgeoms(j)%grads(3*natoms,nstates,nstates))
      dispgeoms(j)%grads=NaN
      allocate(dispgeoms(j)%bmat(ncoord,3*natoms))
+     allocate(dispgeoms(j)%cbmat(ncoord,3*natoms))
      allocate(dispgeoms(j)%lmat(3*natoms,3*natoms))
      allocate(dispgeoms(j)%scale(3*natoms))
      allocate(dispgeoms(j)%eval(3*natoms))
@@ -3516,7 +3573,7 @@ SUBROUTINE readdisps()
   do l = 1,npoints
     if(printlvl>0)print *,""
     if(printlvl>0)print *,"      Constructing Wilson B matrix at point ",l," :"
-    call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%bmat)
+    call buildWBMat(dispgeoms(l)%cgeom,dispgeoms(l)%igeom,dispgeoms(l)%cbmat)
     if(printlvl>0)then
         print *,"  Internal Coordinates"
         print "(15F8.3)",dispgeoms(l)%igeom
@@ -3533,12 +3590,12 @@ SUBROUTINE readdisps()
     if(printlvl>3)then
         print *,"  Wilson B Matrix in nascent coordinate system"
         do j=1,ncoord
-            print "(15F8.3)",dispgeoms(l)%bmat(j,:)
+            print "(15F8.3)",dispgeoms(l)%cbmat(j,:)
         end do
     end if
     if(printlvl>1)then
         print *,"  Contribution of each nascent coordinate to B matrix"
-        print "(15F8.3)",(dnrm2(3*natoms,dispgeoms(l)%bmat(j,1),ncoord),j=1,ncoord)
+        print "(15F8.3)",(dnrm2(3*natoms,dispgeoms(l)%cbmat(j,1),ncoord),j=1,ncoord)
     end if
     if(printlvl>0)print *,"      Constructing local coordinate system for point ",l
     CALL makeLocalIntCoord(dispgeoms(l),nstates,useIntGrad,intGradT,intGradS,nvibs)

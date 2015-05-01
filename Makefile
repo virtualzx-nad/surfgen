@@ -2,7 +2,7 @@
 # 2013, Xiaolei Zhu, Yarkony Group, Johns Hopkins University
 # currently tested on Mac OSX and linux ONLY
 # currently tested for gfortran and ifort ONLY
-# need LAPACK and BLAS.  tested for OSX vecLib and Intel MKL ONLY
+# need LAPACK and BLAS.  tested for OSX Accelerate and Intel MKL ONLY
 
 #note: it works on Mac, but you might as well want to use the XCode build
 #      rules that comes with the repository.
@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.7.4
+SGENVER :=2.7.5
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -109,7 +109,13 @@ ifdef DEBUGGING_SYMBOLS
   ifdef NO_I8
     CPOPT = 
   else
-    CPOPT =  -i8
+   ifneq ($(findstring gfortran,$(COMPILER)),)
+    CPOPT = -fdefault-integer-8 -m64
+   else
+    ifneq ($(findstring ifort,$(COMPILER)),)
+      CPOPT =  -i8
+    endif
+   endif
   endif
   LKOPT = 
 else
@@ -142,7 +148,7 @@ endif
 
 # set BLAS and LAPACK libraries.  
 # Please set variable $BLAS_LIB or $LIBS to enable the program to find the link line.
-# On Mac the default is to use the vecLib framework
+# On Mac the default is to use the Accelerate framework
 ifndef LIBS
  ifndef BLAS_LIB
   ifdef NERSC_HOST  
@@ -176,8 +182,9 @@ ifndef LIBS
   else
     ifeq ($(OS),Darwin)  
        #on mac, use frameworks
-       LIBS := -framework vecLib
-       $(info Using vecLib framework for Mac OS X)
+       LIBS := -framework Accelerate -fopenmp
+       $(info Using Accelerate framework for Mac OS X)
+       export PATH := /usr/local/bin/:$(PATH)
        PS2PDF := /sw/bin/ps2pdf
     else
        $(info BLAS_LIB not set.  Trying to determine LAPACK link options...)

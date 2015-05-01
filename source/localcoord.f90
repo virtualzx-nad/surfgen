@@ -56,7 +56,7 @@
     end if
 
     ! Construct matrix B^T.B and get its eigenvalues
-    call DSYRK('U','T',3*natoms,ncoord,1d0,ptdata%bmat,ncoord,0d0,btb,3*natoms)
+    call DSYRK('U','T',3*natoms,ncoord,1d0,ptdata%cbmat,ncoord,0d0,btb,3*natoms)
     call DSYEV('V','U',3*natoms,btb,3*natoms,ev,scr,45*natoms*natoms,INFO)
     !reorder the eigenvectors in descending order
     do i=1,3*natoms/2
@@ -65,7 +65,7 @@
      
     ndeg=0
     degstart=1
-    ptdata%bmat=matmul(ptdata%bmat,btb)
+    ptdata%bmat=matmul(ptdata%cbmat,btb)
     ptdata%lmat=btb
     do i=1,3*natoms
       ptdata%eval(i)=ev(3*natoms+1-i)

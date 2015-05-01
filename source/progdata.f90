@@ -21,6 +21,8 @@ module progdata
 !            Wilson's B matrix from Cartesian to scaled global internal coords,
 !            or from local linear internal coordinates to scaled global internal
 !            coordinates if useIntGrad==.true. 
+! cbmat      DOUBLE PRECISION,dimension(ncoords,3*natoms)
+!            B matrix in the original cartesian coordinate
 ! eval       DOUBLE PRECISION,dimension(3*natoms)
 !            eigenvalues of B^t.B
 ! lmat       DOUBLE PRECISION,dimension(3*natoms,3*natoms)
@@ -58,7 +60,7 @@ module progdata
    INTEGER                                       :: lb,ub
 
    INTEGER                                       :: nvibs
-   DOUBLE PRECISION,dimension(:,:),allocatable   :: bmat
+   DOUBLE PRECISION,dimension(:,:),allocatable   :: bmat,cbmat
    DOUBLE PRECISION,dimension(:,:),allocatable   :: lmat
    DOUBLE PRECISION,dimension(:),allocatable     :: scale
 

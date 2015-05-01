@@ -1264,7 +1264,6 @@ SUBROUTINE EvaluateHd3 (hvec,nBas,npoints,ipt,nvibs,hmat,dhmat,wmat)
        dhmat(:,i,j)=dhmat(:,j,i)
      end do!j=1,i-1
    end do!i=1,nstates
-
 END SUBROUTINE EvaluateHd3
 !---------------------------------------------
 ! generated basis values and derivatives in fitting coordinates for a 

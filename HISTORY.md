@@ -1,3 +1,8 @@
+## 2.7.5 (2015-05-01)
+* Added a procedure to record the values and gradients of each element of Hd at all data points.  This will be used to provide
+  a way to reconstruct Hd for new expansions.
+* Updated options for gfortran
+
 ## 2.7.4 (2015-04-27)
 * Fixed a bug that after the QR decomposition with pivoting of projection operators in case of multi-dimensional irredicuble 
   representations the projection operators were not correctly pivoted back to the original basis.  The program is now tested

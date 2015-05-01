@@ -18,3 +18,4 @@ source/*.o
 source/*.mod
 bin/*
 lib/*
+surfgen.xcodeproj/project.xcworkspace/xcshareddata/
