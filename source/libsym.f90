@@ -778,6 +778,7 @@ CONTAINS
      do j=1,NBlockSym
        if(any(BPerm(tmpBlkLs(j),:).ne.BPerm(i,:)))cycle
        if(any(BPrty(tmpBlkLs(j),:).ne.BPrty(i,:)))cycle
+       id=j
        exit    
      end do
      if(id==0)then

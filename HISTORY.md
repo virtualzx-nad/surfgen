@@ -1,5 +1,7 @@
-## 2.7.5 (2015-05-04)
+## 2.7.6 (2015-05-04)
 * Use previously save set of diabat data to reconstruct Hd as the starting guess of the fit using `loadDiabats` option. 
+* Updated manual page for `surfgen.in`
+* Fixed a problem where redundant blocks were not correctly linked, causing memory consumption to be higher than necessary.
 
 ## 2.7.5 (2015-05-01)
 * Added a procedure to record the values and gradients of each element of Hd at all data points.  This will be used to provide
