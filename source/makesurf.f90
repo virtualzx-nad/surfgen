@@ -87,6 +87,9 @@ MODULE makesurfdata
 ! This option specifies if hd coefficients will be constructed from diabats instead from hd.data
   LOGICAL                                      :: loadDiabats
 
+! Singular value threshold for diabat fitting scheme
+  DOUBLE PRECISION                             :: sval_diabat
+
   TYPE(abpoint),dimension(:),allocatable       :: dispgeoms
   type(TEqList)                                :: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER                                      :: enfDiab ! index of point where diabatic and adiabatic matches
@@ -2800,14 +2803,13 @@ end SUBROUTINE printSurfHeader
 SUBROUTINE readDiabats()
   use hddata, only:   nstates,nblks,EvalRawTerms,EvaluateVal,getFLUnit,nl,nr,nBasBlk, getHdBlock,putHdBlock
   use progdata, only: printlvl, natoms
-  use makesurfdata, only: npoints,dispgeoms
+  use makesurfdata, only: npoints,dispgeoms,sval_diabat
   IMPLICIT NONE
   double precision, allocatable, dimension(:,:) :: basval, NE
   double precision, allocatable, dimension(:)   :: diabat, rhs,work,ipiv
   integer  ::  ios, iblk, ipt,  fid, iread,i,LWORK,INFO
   integer  ::  nnum, nbas, m, count1, count2, count_rate
   double precision :: osize(1)
-  double precision, parameter :: shift=1d-10
   double precision,external :: dnrm2
   character(500) :: buffer
   fid=getFLUnit()
@@ -2859,7 +2861,7 @@ SUBROUTINE readDiabats()
     !construct normal equations
     call dsyrk('U','T',nbas,nnum,1d0,basval,nnum,0d0,NE,nbas)
     do i=1,nbas
-      NE(i,i)=NE(i,i)+shift
+      NE(i,i)=NE(i,i)+sval_diabat
     end do
     !construct RHS
     call DGEMV('T',nnum,nbas,1d0,basval,nnum,diabat,1,0d0,rhs,1)
@@ -3157,9 +3159,11 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats,&
+                      sval_diabat
   ! set default for the parameters                    
   npoints   = 0
+  sval_diabat=1d-9
   parseDiabats=.false.
   loadDiabats=.false.
   gradcutoff= 100000.
