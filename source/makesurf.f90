@@ -2802,11 +2802,12 @@ SUBROUTINE readDiabats()
   use progdata, only: printlvl, natoms
   use makesurfdata, only: npoints,dispgeoms
   IMPLICIT NONE
-  double precision, allocatable, dimension(:,:) :: basval
-  double precision, allocatable, dimension(:)   :: diabat, hdvec,work
+  double precision, allocatable, dimension(:,:) :: basval, NE
+  double precision, allocatable, dimension(:)   :: diabat, rhs,work,ipiv
   integer  ::  ios, iblk, ipt,  fid, iread,i,LWORK,INFO
   integer  ::  nnum, nbas, m, count1, count2, count_rate
   double precision :: osize(1)
+  double precision, parameter :: shift=1d-10
   double precision,external :: dnrm2
   character(500) :: buffer
   fid=getFLUnit()
@@ -2831,7 +2832,9 @@ SUBROUTINE readDiabats()
     nnum=npoints*nl(iblk)*nr(iblk)*(1+3*natoms)
     allocate(basval(nnum,nbas))
     allocate(diabat(nnum))
-    allocate(hdvec(nbas))
+    allocate(ne(nbas,nbas))
+    allocate(rhs(nbas))
+    allocate(ipiv(nbas))
     read(unit=fid,fmt="(17x,I3)") iread
     if(iread.ne.iblk)then
       print *,"ERROR READING DIABATS: INCORRECT BLOCK INDEX.  ABORTING"
@@ -2853,17 +2856,28 @@ SUBROUTINE readDiabats()
     end do    !ipt
     call system_clock(COUNT=count2)
     if(printlvl>3)print 1001, " finished evaluation in",dble(count2-count1)/count_rate," s"
-    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,osize,-1,INFO)
+    !construct normal equations
+    call dsyrk('U','T',nbas,nnum,1d0,basval,nnum,0d0,NE,nbas)
+    do i=1,nbas
+      NE(i,i)=NE(i,i)+shift
+    end do
+    !construct RHS
+    call DGEMV('T',nnum,nbas,1d0,basval,nnum,diabat,1,0d0,rhs,1)
+    call DSYSV('U',nbas,1,NE,nbas,IPIV,rhs,nbas,osize,-1,INFO)
+!    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,osize,-1,INFO)
     LWORK=int(osize(1))
     allocate(WORK(LWORK))
-    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,WORK,LWORK,INFO)
+    call DSYSV('U',nbas,1,NE,nbas,IPIV,rhs,nbas,WORK,LWORK,INFO)
+!    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,WORK,LWORK,INFO)
     deallocate(WORK)
     !call getHdBlock(iblk,hdvec)
     !call DGEMV('N',nnum,nbas,1d0,basval,nnum,hdvec,1,-1d0,diabat,1)
-    call putHdBlock(iblk,diabat)
+    call putHdBlock(iblk,rhs)
+    deallocate(ne)
     deallocate(basval)
     deallocate(diabat)
-    deallocate(hdvec)
+    deallocate(rhs)
+    deallocate(ipiv)
   end do !iblk
   close(fid)
 1001 format(A,F10.2,A)
