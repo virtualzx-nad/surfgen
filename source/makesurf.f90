@@ -84,6 +84,9 @@ MODULE makesurfdata
 ! different expansion structure from a previous fit.
   LOGICAL                                      :: parseDiabats
 
+! This option specifies if hd coefficients will be constructed from diabats instead from hd.data
+  LOGICAL                                      :: loadDiabats
+
   TYPE(abpoint),dimension(:),allocatable       :: dispgeoms
   type(TEqList)                                :: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER                                      :: enfDiab ! index of point where diabatic and adiabatic matches
@@ -2297,6 +2300,9 @@ SUBROUTINE makesurf()
   if(printlvl>0)print *,"Entering makesurf"
   NaN  = 0
   NaN  = NaN/NaN
+  ! hd coefficients will be constructed from a previously saved diabats.data file
+  if(loadDiabats)  call readDiabats()
+
   call initMakesurf()
   call printSurfHeader(ncon_total,ncons,neqs,nex)
   print 1001,"    Memory required to store coefficient matrix:",(nvibs+1)*nstates*(nstates+1)*ncons*7.62939453125D-6/2," MB"
@@ -2726,9 +2732,7 @@ SUBROUTINE makesurf()
   end if  !printError
 
   !Write down the value and gradients of every data point to external file
-  if(parseDiabats)then
-    call writeDiabats()
-  end if 
+  if(parseDiabats)    call writeDiabats()
  
   if(printlvl>0)print *,"    deallocating arrays"
   !------------------------------------------------------------------
@@ -2792,6 +2796,79 @@ SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
 end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
+! Reconstruct Hd coefficients from previously saved diabats 
+SUBROUTINE readDiabats()
+  use hddata, only:   nstates,nblks,EvalRawTerms,EvaluateVal,getFLUnit,nl,nr,nBasBlk, getHdBlock,putHdBlock
+  use progdata, only: printlvl, natoms
+  use makesurfdata, only: npoints,dispgeoms
+  IMPLICIT NONE
+  double precision, allocatable, dimension(:,:) :: basval
+  double precision, allocatable, dimension(:)   :: diabat, hdvec,work
+  integer  ::  ios, iblk, ipt,  fid, iread,i,LWORK,INFO
+  integer  ::  nnum, nbas, m, count1, count2, count_rate
+  double precision :: osize(1)
+  double precision,external :: dnrm2
+  character(500) :: buffer
+  fid=getFLUnit()
+  if(printlvl>0)print *," Loading diabats from file <diabats.data>"
+  open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
+       status='old',action='read',position='rewind',iostat=ios)
+  if(ios/=0)then
+     print *,"FAILED TO CREATE FILE diabat.data"
+     return
+  end if
+
+  read(unit=fid,fmt="(A)") buffer 
+  read(unit=fid,fmt=*)  iread
+  if(printlvl>1) print "(A,I4)","Number of blocks in file:",iread
+  if(iread.ne.nblks)then
+    print *,"ERROR READING DIABATS: INCORRECT NUMBER OF BLOCKS.  ABORTING"
+    return
+  end if 
+  call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+  do iblk=1,nblks
+    nbas = nBasBlk(iblk)
+    nnum=npoints*nl(iblk)*nr(iblk)*(1+3*natoms)
+    allocate(basval(nnum,nbas))
+    allocate(diabat(nnum))
+    allocate(hdvec(nbas))
+    read(unit=fid,fmt="(17x,I3)") iread
+    if(iread.ne.iblk)then
+      print *,"ERROR READING DIABATS: INCORRECT BLOCK INDEX.  ABORTING"
+      exit
+    end if 
+    read(unit=fid,fmt=*) iread
+    if(printlvl>2) print "(A,I4,A,I8,A)","   Block ",iblk, " contains ", iread, " numbers."
+    if(iread.ne.nnum)then
+      print *,"ERROR READING DIABATS: INCORRECT BLOCK SIZE.  ABORTING"
+      exit
+    end if 
+    read(unit=fid,fmt=*) diabat
+    call system_clock(COUNT=count1)
+    if(printlvl>3)print 1001, " finished reading in",dble(count1-count2)/count_rate," s"
+    if(printlvl>2) print *,"     Evaluate basis for the current block..."
+    do ipt=1,npoints
+     call EvalRawTerms(dispgeoms(ipt)%igeom)
+     CALL EvaluateVal(basval,iblk,3*natoms,npoints,ipt,dispgeoms(ipt)%cbmat)
+    end do    !ipt
+    call system_clock(COUNT=count2)
+    if(printlvl>3)print 1001, " finished evaluation in",dble(count2-count1)/count_rate," s"
+    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,osize,-1,INFO)
+    LWORK=int(osize(1))
+    allocate(WORK(LWORK))
+    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,WORK,LWORK,INFO)
+    deallocate(WORK)
+    !call getHdBlock(iblk,hdvec)
+    !call DGEMV('N',nnum,nbas,1d0,basval,nnum,hdvec,1,-1d0,diabat,1)
+    call putHdBlock(iblk,diabat)
+    deallocate(basval)
+    deallocate(diabat)
+    deallocate(hdvec)
+  end do !iblk
+  close(fid)
+1001 format(A,F10.2,A)
+END SUBROUTINE readDiabats
+!-----------------------------------------------------------------------------------
 ! Export values and derivatives of the diabats (in cartesian coordinates) to an output
 ! file diabat.data.  This can be used by a future fit to reconstruct the current Hd with
 ! a different expansion
@@ -2803,16 +2880,26 @@ SUBROUTINE writeDiabats()
 
     implicit none
     integer  ::  fid,ios,i,iblk,l1,r1,l2,r2,l,r
-    double precision,dimension(nstates,nstates)              ::  hmat
-    double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
-    double precision,dimension(3*natoms)                     ::  gvec
+    double precision,dimension(:,:,:),allocatable           ::  hmat
+    double precision,dimension(:,:,:,:),allocatable         ::  dhmat
+    double precision,dimension(3*natoms)                    ::  gvec
 
+    allocate(hmat(nstates,nstates,npoints))
+    allocate(dhmat(ncoord,nstates,nstates,npoints))
     if(printlvl>0)print *,"Tabulating values and gradients of blocks of Hd at data points"
     call LinearizeHd()
     fid=getFLUnit()
     open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
        status='replace',action='write',position='rewind',iostat=ios)
-    if(ios/=0)print *,"FAILED TO CREATE FILE diabat.data"
+    if(ios/=0)then
+       print *,"FAILED TO CREATE FILE diabat.data"
+       return
+    end if
+! first get the values and gradients of Hd at all data points
+    do i=1,npoints
+        call EvalRawTermsL(dispgeoms(i)%igeom)
+        call EvalHdDirect(hmat(:,:,i),dhmat(:,:,:,i))
+    end do
     write(unit=fid,fmt="(A)") "Number of Blocks"
     write(unit=fid,fmt="(I5)")nblks 
     do iblk=1,nblks
@@ -2822,20 +2909,21 @@ SUBROUTINE writeDiabats()
       r2=offs(ColGrp(iblk))+nr(iblk)
       write(unit=fid,fmt="(A,I3)") "Numbers in block ",iblk
       write(unit=fid,fmt="(I8)") npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)
-      if(printlvl>1)print "(A,I6)","Block ",iblk," contains ",npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)," numbers."
-      do i=1,npoints
-        call EvalRawTermsL(dispgeoms(i)%igeom)
-        call EvalHdDirect(hmat,dhmat)
-        do l=l1,l2
-          do r=r1,r2
-           CALL DGEMV('T',ncoord,3*natoms,1d0,dispgeoms(i)%cbmat,ncoord,dhmat(:,l,r),1,0d0,gvec,1)
-           write(unit=fid,fmt="(E33.17)") hmat(l,r)
+      if(printlvl>1)print "(A,I3,A,I8,A)","Block ",iblk," contains ",   &
+                               npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)," numbers."
+      do l=l1,l2
+        do r=r1,r2
+          do i=1,npoints
+           CALL DGEMV('T',ncoord,3*natoms,1d0,dispgeoms(i)%cbmat,ncoord,dhmat(:,l,r,i),1,0d0,gvec,1)
+           write(unit=fid,fmt="(E33.17)") hmat(l,r,i)
            write(unit=fid,fmt="(10E33.17)") gvec 
           end do
         end do
       end do
     end do!iblk
     close(fid)
+    deallocate(hmat)
+    deallocate(dhmat)
 END SUBROUTINE writeDiabats
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
@@ -3055,10 +3143,11 @@ SUBROUTINE readMakesurf(INPUTFL)
                       ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats
   ! set default for the parameters                    
   npoints   = 0
   parseDiabats=.false.
+  loadDiabats=.false.
   gradcutoff= 100000.
   cpcutoff  = -1.
   deggrdbinding=.true.

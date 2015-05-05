@@ -1051,6 +1051,18 @@ CONTAINS
    nBasis=maptab(ord,blk)%nBasis
  END FUNCTION nBasis
  
+ !***********************************************************************
+ ! nBasBlk return the total number of basis matrices of a certain block
+ PURE FUNCTION nBasBlk(blk)
+   INTEGER,INTENT(IN)   :: blk
+   INTEGER              :: nBasBlk
+   integer :: i
+   nBasBlk=0
+   do i=0,order
+     nBasBlk=nBasBlk+maptab(i,blk)%nBasis
+   end do
+ END FUNCTION nBasBlk
+ 
  SUBROUTINE allocateHd(eguess)
   implicit none
   integer          :: i,j
@@ -1164,7 +1176,50 @@ CONTAINS
       coefs(i) = Hd(ordr,iblk)%List(iBss)
    end do
  END SUBROUTINE getHdvec
-
+ !***********************************************************************
+ ! this subroutine sets the coefficients of Hd for a certain block/order
+ SUBROUTINE putHdCoef(ord,blk,coef)
+   IMPLICIT NONE
+   DOUBLE PRECISION, DIMENSION(:), INTENT(IN) :: coef
+   INTEGER,INTENT(IN)                         :: ord,blk
+   Hd(ord,blk)%List=coef
+ END SUBROUTINE putHdCoef
+ !***********************************************************************
+ ! this subroutine extracts the coefficients of Hd for a certain block/order
+ SUBROUTINE getHdCoef(ord,blk,coef)
+   IMPLICIT NONE
+   DOUBLE PRECISION, DIMENSION(:), INTENT(OUT) :: coef
+   INTEGER,INTENT(IN)                          :: ord,blk
+   coef = Hd(ord,blk)%List
+ END SUBROUTINE getHdCoef  
+ !***********************************************************************
+ ! this subroutine sets the coefficients of Hd for a certain block
+ SUBROUTINE putHdBlock(blk,coef)
+   IMPLICIT NONE
+   DOUBLE PRECISION, DIMENSION(:), INTENT(IN) :: coef
+   INTEGER,INTENT(IN)                         :: blk
+   integer :: i,m1,m2
+   m1=0
+   do i=0, order
+     m2=m1+maptab(i,blk)%nBasis
+     Hd(i,blk)%List=coef(m1+1:m2)
+     m1=m2
+   end do
+ END SUBROUTINE putHdBlock
+ !***********************************************************************
+ ! this subroutine extracts the coefficients of Hd for a certain block
+ SUBROUTINE getHdBlock(blk,coef)
+   IMPLICIT NONE
+   DOUBLE PRECISION, DIMENSION(:), INTENT(OUT) :: coef
+   INTEGER,INTENT(IN)                          :: blk
+   integer :: i,m1,m2
+   m1=0
+   do i=0, order
+     m2=m1+maptab(i,blk)%nBasis
+     coef(m1+1:m2)=Hd(i,blk)%List
+     m1=m2
+   end do
+ END SUBROUTINE getHdBlock
  !***********************************************************************
  ! Evaluate value and first derivatives of Hd using packed value matrices
  SUBROUTINE EvaluateHd2(npoints,ipt,nvibs,nvibpt,hmat,dhmat,wval,dwval,morder)

@@ -1,3 +1,6 @@
+## 2.7.5 (2015-05-04)
+* Use previously save set of diabat data to reconstruct Hd as the starting guess of the fit using `loadDiabats` option. 
+
 ## 2.7.5 (2015-05-01)
 * Added a procedure to record the values and gradients of each element of Hd at all data points.  This will be used to provide
   a way to reconstruct Hd for new expansions.

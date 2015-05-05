@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.7.5
+SGENVER :=2.7.6
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -237,7 +237,7 @@ surfgen  : $(OBJV)  $(OBJS) | $(BDIR)
 	@echo '-----------------------------------------'
 	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'
-	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(OBJV) $(LIBS) $(LKOPT) $(LDFLAGS)
+	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(OBJV) $(DEBUGFLAG) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
 	@echo 'Creating symbolic link to the new binary'
