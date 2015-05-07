@@ -3163,7 +3163,7 @@ SUBROUTINE readMakesurf(INPUTFL)
                       sval_diabat
   ! set default for the parameters                    
   npoints   = 0
-  sval_diabat=1d-9
+  sval_diabat=1d-10
   parseDiabats=.false.
   loadDiabats=.false.
   gradcutoff= 100000.
