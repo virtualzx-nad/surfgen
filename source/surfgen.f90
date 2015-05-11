@@ -3,6 +3,7 @@
 ! MAIN PROGRAM
 program surfgen
     use progdata
+    use makesurfdata, only: selectBasis
     implicit none
     integer   ::jobtype
     character(72) :: ver
@@ -20,6 +21,11 @@ program surfgen
       call readdisps()
       if(printlvl>0)print *,"Making surface..."
       call makesurf()
+     case(2)
+      if(printlvl>0)print *,"Reading displacement data..."
+      call readdisps()
+      if(printlvl>0)print *,"Making surface..."
+      call selectBasis()
     end select
 
   call cleanup()
@@ -38,7 +44,7 @@ SUBROUTINE readinput(jtype)
   INTEGER,dimension(50)           :: atmgrp
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupsym,groupPrty
 
-  NAMELIST /GENERAL/ jobtype,natoms,order,nGrp,groupsym,groupprty,CpOrder,&
+  NAMELIST /GENERAL/ jobtype,natoms,order,nGrp,groupsym,groupprty,CpOrder,basisfl,&
                             switchdiab, printlvl,inputfl,atmgrp,cntfl,nSymLineUps
 
   nSymLineUps = 1
@@ -49,6 +55,7 @@ SUBROUTINE readinput(jtype)
   printlvl   = 1
   cntfl      = 'connect.in'
   inputfl    = 'hd.data'
+  basisfl    = ''
   switchdiab = .false.
   print *,"Entering readinput()."
  !----------- GENERAL SECTION ----------------!
@@ -105,6 +112,9 @@ SUBROUTINE readinput(jtype)
    !----------------------------------------------------
    case(1)
     if(printlvl>0)print *,"    readinput():  jobtype=1.  Reading displacements"
+    CALL readMAKESURF(INPUTFILE)
+   case(2)
+    if(printlvl>0)print *,"    readinput():  jobtype=2.  Reading displacements"
     CALL readMAKESURF(INPUTFILE)
   end select
 

@@ -1666,7 +1666,7 @@ stloop: do k = s1,s2
 !---------------------------------------------
 ! Generate the basis for the fit using linear combinations of primitive basis functions
 !   * Values and gradients of primitive functions are evaluated at each data point and put into inter-
-!     mediate structures basisVal and basisGrad.  They will later be released.
+!     mediate structures pbas and pbasw, which are released after the process. 
 !   * Basis are generated separately for each symmetry unique block.  The constructed basis are linked
 !     to non-unique blocks with pointers.
 !   * Linear combinations that define fitting basis is chosen to be the eigenvectors of the dot-product
@@ -1933,6 +1933,139 @@ stloop: do k = s1,s2
   end do!l
   1001 format(a,f7.2,a)
   END SUBROUTINE genBasis!
+
+!---------------------------------------------
+! Analyze the basis set and pick a subset of coefficients that for the given set of equations are 
+! equivalent to the original set 
+! *  Similar to genBasis, this is done block by block, and a pbas matrix is first formed which 
+!    contains the value and gradients of all basis matrices.
+! *  A QR decomposition procedure with column-pivoting is used to determine the list of leading 
+!    independent terms 
+  SUBROUTINE selectBasis()
+  use hddata, only: nl,nr,nBasBlk,EvalRawTerms,EvaluateBasis2,EvaluateVal,getFLUnit,nblks
+  use progdata, only: printlvl
+  use cnpi,only: blockSymLs,blockSymId, NBlockSym
+  IMPLICIT NONE
+  integer  :: i,j,k,l,count1,count2,count_rate,ll,rr, ndata,nb,rk,fid,ios,nterms
+  double precision,allocatable,dimension(:)   :: WORK,TAU
+  double precision,allocatable,dimension(:,:) :: pbas,dmat
+  double precision, parameter :: gpw=7.4505806d-9  !  GB per word
+  double precision   ::  memsize
+  integer,allocatable,dimension(:)  :: JPVT
+  integer  :: INFO,LWORK
+  double precision :: owork(1),wt
+
+  call system_clock(COUNT_RATE=count_rate)
+  if(printlvl>0) print "(/,A,/,A,E15.7)"," Selecting basis set free of d-independent linear dependencies.",&
+                     "     QR diagonal cutoff=",TBas
+! construct new basis and store them for each block 
+!**************************************************
+!*   First construct symmetry unique blocks       *
+!**************************************************
+  if(printlvl>0) print *,"Selecting basis for symmetry unique blocks."
+  fid=getFLUnit()
+  open(unit=fid,file='basis.data',access='sequential',form='formatted',&
+     status='replace',action='write',position='rewind',iostat=ios)
+  if(ios/=0)then
+     print *,"FAILED TO CREATE FILE basis.data"
+     return
+  end if
+  write(unit=fid,fmt="(I4)") NBlockSym
+  nterms=0
+  do l=1,NBlockSym
+    k = blockSymLs(l)
+    nb=nBasBlk(k)
+    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",nb," matrices"
+    ll = nl(k)
+    rr = nr(k)
+    if(nb==0)then
+        print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
+        cycle
+    end if
+    call system_clock(COUNT=count2)
+! pbas contains the values and gradients of all primitive basis matrices.
+!   row number is the index for surface quantities, looping through blocks>point>energy,each gradient component
+! pbasw are equations weighed by 
+    ndata = (nvibs+1)*ll*rr
+    memsize=(ndata*nb+nb*nb+2*nb)*gpw
+    allocate(pbas(ndata,nb),stat=INFO)
+    if(info.ne.0)then
+      print "(A,I3)","selectBasis: Memory allocation failed for pbas matrix,INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    allocate(dmat(nb,nb),stat=INFO)
+    if(info.ne.0)then
+      print "(A,I3)","selectBasis: Memory allocation failed for dmat matrix,INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    allocate(JPVT(nb))
+    JPVT=0
+    allocate(TAU(nb))
+    if(printlvl>2) print 1001,"    Memory needed to store matrix structures: ",memsize," G" 
+    if(printlvl>1) write(*,"(A)",advance='no')"    Evaluating full basis... "
+! evaluate and tabulate value and gradients of basis at all data points
+    pbas = 0D0
+    do i=1,npoints
+     call EvalRawTerms(dispgeoms(i)%igeom)
+     CALL EvaluateVal(pbas,k,nvibs,1,1,dispgeoms(i)%bmat)
+     j=0
+     do while(dispgeoms(i)%energy(1,1)>energyT(j+1))
+       j=j+1
+       if(j==10)exit
+     end do
+     wt = 1d0
+     if(j>0) wt = wt*highEScale(j)
+     CALL DSYRK("U","T",nb,ndata,wt**2,pbas,ndata,1d0,dmat,nb)
+    end do!i=1,npoints
+    ! fill out lower half
+    do i=2,nb
+      do j=1,i-1
+        dmat(i,j)=dmat(j,i)
+      end do
+    end do
+
+    call system_clock(COUNT=count1)
+    if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
+
+    call DGEQP3(nb,nb,dmat,nb,JPVT,TAU,owork,-1,INFO)
+    if(INFO.ne.0)then
+      print *,"QR work space query failed in selectBasis. INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    LWORK=int(owork(1))
+    if(printlvl>2) print 1001,"    Work memory required for QR decomposition: ",LWORK*gpw*1024," MB"
+    if(printlvl>1) write(*,"(A)",advance='no')"    Selecting term using QR decomposition with column pivoting... "
+    allocate(WORK(LWORK))
+    call DGEQP3(nb,nb,dmat,nb,JPVT,TAU,WORK,LWORK,INFO)
+    if(INFO.ne.0)then
+      print *,"QR decomposition failed in selectBasis. INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    deallocate(WORK)
+    rk=nb
+    do i=1,rk
+      if(abs(dmat(i,i))<TBas)then
+        rk=i-1
+        exit
+      end if
+    end do
+    call system_clock(COUNT=count2)
+    if(printlvl>1) print 1001, " Completed in ",dble(count2-count1)/count_rate," s"
+    if(printlvl>1) print "(A,I8,A)","    Saving " , rk, " terms to file."
+    write(unit=fid,fmt="(I7)") rk
+    write(unit=fid,fmt="(20I7)") JPVT(1:rk)
+    deallocate(pbas)
+    deallocate(dmat)
+    deallocate(JPVT)
+    deallocate(TAU)
+    do i=1,nblks
+      if( blockSymId(i).eq.l ) nterms=nterms+rk
+    end do
+  end do! l=1,NBlockSym
+  if(printlvl>1) print "(A,I9,A)","    Total expansion has " , nterms, " terms."
+  close(fid)
+  1001 format(a,f7.2,a)
+  END SUBROUTINE selectBasis!
 !---------------------------------------------
 ! initialize variables for makesurf
 ! Allocate memory for shared structures and construct coefficient and
@@ -2303,7 +2436,7 @@ SUBROUTINE makesurf()
   if(printlvl>0)print *,"Entering makesurf"
   NaN  = 0
   NaN  = NaN/NaN
-  ! hd coefficients will be constructed from a previously saved diabats.data file
+  ! hd coefficients will be constructed from a previously saved diabat.data file
   if(loadDiabats)  call readDiabats()
 
   call initMakesurf()
@@ -2813,7 +2946,7 @@ SUBROUTINE readDiabats()
   double precision,external :: dnrm2
   character(500) :: buffer
   fid=getFLUnit()
-  if(printlvl>0)print *," Loading diabats from file <diabats.data>"
+  if(printlvl>0)print *," Loading diabats from file <diabat.data>"
   open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
        status='old',action='read',position='rewind',iostat=ios)
   if(ios/=0)then
@@ -2857,7 +2990,7 @@ SUBROUTINE readDiabats()
      CALL EvaluateVal(basval,iblk,3*natoms,npoints,ipt,dispgeoms(ipt)%cbmat)
     end do    !ipt
     call system_clock(COUNT=count2)
-    if(printlvl>3)print 1001, " finished evaluation in",dble(count2-count1)/count_rate," s"
+    if(printlvl>3)print 1001, "      finished evaluation in",dble(count2-count1)/count_rate," s"
     !construct normal equations
     call dsyrk('U','T',nbas,nnum,1d0,basval,nnum,0d0,NE,nbas)
     do i=1,nbas

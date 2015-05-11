@@ -77,9 +77,12 @@ Used by potential evaluation libraries only. Requires namelist:
 Construct fit Hd from ab initio data. Required namelist: 
 .Em MAKESURF
 .It 2
-Find minima or conical intersections on the ab initio surface corresponding to a 
-fit Hd.   Requires namelist:
-.Em MINMEX
+Perform term selection procedure at all data points from the current expansion.  The selected basis 
+will effectively span the same space as the full expansion, removing linear dependencies. The new 
+expansion will be exported to file 
+.Ar basis.data .
+This can be used in a future fit to limit the expansion size.  If a fit is performed with a selected
+basis set, the basis set definition will needs to be supplie to the evaluation subroutine as well.
 .El
 .It natoms
 .Sy INTEGER [0]
@@ -150,6 +153,13 @@ Controls the level of infomation printed to standard output.
 Name of Hd expansion coefficient input file.  Hd will be initialized using
 these coefficients.  When empty or file not exist, uncoupled surface with 
 constant (but not identical) energies will be used to initialize Hd.
+.It basisfl
+.Sy CHARACTER(255) [\(aq\(aq]
+Name of basis expansion definition file, defined using 
+.Em jobtype=2
+mode.  The when generated, the basis file is named 
+.Ar basis.data ,
+and contains the index of all selected matrices for each block.
 .El
 .Ss MAKESURF
 This namelist contains parameters that control the surface fitting procedure.

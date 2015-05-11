@@ -790,7 +790,7 @@ CONTAINS
        id = j
        id = NBlockSym
      end if!(id.ne.0)then
-     blockSymID(i) = id    
+     blockSymId(i) = id    
    end do
 
    allocate(blockSymLs(NBlockSym))

@@ -1,20 +1,36 @@
+## 2.8.0 (2015-05-10)
+
+* One can now use a term selection mechanism to select most useful terms from an extremely large expansion, in order
+to limit the size of expansion while obtaining a more comprehensive basis.   Use jobtype=2 to generate an expansion,
+and use `basisfl` variable to specify an expansion file when you use such expansion.  
+
+## 2.7.7 (2015-05-08)
+
+* A test term selection routine for jobtype=2 would determine a subset of independent terms in an expansion that spans
+the same space as the full expansion.  This will be used in the future to automatically select terms from a very large
+expansion.  
+
 ## 2.7.6 (2015-05-04)
+
 * Use previously save set of diabat data to reconstruct Hd as the starting guess of the fit using `loadDiabats` option. 
 * Updated manual page for `surfgen.in`
 * Fixed a problem where redundant blocks were not correctly linked, causing memory consumption to be higher than necessary.
 
 ## 2.7.5 (2015-05-01)
+
 * Added a procedure to record the values and gradients of each element of Hd at all data points.  This will be used to provide
   a way to reconstruct Hd for new expansions.
 * Updated options for gfortran
 
 ## 2.7.4 (2015-04-27)
+
 * Fixed a bug that after the QR decomposition with pivoting of projection operators in case of multi-dimensional irredicuble 
   representations the projection operators were not correctly pivoted back to the original basis.  The program is now tested
   for degenerate irreducible representations.
 * Memory consumption information can now be explicitly printed out with printlvl>2.
 
 ## 2.7.3 (2015-04-18)
+
 * Fixed a potential memory violation in EvaluateVal() in hddata.f90
 * Bug fix in potlib.f90 and libutility.f90 that may cause memory leak
 

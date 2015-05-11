@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.7.6
+SGENVER :=2.8.0
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -205,6 +205,7 @@ ifndef LIBS
   endif #is on hopper.nersc.gov
  else
     LIBS := $(BLAS_LIB)
+    LDFLAGS := -openmp
  endif #BLAS_LIB
 endif #ifndef $LIBS
 
@@ -234,6 +235,7 @@ surfgen  : $(OBJV)  $(OBJS) | $(BDIR)
 	@echo 'Debug Flag:          $(DEBUGFLAG)'
 	@echo 'Compiler options:    $(CPOPT)'
 	@echo 'Linking options:     $(LKOPT)'
+	@echo 'Linking flags:       $(LDFLAGS)'
 	@echo '-----------------------------------------'
 	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'

@@ -366,6 +366,54 @@ CONTAINS
   end do!i=1,order
  END SUBROUTINE LinearizeHd
  !***********************************************************************
+ SUBROUTINE filterBlock(blk,terms)
+   IMPLICIT NONE
+   INTEGER,INTENT(IN)  :: blk,terms(:)
+   integer  :: i,nb0,nb,j,nbnew,nbtotal
+   type(TMaptabEnt),allocatable,dimension(:) :: pList
+   integer,allocatable,dimension(:)          :: tList
+   type(TMTabBasis),pointer                  :: pM  
+   nb0=0
+   nbtotal=0
+   do i=0,order
+     nb= maptab(i,blk)%nBasis
+     nbnew=0
+     allocate(pList(nb))
+     allocate(tList(nb))
+     pM=>maptab(i,blk)%handle
+     do j=1,nb
+       pM=>pM%pNext
+       pList(j)%handle=>pM
+     end do
+     do j=1,nb
+       if(any(nb0+j .eq. terms))then
+         nbnew=nbnew+1
+         tList(nbnew)=j
+       else
+         deallocate(pList(j)%handle%coef)        
+         deallocate(pList(j)%handle%term) 
+         deallocate(pList(j)%handle) 
+       end if
+     end do
+
+     if(nbnew==0)then
+       nullify(maptab(i,blk)%handle%pNext)
+     else
+       nullify(pList(tList(nbnew))%handle%pNext)
+       maptab(i,blk)%handle%pNext=>pList(tList(1))%handle
+     end if
+     do j=1,nbnew-1
+       pList(tList(j))%handle%pNext=>pList(tList(j+1))%handle
+     end do
+     maptab(i,blk)%nBasis=nbnew
+     nbtotal=nbtotal+nbnew
+     nb0=nb0+nb
+     deallocate(tList)
+     deallocate(pList)
+   end do
+   if(nbtotal.ne.size(terms))stop "filterBlock:  Incorrect number of terms in filtered expansion."
+ END SUBROUTINE filterBlock
+ !***********************************************************************
  ! Directly evaluate value and derivatives of Hd, without explicitly creating
  ! basis functions.  All components of derivatives and the value of Hd are 
  ! generated in a compact manner to gain maximum advantage of shared values
@@ -841,7 +889,6 @@ CONTAINS
    INTEGER, intent(IN)  :: fromBlk,toBlk
    integer  :: i
    do i=0,order
-     if(associated(maptab(i,toBlk)%handle))deallocate(maptab(i,toBlk)%handle)
      maptab(i,toBlk)%handle  => maptab(i,fromBlk)%handle
      maptab(i,toBlk)%nBasis  =  maptab(i,fromBlk)%nBasis
      nullify(maptab(i,toBlk)%last)
