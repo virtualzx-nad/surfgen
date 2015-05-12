@@ -845,7 +845,7 @@ SUBROUTINE readginput(jtype)
   INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty 
    
   NAMELIST /GENERAL/        jobtype,natoms,order,nGrp,groupsym,groupprty,&
-                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
+                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder,basisfl
   NAMELIST /POTLIB/         molden_p,m_start,switchdiab,calcmind,gflname,nrpts, cvanish,&
                             mindcutoff, atomlabels,dcoordls,errflname, ndcoord,&
                             timeeval,parsing,eshift,calcErr,nfterms,fterm,fcoef,forig,no_nad
@@ -863,6 +863,7 @@ SUBROUTINE readginput(jtype)
   printlvl   = 1 
   cvanish    = 0d0
   inputfl    = ''
+  basisfl    = ''
   eshift     = dble(0) 
   switchdiab = .false.
   no_nad=.false.

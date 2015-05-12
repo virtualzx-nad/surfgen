@@ -1127,28 +1127,6 @@ CONTAINS
   end do
  END SUBROUTINE allocateHd
 
-! This subroutine performs analysis on the fitted Hd
-! The subroutine reports the total number of terms whose coefficient
-! is lower than ($t) and order in the terms satisfy certain conditions
-!  L.v >= rhs,  where components of v are orders of each coordinate 
-! ord,blk   [input] INTEGER
-!           The order and block index of Hd for which the analysis 
-!           will be performed on.
-! t         [input] DOUBLE PRECISION
-!           Specifies the threshold the norm below which an 
-!           expansion coefficient will be included in the analysis
-! ncon      [input] INTEGER
-!           Number of conditions
-! lhs       [input] INTEGER,dimension(ncon,ncoord)
-!           Left hand side of the conditions which will be multiplied with 
-!           the vector of orders of each coordinate
-! rhs       [input] INTEGER,dimension(ncon)
-!           Right hand side of condition
-! termcount [output] INTEGER
-!           Number of terms with coefficient lower than t that satisfy the 
-!           condition given by LHS.
-
-
 
  !***********************************************************************
  ! Directly evaluate value and derivatives of Hd, without explicitly creating

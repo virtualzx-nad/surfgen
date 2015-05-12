@@ -1,3 +1,9 @@
+## 2.8.1 (2015-05-12)
+
+* Potlib subroutines can now use truncated expansions defined in an external basis file.  
+* findmex utility has been updated to allow the user to set a number of input parameters through input file `mexopt.in`,
+in namelist _mexopt_ .  One can now also set distance and angle constraints using the same input file. 
+
 ## 2.8.0 (2015-05-10)
 
 * One can now use a term selection mechanism to select most useful terms from an extremely large expansion, in order
