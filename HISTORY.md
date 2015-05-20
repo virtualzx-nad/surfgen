@@ -1,3 +1,13 @@
+## 2.8.3 (2015-05-20)
+
+* Levenberg-Marquardt implementation where both diagonal and Jacobian shifts are manually set.  Diagonal shift through
+LSETol and Jacobian shift through jshift parameter. 
+* Set `autoshrink` to `.true.` to force the program to shrink step sizes when fitting error raises.
+
+## 2.8.2 (2015-05-14)
+
+* Gradients of Lagrangian after the laster iteration is skipped to avoid unnessary time cost.
+
 ## 2.8.1 (2015-05-12)
 
 * Potlib subroutines can now use truncated expansions defined in an external basis file.  

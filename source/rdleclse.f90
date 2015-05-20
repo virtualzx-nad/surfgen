@@ -58,12 +58,12 @@ CONTAINS
   !          Solution of the constrained least squares equations.
   ! printlvl (input) INTEGER
   !          Level of output to default I/O.
-  SUBROUTINE solve(m,nlse,nex,ndep,NEL,rhs,tol_ex,t,sol,printlvl)
+  SUBROUTINE solve(m,nlse,nex,ndep,NEL,rhs,tol_ex,j,t,sol,printlvl)
     IMPLICIT NONE
     INTEGER,VALUE,INTENT(IN)      :: m,nex,nlse,printlvl,ndep
     DOUBLE PRECISION,INTENT(INOUT):: NEL(nex+m,nex+m)
     DOUBLE PRECISION,INTENT(INOUT):: rhs(nex+m)
-    DOUBLE PRECISION,INTENT(IN)   :: tol_ex,t
+    DOUBLE PRECISION,INTENT(IN)   :: tol_ex,t,j
     DOUBLE PRECISION,INTENT(OUT)  :: sol(m)
     !temporary arrays for Langrange Multiplier Normal Equations
     !evec       :  Eigenvectors of NEL
@@ -84,7 +84,7 @@ integer,dimension(:),allocatable                :: ipiv
     IF(INFO/=0) STOP "solve: failed to allocate memory for ipiv"
 
     do i=nex+1,nx
-      NEL(i,i)=NEL(i,i)+t
+      NEL(i,i)=NEL(i,i)*(1+j)+t
     end do
 
     CALL allocArrays(1,0,0,0)

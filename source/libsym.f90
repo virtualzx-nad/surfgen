@@ -417,7 +417,12 @@ CONTAINS
            stop "Unsupported coordinate type in genCoordPerm"
        end select !case(CoordSet(m)%Type)
      end do!j=1,ncoord
-     print "(3x,A,I2,A,70I4)","PMT[",i,"]",coordPerm(i,:)*sgnCPerm(i,:)
+     if(ncoord>30)then
+       print "(3x,A,I2,A,30I4)","PMT[",i,"]",coordPerm(i,1:30)*sgnCPerm(i,1:30)
+       print "(10x,30I4)",coordPerm(i,31:)*sgnCPerm(i,31:)
+     else
+       print "(3x,A,I2,A,30I4)","PMT[",i,"]",coordPerm(i,:)*sgnCPerm(i,:)
+     end if
    end do!i=1,nPmt
    
  END SUBROUTINE genCoordPerm

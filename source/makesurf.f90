@@ -45,6 +45,8 @@ MODULE makesurfdata
   DOUBLE PRECISION                             :: toler     !criteria for convergence
   DOUBLE PRECISION                             :: gcutoff   !gradient cutoff
   DOUBLE PRECISION                             :: exactTol  !Exact equations rank cutoff
+  LOGICAL                                      :: autoshrink!automatically shrink the step size when error increases
+  DOUBLE PRECISION                             :: jshift    !Shift to Jacobian part in Marquardt step
   DOUBLE PRECISION                             :: LSETol    !LSE rank cutoff
   DOUBLE PRECISION                             :: flattening!flattening parameter for differential convergence
 !gorder: energy difference below which ckl will be ordered according to gradients rather than energies
@@ -163,6 +165,7 @@ MODULE makesurfdata
   double precision                           :: ecutoff  ! energy threshold above which data will be excluded from basis construction
   double precision                           :: egcutoff ! energy threshold above which gradients will no longer be used in fit
   type(T2DDList),dimension(:),allocatable    :: ZBas ! transformation from primitive to the reconstructed basis for each block
+  logical                                    :: TransBasis
 
 ! scaling factor of dij term.  0 gives old result and 1 gives exact gradients
   double precision            :: DijScale
@@ -1703,13 +1706,18 @@ stloop: do k = s1,s2
   allocate(npb(nblks))
   if(allocated(nbas))deallocate(nbas)
   allocate(nbas(nblks))
-  if(allocated(ZBas))then
-    do i=1,ubound(ZBas,1)
-      if(associated(ZBas(i)%List))deallocate(ZBas(i)%List)
-    end do
-    deallocate(ZBas)
-  end if!allocated(ZBas
-  allocate(ZBas(nblks))
+  if(TBas>0)then
+    TransBasis=.true.
+    if(allocated(ZBas))then
+      do i=1,ubound(ZBas,1)
+        if(associated(ZBas(i)%List))deallocate(ZBas(i)%List)
+      end do
+      deallocate(ZBas)
+    end if!allocated(ZBas
+    allocate(ZBas(nblks))
+  else
+    TransBasis=.false.
+  end if
   if(allocated(WMat))then
     do i=1,ubound(WMat,1)
       if(associated(WMat(i)%List))deallocate(WMat(i)%List)
@@ -1757,7 +1765,7 @@ stloop: do k = s1,s2
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
-        allocate(ZBas(k)%List(1,1))     ! just a place holder
+        if(TransBasis)allocate(ZBas(k)%List(1,1))     ! just a place holder
         allocate(WMat(k)%List(1,1))
         gradNorm(:,:,k) = 0d0
         cycle
@@ -1881,12 +1889,6 @@ stloop: do k = s1,s2
     else  ! TBas<=0, use the raw basis itself
         if(printlvl>1)print *,"  TBas<=0, skipping null space removal. Using intermediate basis in fit."
         nBas(k) = npb(k)
-        allocate(ZBas(k)%List(npb(k),npb(k)))
-        memsize=memsize+npb(k)**2*gpw
-        Zbas(k)%List=0d0
-        do i=1,npb(k)
-            ZBas(k)%List(i,i) =  1D0
-        end do
         pv1 = npoints*(1+nvibs)*ll*rr
         ! generate new coefficient matrix in the basis.  WMat = pbas
         allocate(WMat(k)%List(pv1,npb(k)))
@@ -1925,7 +1927,7 @@ stloop: do k = s1,s2
   do l=1,nblks
     broot = blockSymLs(blockSymId(l))
     if(broot.eq.l)cycle ! it is a unique block.  skipping linking
-    ZBas(l)%List =>  ZBas(broot)%List
+    if(TransBasis)ZBas(l)%List =>  ZBas(broot)%List
     WMat(l)%List =>  WMat(broot)%List
     npb(l)       =   npb(broot)
     nbas(l)      =   nbas(broot)
@@ -2352,7 +2354,7 @@ END MODULE
 ! hvec_new  [in] DOUBLE PRECISION(*)
 !           New Hd vector after transformation
 SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
-    use makesurfdata, only: ncons,nex,ncon_total,ZBas,nBas,coefMap
+    use makesurfdata, only: ncons,nex,ncon_total,ZBas,nBas,coefMap,TransBasis
     use hddata,only: nblks
     IMPLICIT NONE
     CHARACTER,INTENT(IN)        :: TRANS
@@ -2370,7 +2372,11 @@ SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
             do i=1,ncon_total
               if(coefMap(i,2)==k)then
                 count2 = count2+1
-                hvec_new(count1+1:count1+nBas(k))=hvec_new(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec_old(i)
+                if(TransBasis)then
+                  hvec_new(count1+1:count1+nBas(k))=hvec_new(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec_old(i)
+                else
+                  hvec_new(count1+count2)=hvec_old(i)
+                end if
               end if
             end do
             count1=count1+nBas(k)
@@ -2383,7 +2389,11 @@ SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
             do i=1,ncon_total
               if(coefMap(i,2)==k)then
                 count2 = count2+1
-                hvec_new(i) = dot_product(ZBas(k)%List(count2,:),hvec_old(count1+1:count1+nBas(k)))
+                if(TransBasis)then
+                  hvec_new(i) = dot_product(ZBas(k)%List(count2,:),hvec_old(count1+1:count1+nBas(k)))
+                else
+                  hvec_new(i) = hvec_old(count1+count2)
+                end if
               end if
             end do
             count1=count1+nBas(k)
@@ -2419,7 +2429,7 @@ SUBROUTINE makesurf()
   double precision,dimension(ncoord)             :: errgrd
   double precision,dimension(ncoord,3*natoms)    :: binv
   CHARACTER(255)                                 :: fmt, fn
-  double precision            ::  dener(nstates,nstates)
+  double precision            ::  dener(nstates,nstates),enew,eold
   integer                     ::  ios, status, ndep
   double precision, external  ::  dnrm2
   logical                     ::  diff  !whether differential convergence will be used
@@ -2500,14 +2510,9 @@ SUBROUTINE makesurf()
   call AddManagedPoints
   call updateWeights
   asol = asol1
-  if(maxiter>=0)then
-    CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-    CALL optLag(jaco,nex,dCi,asol,jaco2)
-    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
-              ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-  end if
   !CALL initDIISg(ndiis,ndstart,ncons,asol,dCi)
   call evaluateError(asol,weight,LSErr,ExErr)
+  eold=LSErr+ExErr
   CALL getError(nrmener,avgener,nrmgrad,avggrad)
   adif = dnrm2(ncons,asol,int(1))
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
@@ -2546,16 +2551,21 @@ SUBROUTINE makesurf()
      write(OUTFILE,*)"  Starting differential convergence..."
    end if
 
-   ! get errors 
-   if(printlvl>0)then
-     printlvl=printlvl-10
-     call makebvec(bvec,.true.)
-     print "(5x,A)","RMS Errors of Fitting Equations"
-     print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
-                             ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
-                             ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
-     printlvl=printlvl+10
+   if(iter<maxiter.and.diff)then
+     CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+     CALL optLag(jaco,nex,dCi,asol,jaco2)
+     print "(3(A,E15.7))",&
+         "Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
+            ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    end if
+   ! get errors 
+   printlvl=printlvl-10
+   call makebvec(bvec,.true.)
+   print "(5x,A)","RMS Errors of Fitting Equations"
+   print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
+                           ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
+                           ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
+   printlvl=printlvl+10
    if(diagHess>0)then
      call solve_diagHess(dCi,dLambda,jaco2,dsol,diagHess)
    else !diagHess>0
@@ -2573,11 +2583,11 @@ SUBROUTINE makesurf()
        rhs(1:nex)=-dLambda*scaleEx
        rhs(nex+1:)=-dCi
        ! solve normal equations for change in coefficients
-       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,dsol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,jshift,lsetol,dsol,printlvl)
      else
        dsol = asol(1:ncons)
        ! solve normal equations
-       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,asol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,jshift,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
      end if
      CALL cleanArrays()
@@ -2599,9 +2609,19 @@ SUBROUTINE makesurf()
    if(linSteps<=0)then
       asol(1:ncons)=asol1(1:ncons)+dsol
       call evaluateError(asol,weight,LSErr,ExErr)
+      enew=LSErr+ExErr
       CALL getError(nrmener,avgener,nrmgrad,avggrad)
-      CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-      CALL optLag(jaco,nex,dCi,asol,jaco2)
+      if(printlvl>1)print "(A,E13.4)","   Error change after step: ",enew-eold
+      do while(enew>eold.and.nrmD>toler.and.autoshrink)
+        if(printlvl>0) print "(A,E13.4)","  Error increased.  Shrinking step size to ",nrmD 
+        dsol=dsol/2
+        nrmD=nrmD/2
+        asol(1:ncons)=asol1(1:ncons)+dsol
+        call evaluateError(asol,weight,LSErr,ExErr)
+        enew=LSErr+ExErr
+        if(printlvl>1)print "(A,E13.4)","   Error change after step: ",enew-eold
+      end do
+      eold=enew
    else !linsteps<=0
      asol(1:ncons)=asol1(1:ncons)
      call takeLinStep(asol,dsol,linSteps,dCi,dLambda,jaco2,dconv)
@@ -2609,8 +2629,6 @@ SUBROUTINE makesurf()
    end if
    ! Print out error analysis
    !-------------------------------------------------------------
-   print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
-            ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    adif=DNRM2(ncons,asol-asol1,int(1))
    asol1=asol
    ! write iteration information to output file
@@ -3287,9 +3305,9 @@ SUBROUTINE readMakesurf(INPUTFL)
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
   integer :: i
-  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
+  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,jshift,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
-                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
+                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, autoshrink,&
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
                       gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats,&
@@ -3311,6 +3329,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   mng_grad  = 3d-2
   orderall  = .true.
   diagHess  = -1d0
+  autoshrink= .false.
   dconv     = 1d-4
   followprev= .false.
   usefij    = .true.
@@ -3338,6 +3357,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   gcutoff   = 1D-14
   exactTol      = 1D-12
   LSETol        = 1D-7
+  jshift        = 1d-1
   flattening    = 1D-8
   outputfl      = ''
   flheader      = '----'
@@ -3360,7 +3380,8 @@ SUBROUTINE readMakesurf(INPUTFL)
 
   ! Read the values from surfgen.in
   read(unit=INPUTFL,NML=MAKESURF)
-
+  jshift=max(0d0,jshift)
+  LSETol=max(0d0,LSETol)
   ! Process the settings
   mng_ener=mng_ener/au2cm1
   if(useIntGrad)then
