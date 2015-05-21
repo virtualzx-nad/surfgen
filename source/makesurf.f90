@@ -2551,7 +2551,7 @@ SUBROUTINE makesurf()
      write(OUTFILE,*)"  Starting differential convergence..."
    end if
 
-   if(iter<maxiter.and.diff)then
+   if(diff)then
      CALL getCGrad(asol,dCi,dLambda,lag,jaco)
      CALL optLag(jaco,nex,dCi,asol,jaco2)
      print "(3(A,E15.7))",&
