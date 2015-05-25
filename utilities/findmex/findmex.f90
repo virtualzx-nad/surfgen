@@ -22,11 +22,11 @@ program findmex
   character*3,allocatable       :: aname(:)
   double precision,allocatable  :: cgeom(:)
   integer,parameter :: MAXCONS=20
-  double precision  :: shift, gtol, dtol, maxd, scale,cons_val(MAXCONS)
+  double precision  :: shift, gtol, dtol, evalcutoff,maxd, scale,cons_val(MAXCONS)
   integer           :: maxiter,ncons,cons_atm(3,MAXCONS)
   logical  :: ex
   integer,parameter :: fid=326
-  NAMELIST /MEXOPT/  shift, gtol, dtol, maxd, maxiter, scale, ncons, cons_atm, cons_val
+  NAMELIST /MEXOPT/  shift, gtol, dtol, evalcutoff,maxd, maxiter, scale, ncons, cons_atm, cons_val
 
 
   print *," ***************************************** "
@@ -38,10 +38,11 @@ program findmex
   call DisableEnergyScaling()
 
 ! read input values
-  shift=1d-1
-  gtol =1d-1
-  dtol =1d-3
+  shift=1d-4
+  gtol =1d-2
+  dtol =1d-4
   maxd =1d0
+  evalcutoff=1d-9
   maxiter = 100
   scale = 1d0
   ncons = 0
@@ -111,7 +112,7 @@ program findmex
   call analysegeom(natm,cgeom,aname,anum,masses,1.9d0,.true.)
 
   ! search for intersections
-  call findx(natm,nst,cgeom,isurf1,isurf2,maxiter,shift,gtol,dtol,maxd,scale,ncons,cons_atm,cons_val)
+  call findx(natm,nst,cgeom,isurf1,isurf2,maxiter,shift,evalcutoff,gtol,dtol,maxd,scale,ncons,cons_atm,cons_val)
 
   ! print final geometry information
   print *,"---------------  Final Geometries  ------------------"
@@ -176,11 +177,11 @@ end subroutine calcHess
 !This is then used to construct the Hessian and gradient of the Lagrangian.
 !Newton-Raphson procedure is used to find the critical point.
 !Energy part of the Hessian is done numerically
-subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,scale,nc,cons_atm,cons_val)
+subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,evalcutoff,Etol,Stol,maxd,scale,nc,cons_atm,cons_val)
   implicit none
   integer, intent(in)                                 ::  natoms,surf1,surf2,maxiter,nstate,nc,cons_atm(3,nc)
   double precision,dimension(3*natoms),intent(inout)  ::  cgeom
-  double precision,intent(in)                         ::  shift,Etol,Stol,maxd,scale,cons_val(nc)
+  double precision,intent(in)                         ::  shift,Etol,Stol,evalcutoff,maxd,scale,cons_val(nc)
 
   integer   :: ndeg  ! number of degenerate states
   integer   :: noffd ! number of off-diagonals that has to vanish 
@@ -195,12 +196,14 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
   double precision,dimension(:),allocatable     :: lam, dlag    !lagrange multipliers and gradient of lagrangian
   double precision,dimension(:),allocatable     :: w,b1,b2      ! evals of hessian and intermediate vectors
   integer,dimension(:),allocatable  :: IWORK
-  double precision                  :: nrmG, nrmD,tmp(1),bval(12)
+  double precision                  :: nrmG, nrmD,tmp(1),bval(12),transrot(3*natoms,6),center(3),ovlp(6)
   double precision, external        :: dnrm2
   double precision, parameter       :: amu2au=1.822888484514D3,au2cm1=219474.6305d0
   integer           :: offs
   integer           :: LIWORK, LWORK, itmp(1),INFO
-  integer           ::  iter  , i,j,lindex
+  integer           :: iter  , i,j,lindex,nskip
+  logical,dimension(:),allocatable :: skip
+  logical, parameter  :: debugmode=.false.
 
   allocate(coord_val(nc))
   ! allocate arrays
@@ -211,6 +214,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
   allocate(hess(neq,neq))
   allocate(lam(nlag))
   allocate(dlag(neq))
+  allocate(skip(neq))
   allocate(w(neq))
   allocate(b1(neq))
   allocate(b2(neq))
@@ -228,7 +232,40 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
   print "(A)","  Convergence Tolerances"
   print "(A,E10.2,A,E10.2)","  Energy Gradient: ",Etol,"   Displacement:",Stol
   lam = 0d0
+  transrot=0d0
+  do i=1,3
+    do j=0,natoms-1
+      transrot(j*3+i,i)=1d0
+    end do
+    transrot(:,i)=transrot(:,i)/dnrm2(3*natoms,transrot(:,i),1)
+  end do
   do iter=1,maxiter
+     !recenter geometry
+     center =0d0
+     do i=1,natoms
+       center=center+cgeom(i*3-2:i*3)
+     end do
+     center=center/natoms
+     do i=1,natoms
+       cgeom(i*3-2:i*3)=cgeom(i*3-2:i*3)-center
+     end do
+     !get translational vectors
+     transrot(:,4:6)=0d0
+     do i=1,natoms
+       transrot(i*3-1,4)=-cgeom(i*3)   
+       transrot(i*3,4)  = cgeom(i*3-1)   
+     end do
+     do i=1,natoms
+       transrot(i*3-2,5)= cgeom(i*3)   
+       transrot(i*3,5)  =-cgeom(i*3-2)   
+     end do
+     do i=1,natoms
+       transrot(i*3-2,6)=-cgeom(i*3-1)   
+       transrot(i*3-1,6)= cgeom(i*3-2)   
+     end do
+     do i=4,6
+       transrot(:,i)=transrot(:,i)/dnrm2(3*natoms,transrot(:,i),1)
+     end do
      call EvaluateSurfgen(cgeom,e,cg,h,dcg,.false.)
      print "(A,I5)","Iteration ",iter
      print "(A,20F20.4)","Energies : ",e*au2cm1 
@@ -241,7 +278,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
      ! construct Intersection Adapted Partially Diagonalized Representation
      call OrthogonalizeGH(h,cg,surf1,surf2,3*natoms,100,1d-10)
      ! get Hessian matrix of coordinate block
-     call calcHess(natoms,cgeom,nstate,surf1,surf2,1D-5,hess,neq)
+     call calcHess(natoms,cgeom,nstate,surf1,surf2,1D-6,hess,neq)
      ! get Hessian of mixed-coord-Lagrange multiplers block
      lindex=3*natoms+1
      do i=surf1+1,surf2
@@ -259,22 +296,22 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
      end do
      ! part 3 : coordinate constraint part
      do i=1,nc
-        hess(lindex,:) =  0d0
+        hess(:,lindex) =  0d0
         if(cons_atm(3,i).ne.0)then
         ! it is an angle
             call bend(natoms,cons_atm(:,i),cgeom,coord_val(i),bval,5.72957795131d1,0,0d0) ! convert to degrees
             do j=1,3
                 offs = 3*(cons_atm(j,i)-1)
-                hess(lindex,offs+1:offs+3) =  bval(3*j-2:3*j)
+                hess(offs+1:offs+3,lindex) =  bval(3*j-2:3*j)
             end do!j=1,3
         else !it is a distance
             call stre(natoms,cons_atm(1,i),cons_atm(2,i),cgeom,coord_val(i),bval)
             do j=1,2
                 offs = 3*(cons_atm(j,i)-1)
-                hess(lindex,offs+1:offs+3) =  bval(3*j-2:3*j)
+                hess(offs+1:offs+3,lindex) =  bval(3*j-2:3*j)
             end do!j=1,2
         end if
-        hess(1:3*natoms,lindex)=hess(lindex,1:3*natoms)
+        hess(lindex,1:3*natoms)=hess(1:3*natoms,lindex)
         lindex=lindex+1
      end do!i=1,nc
      !the LM-LM block is zero
@@ -285,6 +322,14 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
         dlag(1:3*natoms) = dlag(1:3*natoms)+cg(:,i,i)
      end do
      dlag=dlag/(surf2-surf1+1)*scale
+     if(debugmode)then
+       do i=1,neq
+         call DGEMV('T',3*natoms,6,1d0,transrot,3*natoms,hess(1:3*natoms,i),1,0d0,ovlp,1)
+         print "(A,I3,A,6F10.4)","Hessian column ",i,",overlap with translation/rotation: ",ovlp
+       end do
+       call DGEMV('T',3*natoms,6,1d0,transrot,3*natoms,dlag(1:3*natoms),1,0d0,ovlp,1)
+       print "(A,6F10.4)","Original lagrangian grad overlap with translation/rotation: ",ovlp
+     end if
      ! calculate optimized lagrange multipliers and update lagrangian gradient
      B = hess(1:3*natoms,3*natoms+1:neq)
      call updateLag(B,3*natoms,nlag,lam,dlag)
@@ -304,7 +349,7 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
      end do
      ! part 3: coordinate constraint part
      do i=1,nc
-        dlag(1:3*natoms)=dlag(1:3*natoms)+lam(lindex)*hess(lindex,1:3*natoms)
+        dlag(1:3*natoms)=dlag(1:3*natoms)+lam(lindex)*hess(lindex+3*natoms,1:3*natoms)
         lindex=lindex+1
      end do
      ! calculate gradient of lagrangian: lagrange multipliers part
@@ -325,6 +370,12 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
         dlag(lindex)=coord_val(i)-cons_val(i)
         lindex=lindex+1
      end do
+     if(debugmode)then
+       print "(A)","Lagrangian Gradients:"
+       print "(3E15.5)",dlag
+       call DGEMV('T',3*natoms,6,1d0,transrot,3*natoms,dlag(1:3*natoms),1,0d0,ovlp,1)
+       print "(A,6F10.4)","Lagrangian grad overlap with translation/rotation: ",ovlp
+     end if
      do i=1,3*natoms
        hess(i,i)=hess(i,i)+shift
      end do
@@ -336,15 +387,21 @@ subroutine findx(natoms,nstate,cgeom,surf1,surf2,maxiter,shift,Etol,Stol,maxd,sc
      ! b1= hess^T.g       =>
      call DGEMV('T',neq,neq,1d0,hess,neq,dlag,1,0d0,b1,1)
      ! b1' = w^-1*b1
+     nskip = 0
      do i=1,neq
-      if(abs(w(i))<1d-10)then
+      if(abs(w(i))<evalcutoff)then
          b1(i)=dble(0)
+         nskip=nskip+1
       else!
          b1(i)=b1(i)/w(i)
       end if!
      end do!
      ! b2 = hess.b1'
      call DGEMV('N',neq,neq,1d0,hess,neq,b1,1,0d0,b2,1)
+     ! remove rotation and translations
+     call DGEMV('T',3*natoms,6,1d0,transrot,3*natoms,b2,1,0d0,ovlp,1)
+     print "(A,6F10.4)","Overlap with translation/rotation: ",ovlp
+     call DGEMV('N',3*natoms,6,-1d0,transrot,3*natoms,ovlp,1,1d0,b2,1)
      ! cgeom' = cgeom - H^-1.g
      nrmD=dnrm2(3*natoms,b2,1)
      if(nrmD>maxD)then

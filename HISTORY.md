@@ -1,3 +1,8 @@
+## 2.8.3 (2015-05-25)
+
+* Improved findmex algorithms
+* On can use hd coefficients to weight the basis selection procedure with scalebycoef option
+
 ## 2.8.3 (2015-05-20)
 
 * Levenberg-Marquardt implementation where both diagonal and Jacobian shifts are manually set.  Diagonal shift through

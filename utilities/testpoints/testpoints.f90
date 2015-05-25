@@ -16,7 +16,7 @@ program testpoints
   integer            ::  npts, i,j,k,natoms,nstates,ios,ptid
 
   character(3),dimension(:),allocatable        :: atoms
-  double precision,dimension(:),allocatable    :: anums,masses,e
+  double precision,dimension(:),allocatable    :: anums,masses,e,dvec,norms
   double precision,dimension(:,:),allocatable  :: cgeoms,h
   double precision,dimension(:,:,:),allocatable:: cg,dcg
   double precision,external :: dnrm2
@@ -37,7 +37,9 @@ program testpoints
   allocate(anums(natoms))
   allocate(masses(natoms))
   allocate(cgeoms(3*natoms,MaxGeoms))
+  allocate(dvec(3*natoms))
   allocate(e(nstates))
+  allocate(norms(nstates))
   allocate(h(nstates,nstates))
   allocate(cg(3*natoms,nstates,nstates))
   allocate(dcg(3*natoms,nstates,nstates))
@@ -73,6 +75,26 @@ program testpoints
     print "(2x,10F24.15)",e
     print *,"Adiabatic energy(cm-1)"
     print "(2x,10F24.15)",e*219474.6305d0
+    print *,""
+    print *,"Norms of g vectors"
+    print "(8x,30I17)",(j,j=1,nstates-1)
+    do j=2,nstates
+      do k=1,j-1
+        dvec=cg(:,j,j)-cg(:,k,k)
+        norms(k)=dnrm2(3*natoms,dvec,1)/2
+      end do
+      print "(I6,30E17.7)",j,norms(1:j-1)
+    end do
+    print *,""
+    print *,"Norms of h vectors"
+    print "(8x,30I17)",(j,j=1,nstates-1)
+    do j=2,nstates
+      do k=1,j-1
+        dvec=cg(:,j,k)*(e(j)-e(k))
+        norms(k)=dnrm2(3*natoms,dvec,1)
+      end do
+      print "(I6,30E17.7)",j,norms(1:j-1)
+    end do
     print *,""
     print *,"Cartesian Gradients and Couplings in Adiabatic Representation"
     do j=1,nstates

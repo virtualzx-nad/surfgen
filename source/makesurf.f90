@@ -162,6 +162,7 @@ MODULE makesurfdata
   integer,dimension(:),allocatable           :: npb  ! number of primitive basis for each block
   integer,dimension(:),allocatable           :: nbas ! number of reconstructed basis for each block
   double precision                           :: TBas ! theshold for eigenvalue cutoff of the primitive basis overlap matrix (linear dependency)
+  logical                                    :: scalebycoef ! when true, the term selection will use size of coefficient as weight
   double precision                           :: ecutoff  ! energy threshold above which data will be excluded from basis construction
   double precision                           :: egcutoff ! energy threshold above which gradients will no longer be used in fit
   type(T2DDList),dimension(:),allocatable    :: ZBas ! transformation from primitive to the reconstructed basis for each block
@@ -1944,12 +1945,12 @@ stloop: do k = s1,s2
 ! *  A QR decomposition procedure with column-pivoting is used to determine the list of leading 
 !    independent terms 
   SUBROUTINE selectBasis()
-  use hddata, only: nl,nr,nBasBlk,EvalRawTerms,EvaluateBasis2,EvaluateVal,getFLUnit,nblks
+  use hddata, only: nl,nr,nBasBlk,EvalRawTerms,EvaluateBasis2,EvaluateVal,getFLUnit,nblks,getHdBlock
   use progdata, only: printlvl
   use cnpi,only: blockSymLs,blockSymId, NBlockSym
   IMPLICIT NONE
   integer  :: i,j,k,l,count1,count2,count_rate,ll,rr, ndata,nb,rk,fid,ios,nterms
-  double precision,allocatable,dimension(:)   :: WORK,TAU
+  double precision,allocatable,dimension(:)   :: WORK,TAU,hvec,wvec
   double precision,allocatable,dimension(:,:) :: pbas,dmat
   double precision, parameter :: gpw=7.4505806d-9  !  GB per word
   double precision   ::  memsize
@@ -1977,6 +1978,18 @@ stloop: do k = s1,s2
   do l=1,NBlockSym
     k = blockSymLs(l)
     nb=nBasBlk(k)
+    if(scalebycoef)then
+       allocate(hvec(nb))
+       allocate(wvec(nb))
+       wvec=0d0
+       do j=1,nblks
+         if( blockSymId(j).eq.l )then
+           call getHdBlock(j,hvec)
+           wvec=wvec+hvec**2
+         end if
+       end do
+       wvec=sqrt(wvec)
+    end if
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",nb," matrices"
     ll = nl(k)
     rr = nr(k)
@@ -2010,6 +2023,11 @@ stloop: do k = s1,s2
     do i=1,npoints
      call EvalRawTerms(dispgeoms(i)%igeom)
      CALL EvaluateVal(pbas,k,nvibs,1,1,dispgeoms(i)%bmat)
+     if(scalebycoef)then
+       do j=1,nb
+         call dscal(ndata,wvec(j),pbas(1,j),1)
+       end do
+     end if
      j=0
      do while(dispgeoms(i)%energy(1,1)>energyT(j+1))
        j=j+1
@@ -2063,6 +2081,10 @@ stloop: do k = s1,s2
     do i=1,nblks
       if( blockSymId(i).eq.l ) nterms=nterms+rk
     end do
+    if(scalebycoef)then
+       deallocate(hvec)
+       deallocate(wvec)
+    end if
   end do! l=1,NBlockSym
   if(printlvl>1) print "(A,I9,A)","    Total expansion has " , nterms, " terms."
   close(fid)
@@ -3307,7 +3329,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   integer :: i
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,jshift,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
                       flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
-                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, autoshrink,&
+                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, autoshrink,scalebycoef,&
                       energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
                       gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats,&
@@ -3337,6 +3359,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   ecutoff   = 1d0
   egcutoff  = 6d-1
   TBas      = 1D-6
+  scalebycoef =.false.
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
