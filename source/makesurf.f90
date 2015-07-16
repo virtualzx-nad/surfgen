@@ -1689,7 +1689,7 @@ stloop: do k = s1,s2
   use cnpi,only: blockSymLs,blockSymId, NBlockSym
   IMPLICIT NONE
   integer  :: i,j,k,l,count1,count2,count_rate,pv1,n1,n2, broot
-  integer  :: ll,rr,p,nb
+  integer  :: ll,rr,p,nb,lr,stride
   double precision,allocatable,dimension(:)   :: WORK, eval
   double precision,allocatable,dimension(:,:) :: evec, pbas, dmat, pbasw 
   double precision, parameter :: gpw=7.4505806d-9  !  GB per word
@@ -1702,6 +1702,7 @@ stloop: do k = s1,s2
   call system_clock(COUNT_RATE=count_rate)
   gradNorm=dble(0)
   memsize=0d0
+  stride=npoints*(nvibs+1)
   ! allocate global info arrays
 
   if(allocated(npb))deallocate(npb)
@@ -1764,6 +1765,7 @@ stloop: do k = s1,s2
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
     ll = nl(k)
     rr = nr(k)
+    lr = ll*rr
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
@@ -1799,19 +1801,22 @@ stloop: do k = s1,s2
      wt = 1d0
      if(ptWeights(i)<1d-5) wt = 0d0
      if(j>0) wt = wt*highEScale(j)
-     if(all(.not.incener(i,:,:)).and.all(.not.e_exact(i,:,:)).or.abs(w_energy*wt)<1d-3)then
-       pbasw(n1,:) = 0d0
-     else
-       pbasw(n1,:) = pbas(n1,:)*wt!(w_energy*wt)
-     end if
-     if(all(.not.incgrad(i,:,:)).and.all(.not.g_exact(i,:,:)).or.abs(max(w_grad,w_fij)*wt)<1d-3)then
-       pbasw(n1+1:n1+nvibs,:) = 0d0
-     else
-       pbasw(n1+1:n1+dispgeoms(i)%nvibs,:) = pbas(n1+1:n1+dispgeoms(i)%nvibs,:)*wt!(max(w_grad,w_fij)*wt)
-       pbasw(n1+dispgeoms(i)%nvibs+1:n1+nvibs,:) =0d0
-     end if
-     n1 = n1 + (nvibs+1)*ll*rr
-    end do!i=1,npoints
+     do j=0,lr-1
+       n2=n1+j*stride
+       if(all(.not.incener(i,:,:)).and.all(.not.e_exact(i,:,:)).or.abs(w_energy*wt)<1d-3)then
+         pbasw(n2,:) = 0d0
+       else
+         pbasw(n2,:) = pbas(n2,:)*wt!(w_energy*wt)
+       end if
+       if(all(.not.incgrad(i,:,:)).and.all(.not.g_exact(i,:,:)).or.abs(max(w_grad,w_fij)*wt)<1d-3)then
+         pbasw(n2+1:n2+nvibs,:) = 0d0
+       else
+         pbasw(n2+1:n2+dispgeoms(i)%nvibs,:) = pbas(n2+1:n2+dispgeoms(i)%nvibs,:)*wt!(max(w_grad,w_fij)*wt)
+         pbasw(n2+dispgeoms(i)%nvibs+1:n2+nvibs,:) =0d0
+       end if
+     end do
+     n1 = n1 + (nvibs+1)
+    end do!i=1,npoints?
 
     call system_clock(COUNT=count1)
     if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
