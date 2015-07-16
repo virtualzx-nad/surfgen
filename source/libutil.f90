@@ -859,7 +859,7 @@ grploop:  do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degenerac
       end do!i=ldeg,udeg      
       if(printlvl>2)print "(4x,A,I4,A,E15.7,A,I3,A,I3,A)","iteration ",iter,", max(g.h)=",max_gh,&
                         "(",mi,",",mj,")"
-      call conformSgn(pt%nvibs,nstates,gradnew,pt%grads,ckl)
+      call conformSgn(pt%nvibs,nstates,gradnew(:pt%nvibs,:,:),pt%grads(:pt%nvibs,:,:),ckl)
     end do!while(iter<maxiter.and.max_gh>toler)do
     if(iter==0.and.printlvl>2)then
         print *,"  Ab initio g vector:"

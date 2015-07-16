@@ -1,4 +1,9 @@
-## 2.8.3 (2015-05-25)
+## 2.8.5 (2015-07-15)
+
+* fixed a bug where couplings are incorrectly given too high weights
+* fixed a problem in the function call to conformSgn in OrthGH_Hd which can cause incorrect sign assignments
+ 
+## 2.8.4 (2015-05-25)
 
 * Improved findmex algorithms
 * On can use hd coefficients to weight the basis selection procedure with scalebycoef option

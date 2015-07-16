@@ -157,10 +157,20 @@
       if(ptdata%nvibs<3*natoms-6) then
         print *,"      Local coordinate system has reduced dimensionalities."
         if(printlvl>2)then
-          print *,"       Cartesian vectos of vanishing coordinates:"
+          print *,"   Cartesian vectos of non-vanishing coordinates:"
+          do n1=1,ptdata%nvibs
+             print "(A,I3,A,F9.5)","    Fitting coordinate ",n1," ,eigenvalue=",ptdata%eval(n1)
+             print "(3F12.7)",btb(:,n1)
+          end do
+          print *,"   Cartesian vectos of vanishing coordinates:"
           do n1=ptdata%nvibs+1,3*natoms
              print "(A,I3,A,F9.5)","    Fitting coordinate ",n1," ,eigenvalue=",ptdata%eval(n1)
              print "(3F12.7)",btb(:,n1)
+          end do
+          print *,"       Overlaps of non-vanishing coordinates with nascent internals:"
+          do n1=1,ptdata%nvibs
+             print "(A,I3,A,F9.5)","    Fitting coordinate ",n1," ,eigenvalue=",ptdata%eval(n1)
+             print "(12F9.4)",(dot_product(btb(:,n1),ptdata%bmat(n2,:)),n2=1,ncoord)
           end do
           print *,"       Overlaps of vanishing coordinates with nascent internals:"
           do n1=ptdata%nvibs+1,3*natoms

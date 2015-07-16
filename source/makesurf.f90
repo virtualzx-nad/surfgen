@@ -430,13 +430,14 @@ stloop: do k = s1,s2
         if(k>0) gWeight(i,s1,s1)= gWeight(i,s1,s1)*highEScale(k)
       ! Weights for derivative couplings
         do s2=1,s1-1
+          gWeight(i,s1,s2)=w_fij
           k = 0
           do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
             !  determine the bracket of ab initio energy
             k = k+1
             if(k==10)exit
           end do
-          if(k>0) gWeight(i,s1,s2)=w_fij*highEScale(k)
+          if(k>0) gWeight(i,s1,s2)=gWeight(i,s1,s2)*highEScale(k)
           if(nrmediff>0)then
             ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
             ediff=(ediff+ediffcutoff)/nrmediff
