@@ -127,6 +127,7 @@ MODULE makesurfdata
 ! EnergyT      Threshold energy above which gradients/energies will be scaled down
 ! HighEScale   The scaling factor for these high energy data 
   DOUBLE PRECISION,dimension(10)               ::  energyT, highEScale
+  DOUBLE PRECISION,dimension(10)               ::  energyT_en, highEScale_en
 
 ! These variables store the coefficient matrix and right hand side of
 ! linear equality constrained least squares equations.
@@ -450,11 +451,11 @@ stloop: do k = s1,s2
       ! calculate the weights of energy equations
       do s1=1,nstates
         k=0
-        do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))
+        do while(dispgeoms(i)%energy(s1,s1)>energyT_en(k+1))
           k=k+1
           if(k==10)exit
         end do
-        if(k>0)   eWeight(i,s1,s1) =  w_energy*highEScale(k)
+        if(k>0)   eWeight(i,s1,s1) =  w_energy*highEScale_en(k)
         do s2=s1+1,nstates
           eWeight(i,s1,s2)=eWeight(i,s1,s1)
           eWeight(i,s2,s1)=eWeight(i,s1,s1)
@@ -1125,7 +1126,7 @@ stloop: do k = s1,s2
              NEx_e = NEx_e+1
            end if!e_exact(j,k,l)
          end do!l
-         if(dispgeoms(j)%energy(k,k)<energyT(1))then
+         if(dispgeoms(j)%energy(k,k)<min(energyT_en(1),energyT(1)))then
            if(hasEner(j,k))then
              nrmener = nrmener +    (dispgeoms(j)%energy(k,k)-fitE(j,k,k))**2
              avgener = avgener + abs(dispgeoms(j)%energy(k,k)-fitE(j,k,k))
@@ -3334,9 +3335,9 @@ SUBROUTINE readMakesurf(INPUTFL)
   INTEGER,INTENT(IN) :: INPUTFL
   integer :: i
   NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,jshift,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
-                      flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
+                      flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, printError, &
                       ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, autoshrink,scalebycoef,&
-                      energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
+                      energyT,highEScale,energyT_en,highEScale_en,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv,& 
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
                       gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats,&
                       sval_diabat
@@ -3379,6 +3380,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   scaleEx   = 1D0
   intGradS  = 1D-1
   maxd      = 1D0
+  energyT_en = -1d0 
   energyT   = 1D30
   highEScale = 1D0
   toler     = 1D-3
@@ -3433,6 +3435,12 @@ SUBROUTINE readMakesurf(INPUTFL)
   ! round up inappropriate option values and do unit changes
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
+  if(energyT_en(1)<0)then
+    energyT_en=energyT
+    highEScale_en=highEScale 
+  else
+    energyT_en=energyT_en/ AU2CM1
+  end if
   gradcutoff = gradcutoff/ AU2CM1
   cpcutoff   = cpcutoff  / AU2CM1
   If(cpcutoff<=0)cpcutoff=gradcutoff

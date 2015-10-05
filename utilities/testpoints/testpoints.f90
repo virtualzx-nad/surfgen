@@ -70,6 +70,8 @@ program testpoints
     do j=1,nstates
       print "(2x,10F24.15)",h(j,:)
     end do
+    print *,"Diabatic energy(cm-1)"
+    print "(2x,10F24.15)",(h(j,j)*219474.6305d0,j=1,nstates)
     print *,""
     print *,"Adiabatic energy(a.u.)"
     print "(2x,10F24.15)",e

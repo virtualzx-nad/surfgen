@@ -601,12 +601,6 @@ CONTAINS
     integer   ::  iAdd
     integer   ::  iSym  ! index of symmetry setup
 
-PRINT *,"PERMCYCLE"
-PRINT *,"nterms=",pC%nterms
-do i=1,pC%nterms
-PRINT "(A,I3)","term:",I
-PRINT "(10I5)",pC%term(i)%p%coord
-end do
     ll=nl(m)
     rr=nr(m)
     if(LR/=ll*rr)stop"MatProj: inconsistent LR value"

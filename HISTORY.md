@@ -1,3 +1,7 @@
+## 2.8.6 (2015-10-05)
+
+* Now one can scale energies with different brackets from gradients.
+
 ## 2.8.5 (2015-07-15)
 
 * fixed a bug where couplings are incorrectly given too high weights
