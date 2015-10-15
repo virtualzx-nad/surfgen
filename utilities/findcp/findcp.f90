@@ -250,11 +250,11 @@ program findcp
   call readColGeom(geomfile,1,natm,aname,anum,cgeom,masses)
 
   print "(/,A)","-------------- Initial Geometry ------------"
-  call analysegeom(natm,cgeom,aname,anum,masses,1d8,.true.)
+  call analysegeom(natm,cgeom,aname,anum,masses,1.8d0,.true.)
   print "(/,A)","----------- Geometry Optimizations ---------"
   call findmin(natm,nst,cgeom,isurf,100,1d-3,1d-8 ,1d-7)
   print "(/,A)","--------------- Final Geometry -------------"
-  call analysegeom(natm,cgeom,aname,anum,masses,1d8,.true.)
+  call analysegeom(natm,cgeom,aname,anum,masses,1.8d0,.true.)
   print "(/,A)","------------ Harmonic Frequencies ----------"
   call calcHess(natm,cgeom,nst,isurf,1D-4,hess,.true.,skip)
   call writeHess(hess,3*natm)
