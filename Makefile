@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.8.6
+SGENVER :=2.8.7
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -106,16 +106,18 @@ ifdef DEBUGGING_SYMBOLS
     endif
    endif
   endif
-  ifdef NO_I8
-    CPOPT = 
-  else
-   ifneq ($(findstring gfortran,$(COMPILER)),)
-    CPOPT = -fdefault-integer-8 -m64
-   else
-    ifneq ($(findstring ifort,$(COMPILER)),)
-      CPOPT =  -i8
+  ifndef CPOPT 
+    ifdef NO_I8
+      CPOPT = 
+    else
+     ifneq ($(findstring gfortran,$(COMPILER)),)
+      CPOPT = -fdefault-integer-8 -m64
+     else
+      ifneq ($(findstring ifort,$(COMPILER)),)
+        CPOPT =  -i8
+      endif
+     endif
     endif
-   endif
   endif
   LKOPT = 
 else
@@ -129,17 +131,16 @@ else
     LKOPT    := -auto -lpthread -parallel
   else
    ifneq ($(findstring gfortran,$(COMPILER)),)
-    ifneq (,$(filter $(NO_I8),YES yes))
-      CPOPT    := -fopenmp -O3
-    else
-      CPOPT    := -fopenmp -O3 -m64
+    ifndef CPOPT
+      ifneq (,$(filter $(NO_I8),YES yes))
+        CPOPT    := -fopenmp -O3
+      else
+        CPOPT    := -fopenmp -O3 -m64
+      endif
+      ifdef DYNAMIC
+        CPOPT := $(CPOPT) -dynamic
+      endif
     endif
-    ifdef DYNAMIC
-      CPOPT := $(CPOPT) -dynamic
-    endif
-    LKOPT    :=
-   else
-    CPOPT    :=
     LKOPT    :=
    endif
   endif

@@ -1411,7 +1411,8 @@ stloop: do k = s1,s2
     DOUBLE PRECISION,intent(OUT):: DIJ(nstates,nstates)
     integer :: nDij
     double precision :: EMat(nstates*(nstates-1)/2,nstates*(nstates-1)/2)
-    double precision,dimension(nstates*(nstates-1)/2) :: RVec, sv
+    double precision,dimension(nstates*(nstates-1)/2) :: RVec
+    integer,dimension(nstates*(nstates-1)/2) :: jpvt
     integer :: i,j,k,l,lb,ub
     integer :: grpind(nstates)  ! specifies which degeneracy group a state belongs to
     integer :: smap(nstates,nstates),dmap(nstates*(nstates-1)/2,2)  !mapping between dij and state indices 
@@ -1476,7 +1477,8 @@ stloop: do k = s1,s2
     end do!k
 
     !solve the Dij values
-    CALL DGELSD(nDij,nDij,1,EMat,nDij,rvec,nDij,sv,1d-12,rank,WORK,LWORK,IWORK,INFO)
+    jpvt=0
+    CALL DGELSY(nDij,nDij,1,EMat,nDij,rvec,nDij,jpvt,1d-9 ,rank,WORK,LWORK,IWORK,INFO)
     !if(rank<nDij)print "(A,I4,A,I5)","Reduced rank at point ",pt,", rank=",rank
     if(INFO/=0)then
        print *,"Failed to solve linear equations in getDegDij"

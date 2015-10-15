@@ -633,7 +633,6 @@ CONTAINS
       if(LR>1)then !if dim>1, linearly independent rows of X are constructed
        LWORK=LR*5+1
        JPVT=0
-PRINT *,"PROJECTION"
        CALL DGEQP3(LR,LR,XT,LR,JPVT, TAU, WORK, LWORK, INFO)
        if(INFO/=0)stop"MatProj: Failed to decomposite XT"
        ! Filter out rows whose diagonal element is higher than the threshold.
@@ -641,14 +640,12 @@ PRINT *,"PROJECTION"
          if(XT(i,i)>MatProjCutOff)then
            nProj=nProj+1  ! Remove the transformation info output by DGEQP3
            XT(i,1:i-1)=dble(0)  !   and only keep the upper triangle matrix R.
-PRINT "(A,4E15.5)","XT=",xt(i,:)
          else   !!if(XT(i,i)>MatProjCutOff
            exit
          end if !if(XT(i,i)>MatProjCutOff
        end do !i=2,LR
       end if !if(LR>1)
       ! fill in the output array
-PRINT *,"NPROJ=",NPROJ
       do t=1,nProj
         if(LR>1)then
           xproj=0d0
@@ -670,8 +667,6 @@ PRINT *,"NPROJ=",NPROJ
          end do !do j=1,rr
         end do !do i=1,ll
         coef = coef / dnrm2(LR*pC%nTerms,coef,1)
-PRINT *,"COEF"
-PRINT "(4E15.5)",coef
         ! verifies if this new basis overlaps with an older basis
         ovlp = 0d0
         do i=1,iAdd

@@ -1,3 +1,7 @@
+## 2.8.6 (2015-10-15)
+
+Updates to utilities programs, fixed minor problems in Makefile
+
 ## 2.8.6 (2015-10-05)
 
 * Now one can scale energies with different brackets from gradients.

@@ -459,7 +459,7 @@ subroutine analysegeom(natoms,geom,aname,anum,masses,TLen,ShortList)
        d2 = geom(:,k)-geom(:,j)
        d2 = d2/dnrm2(3,d2,1)
        do l=i+1,natoms
-         if(l==j .or. l==k  .or. (hasOOP(l).and.hasOOP(i)) .or. &
+         if(l==j .or. l==k  .or. &
              (distmat(j,l)>TLen .and. distmat(k,l)>TLen)  )cycle
          d3 = geom(:,l)-geom(:,j)
          d3 = d3/dnrm2(3,d3,1)
