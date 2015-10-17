@@ -1461,7 +1461,7 @@ stloop: do k = s1,s2
                   dot_product(VIJ(:,J,J)-VIJ(:,I,I),hvec)
 !        EMat(k,k)=dot_product(gvec,gvec)-4*dot_product(hvec,hvec)
         do l=1,nstates
-          !if(l==i.or.l==j)cycle
+          if(grpind(i).ne.grpind(l))cycle
           if(l/=i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+sgn(l,i)*(  &
                 -dot_product(fitG(pt,:,l,j),gvec)+2*dot_product(fitG(pt,:,l,i),hvec))
           if(l/=j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+sgn(l,j)*(  &
@@ -1492,6 +1492,18 @@ stloop: do k = s1,s2
          print "(20F10.5)",EMat(:,i)
        end do
        print *,"INFO=",info
+       print "(A,20I4)","Group indexing for states:  ",grpind
+       print *,"fitE at point"
+       do i=1,nstates
+         print "(20F10.5)",fitE(pt,i,:)
+       end do
+       print *,"fitG at point"
+       do i=1,nstates
+         do j=i,nstates
+           print "(A,2I4)","Block",i,j
+           print "(20F10.5)",fitG(pt,:,i,j)
+         end do
+       end do
        stop
     end if
     

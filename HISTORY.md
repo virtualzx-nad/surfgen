@@ -1,4 +1,9 @@
-## 2.8.6 (2015-10-15)
+## 2.8.8 (2015-10-17)
+
+Fixed a bug in getDegDij where summation range for l was too wide
+Fixed a bug in torsion angle analysis
+
+## 2.8.7 (2015-10-15)
 
 Updates to utilities programs, fixed minor problems in Makefile
 
