@@ -1467,18 +1467,24 @@ stloop: do k = s1,s2
           if(l/=j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+sgn(l,j)*(  &
                 -dot_product(fitG(pt,:,l,i),gvec)-2*dot_product(fitG(pt,:,l,j),hvec))  
         end do!l
-      else!i and j are in same degeneracy group
+      else!i and j are not in same degeneracy group
         rvec(k) = - WIJ(i,j) 
         do l=1,nstates
-           if(l.ne.i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+fitE(pt,l,j)*sgn(l,i)
-           if(l.ne.j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+fitE(pt,l,i)*sgn(l,j)
+           if(grpind(l)==grpind(j))EMat(k,smap(l,i))=EMat(k,smap(l,i))+fitE(pt,l,j)*sgn(l,i)
+           if(grpind(l)==grpind(i))EMat(k,smap(l,j))=EMat(k,smap(l,j))+fitE(pt,l,i)*sgn(l,j)
         end do
       end if!i and j are in same degeneracy group
     end do!k
 
+!print *,"PT ",pt
+!PRINT *,"EMat  :"
+!do i=1,nstates*(nstates-1)/2
+!  print "(20F10.5)",EMat(:,i)
+!end do
+
     !solve the Dij values
     jpvt=0
-    CALL DGELSY(nDij,nDij,1,EMat,nDij,rvec,nDij,jpvt,1d-9 ,rank,WORK,LWORK,IWORK,INFO)
+    CALL DGELSY(nDij,nDij,1,EMat,nDij,rvec,nDij,jpvt,1d-9 ,rank,WORK,LWORK,INFO)
     !if(rank<nDij)print "(A,I4,A,I5)","Reduced rank at point ",pt,", rank=",rank
     if(INFO/=0)then
        print *,"Failed to solve linear equations in getDegDij"
@@ -1487,6 +1493,8 @@ stloop: do k = s1,s2
        do i=1,nstates
          print "(10F10.5)",ckl(pt,:,i)
        end do
+       print *,"Block map: "
+       print "(10(2I4,4x))",(dmap(i,:),i=1,nDij)
        print *,"EMat  :"
        do i=1,nstates*(nstates-1)/2
          print "(20F10.5)",EMat(:,i)
@@ -1517,6 +1525,8 @@ stloop: do k = s1,s2
     end do!k 
     deallocate(WORK)
     deallocate(IWORK)
+
+
   END SUBROUTINE getDegDij
 
 !------------------------------------------------------------------
