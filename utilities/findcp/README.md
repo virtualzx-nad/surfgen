@@ -47,6 +47,22 @@ file can be changed in `surfgen.in`
 This file defiles the irreducible representation matrices of the CNPI group carried by the quasi-diabatic states used to 
 construct Hd.
 
+* findcp.in
+This file controls search parameters. It is most useful for locating saddle
+points that may be difficult to find easily. Contents:
+ &cpsearch
+   niter       = [100] Maximum number of iterations
+   egrad_tol   = [1d-9] Energy gradient convergence tolerance
+   shift       = [1d-5] Value of shift
+   disp_tol    = [1d-5] Step size convergence tolerance
+   un_infile   = [40] Unit number of input file.
+   grad_scale  = [1d0] Scaling of gradient.
+   hess_disp   = [1d-5] Displacement for hessian calculation.
+   maxdisp     = [1d-1] Maximum size of displacement.
+   sadd_search = ['N'] Saddle point search flag. Not implemented - CLM (2015)
+   old_geomfl  = ['old.geom'] Old geometry file.
+   new_geomfl  = ['new.geom'] New geometry file.
+ /
 Method
 ------
 

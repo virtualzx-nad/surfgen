@@ -78,26 +78,25 @@ subroutine getFreq(natoms,masses,hess,w,cg,anm,pl,mol)
                 print "(2x,'Mode ',i5,5x,'Frequency: ',f12.2)", i, w(i)
                 do j=1, natoms
                         print "(2x,3f15.8)", &
-                        hmw((j-1)*3 + 1,i)/sqrt(masses(j)), &
-                        hmw((j-1)*3 + 2,i)/sqrt(masses(j)), & 
-                        hmw((j-1)*3 + 3,i)/sqrt(masses(j))
+                        hmw((j-1)*3 + 1,i), &
+                        hmw((j-1)*3 + 2,i), & 
+                        hmw((j-1)*3 + 3,i)
                 end do
         end do
   end if
 
   ! print molden output?
   if (mol) then
-          call gen_molden_file(cg, hmw, w, natoms, masses, anm)
+          call gen_molden_file(cg, hmw, w, natoms, anm)
   end if
   return
 end subroutine getFreq
 
 ! gen_molden_file: generate molden frequency file
-subroutine gen_molden_file(cg, evec, eval, natoms, masses,anames)
+subroutine gen_molden_file(cg, evec, eval, natoms, anames)
         implicit none
         integer, intent(in) :: natoms
         character*3,dimension(natoms) :: anames
-        real*8, dimension(natoms), intent(in)   :: masses
         real*8, dimension(3*natoms), intent(in) :: cg
         real*8, dimension(3*natoms,3*natoms), intent(in) :: evec
         real*8, dimension(3*natoms), intent(in) :: eval
@@ -135,9 +134,9 @@ subroutine gen_molden_file(cg, evec, eval, natoms, masses,anames)
         do i=1, 3*natoms
                 write(mu,"(1x,'vibration',i24)") i
                 do j=1,natoms
-                        write(mu,"(3f13.5)") evec((j-1)*3+1,i)/sqrt(masses(j)), &
-                                evec((j-1)*3+2,i)/sqrt(masses(j)), &
-                                evec((j-1)*3+3,i)/sqrt(masses(j))
+                        write(mu,"(3f13.5)") evec((j-1)*3+1,i), &
+                                evec((j-1)*3+2,i), &
+                                evec((j-1)*3+3,i)
                 end do
         end do
         write(mu,"(1x,A)") "--> end of molden input"
