@@ -7,6 +7,11 @@
 !
 ! For details see README file.
 !
+!-- Change Log --
+! 12-05-2015 - CLM - Added input file routine.
+!                    Added printing of s vector.
+!                    Added molden output of g/h/s vectors.
+!----------------
 !This program uses surfgen evaluation library for construction and evaluation of
 !Hd, as well as geometry input. 
 program testpoints
@@ -20,6 +25,9 @@ program testpoints
   double precision,dimension(:,:),allocatable  :: cgeoms,h
   double precision,dimension(:,:,:),allocatable:: cg,dcg
   double precision,external :: dnrm2
+
+  logical :: printm ! print molden output
+
   print *,"-------------------------------------------------"
   print *,"Entering testpoints, a surfgen point testing utility"
   print *,""
@@ -27,6 +35,9 @@ program testpoints
   print *,"  2013 Yarkony group, Johns Hopkins University"
   print *,"-------------------------------------------------"
 
+  print *,""
+  print *,"Checking for input file"
+  call read_input_file(printm)
   print *,""
   print *,"Initializing potential"
   call initPotential()
@@ -98,6 +109,16 @@ program testpoints
       print "(I6,30E17.7)",j,norms(1:j-1)
     end do
     print *,""
+    print *,"Norms of s vectors"
+    print "(8x,30I17)",(j,j=1,nstates-1)
+    do j=2,nstates
+      do k=1,j-1
+        dvec=cg(:,j,j)+cg(:,k,k)
+        norms(k)=dnrm2(3*natoms,dvec,1)/2
+      end do
+      print "(I6,30E17.7)",j,norms(1:j-1)
+    end do
+    print *,""
     print *,"Cartesian Gradients and Couplings in Adiabatic Representation"
     do j=1,nstates
       do k=1,j
@@ -118,4 +139,37 @@ program testpoints
   ! get neighboring point index
   call getNeighbor(ptid)
   if(ptid/=0) print *,"Index of Closest Data Point : ", ptid
+
+contains
+  ! read_input_file: reads input file for testpoints.x
+  subroutine read_input_file(printm)
+          implicit none
+          logical, intent(out) :: printm
+
+          character(25) :: flname = 'testpoints.in'
+          integer       :: flunit = 21, ios
+          integer, parameter :: fl_not_found = 29
+
+          namelist /testoutput/ printm
+          printm = .false.
+
+          ! Open input file. If file is not found, set printm = .false.
+          ! and return. Else, read the file.
+          open(file = flname, unit = flunit, status = 'unknown', &
+                  action = 'read', iostat = ios)
+          if (ios .eq. fl_not_found) then
+                  print *, "No input file found."
+                  return
+          else if (ios .eq. 0) then
+                  read(unit = flunit, nml = testoutput)
+                  return
+          else
+                  print "(a,i5,a)", "**Error ", ios, &
+                          " occurred opening input file!**"
+                  return
+          end if
+          return
+  end subroutine read_input_file
+
+        
 end program testpoints
