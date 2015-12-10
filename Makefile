@@ -206,7 +206,12 @@ ifndef LIBS
   endif #is on hopper.nersc.gov
  else
     LIBS := $(BLAS_LIB)
-    LDFLAGS := -openmp
+    # test if openmpi libraries have been included in BLAS library path
+    ifneq ($(findstring mp,$(BLAS_LIB)),)
+	LDFLAGS :=
+    else
+    	LDFLAGS := -openmp
+    endif	
  endif #BLAS_LIB
 endif #ifndef $LIBS
 
