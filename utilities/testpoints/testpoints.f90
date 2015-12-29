@@ -11,14 +11,18 @@
 ! 12-05-2015 - CLM - Added input file routine.
 !                    Added printing of s vector.
 !                    Added molden output of g/h/s vectors.
+! 12-18-2015 - CLM - Molden output is mass-weighted if selected
+!                     in input.
+!                    Added print level implementation.
 !----------------
 !This program uses surfgen evaluation library for construction and evaluation of
 !Hd, as well as geometry input. 
 program testpoints
   implicit none
   integer,parameter  ::  MaxGeoms = 10000
+  real*8,  parameter ::  au2ang = 0.529177249
   character(255)     ::  geomfl 
-  integer            ::  npts, i,j,k,natoms,nstates,ios,ptid
+  integer            ::  npts, i,j,k,l,m,natoms,nstates,ios,ptid
 
   character(3),dimension(:),allocatable        :: atoms
   double precision,dimension(:),allocatable    :: anums,masses,e,dvec,norms
@@ -26,7 +30,9 @@ program testpoints
   double precision,dimension(:,:,:),allocatable:: cg,dcg
   double precision,external :: dnrm2
 
-  logical :: printm ! print molden output
+  logical :: printm, mweight ! print molden output, print molden as 
+                             ! mass-weighted vectors
+  integer :: printl          ! print level
   real*8,  dimension(:,:,:),allocatable :: hvec, svec, gvec !h/s/g vectors
   integer, dimension(:),    allocatable :: mex
 
@@ -40,7 +46,7 @@ program testpoints
   print *,""
   print *,"Checking for input file"
   allocate(mex(2))
-  call read_input_file(printm, mex)
+  call read_input_file(printm, mweight, printl, mex)
   print *,""
   print *,"Initializing potential"
   call initPotential()
@@ -102,6 +108,13 @@ program testpoints
         dvec=cg(:,j,j)-cg(:,k,k)
         gvec(:,j,k)=dvec/2
         norms(k)=dnrm2(3*natoms,dvec,1)/2
+        if (mweight) then
+          do l=1,natoms
+            do m=1,3
+              gvec((l-1)*3+m,j,k)=gvec((l-1)*3+m,j,k)/dsqrt(masses(l))
+            end do
+          end do
+        end if
       end do
       print "(I6,30E17.7)",j,norms(1:j-1)
     end do
@@ -113,6 +126,13 @@ program testpoints
         dvec=cg(:,j,k)*(e(j)-e(k))
         hvec(:,j,k)=dvec
         norms(k)=dnrm2(3*natoms,dvec,1)
+        if (mweight) then
+          do l=1,natoms
+            do m=1,3
+              hvec((l-1)*3+m,j,k) = hvec((l-1)*3+m,j,k)/dsqrt(masses(l))
+              end do
+          end do
+        end if
       end do
       print "(I6,30E17.7)",j,norms(1:j-1)
     end do
@@ -124,6 +144,13 @@ program testpoints
         dvec=cg(:,j,j)+cg(:,k,k)
         svec(:,j,k)=dvec/2
         norms(k)=dnrm2(3*natoms,dvec,1)/2
+        if (mweight) then
+          do l=1,natoms
+            do m=1,3
+              svec((l-1)*3+m,j,k) = svec((l-1)*3+m,j,k)/dsqrt(masses(l))
+            end do
+          end do
+        end if
       end do
       print "(I6,30E17.7)",j,norms(1:j-1)
     end do
@@ -144,8 +171,11 @@ program testpoints
       end do!k
     end do!j
     if (printm .and. i .eq. npts .and. mex(1) .ne. 0) then
+            if (mweight) then
+                print *, "ALERT: mass-weighted g, h and s being used!"
+            end if
             call print_molden_output(gvec, hvec, svec, nstates, &
-                natoms, atoms, cgeoms(:,i), mex)    
+                natoms, atoms, cgeoms(:,i), mex, printl)    
             call rot_g_h_vectors(gvec(:,mex(2),mex(1)),hvec(:,mex(2),mex(1)),&
                 natoms) 
             call express_s_in_ghplane(gvec(:,mex(2),mex(1)), &
@@ -201,25 +231,28 @@ contains
           sxy(1) = ddot(3*na,s,1,gx,1)
           sxy(2) = ddot(3*na,s,1,hy,1)
           
-          print "('||s|| = ',f8.3)", dnrm2(3*na,s,1)
+          print "('||s|| = ',f15.8)", dnrm2(3*na,s,1)
           print "('S vector in g-h plane:')"
-          print "('S(x,y) = (',f8.3,',',f8.3,')')", sxy(1), sxy(2)
+          print "('S(x,y) = (',f15.8,',',f15.8,')')", sxy(1), sxy(2)
         
           return
   end subroutine express_s_in_ghplane
 
   ! read_input_file: reads input file for testpoints.x
-  subroutine read_input_file(printm, mex)
+  subroutine read_input_file(printm, mweight, printl, mex)
           implicit none
-          logical, intent(out) :: printm
+          logical, intent(out) :: printm, mweight
+          integer, intent(out) :: printl
           integer, dimension(2), intent(inout) :: mex
 
           character(25) :: flname = 'testpoints.in'
           integer       :: flunit = 21, ios
           integer, parameter :: fl_not_found = 29
 
-          namelist /testoutput/ printm, mex
+          namelist /testoutput/ printm, mweight, printl, mex
           printm = .false.
+          mweight= .false.
+          printl = 0
           mex(1) = 0
           mex(2) = 0
 
@@ -239,9 +272,9 @@ contains
   end subroutine read_input_file
 
   ! print_molden_output: print g/h/s vectors in molden format
-  subroutine print_molden_output(gv, hv, sv, ns, na, a, g, mex)
+  subroutine print_molden_output(gv, hv, sv, ns, na, a, g, mex, pl)
           implicit none
-          integer, intent(in) :: ns, na
+          integer, intent(in) :: ns, na, pl
           integer, dimension(2),          intent(in) :: mex
           character(3), dimension(na),    intent(in) :: a
           real*8,  dimension(3*na,ns,ns), intent(in) :: gv, hv, sv
@@ -268,16 +301,16 @@ contains
 
           call print_molden_freq(flun, fq, 3)
           call print_molden_geom(flun, g, a, na)
-          call print_molden_vecs(flun, gv, hv, sv, ns, na, nfq, mex)
+          call print_molden_vecs(flun, gv, hv, sv, ns, na, nfq, mex, pl)
 
           close(flun)
           return
   end subroutine print_molden_output
 
   ! print_molden_vecs: print vectors in molden format. Expects g/h/s
-  subroutine print_molden_vecs(u, gv, hv, sv, ns, na, nfq, mex)
+  subroutine print_molden_vecs(u, gv, hv, sv, ns, na, nfq, mex, pl)
           implicit none
-          integer, intent(in) :: nfq, na, ns, u
+          integer, intent(in) :: nfq, na, ns, u, pl
           integer, dimension(2), intent(in) :: mex
           real*8,  dimension(3*na,ns,ns), intent(in) :: gv, hv, sv
           real*8 :: ngv, nhv, nsv
@@ -292,9 +325,19 @@ contains
           write(u,"(1x,'[FR-NORM-COORD]')")
           p = 1
           write(u,"(1x,'vibration',i24)") p
+          if (pl > 0) then
+                  print "(a,2i2,a)", &
+                          " g-vector for ", mex(1), mex(2)," intersection:"
+                  print "(3f12.5)", gv(:,i,j)
+          end if
           write(u,"(3f12.5)") gv(:,i,j)/ngv
           p = 2
           write(u,"(1x,'vibration',i24)") p
+          if (pl > 0) then
+                  print "(a,2i2,a)", &
+                          " h-vector for ", mex(1), mex(2)," intersection:"
+                  print "(3f12.5)", hv(:,i,j)
+          end if
           write(u,"(3f12.5)") hv(:,i,j)/nhv
           p = 3
           write(u,"(1x,'vibration',i24)") p
