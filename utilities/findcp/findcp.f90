@@ -375,11 +375,11 @@ program findcp
   integer               :: niter, printlvl
   double precision      :: egrad_tol, shift, disp_tol, grad_scale, hess_disp, maxdisp
   character*1           :: sadd_search
-  logical               :: check_inputfl, molden
+  logical               :: check_inputfl, molden, ant_output
   character*300         :: new_geomfl, old_geomfl
 ! Namelist input for inputfile
   namelist /cpsearch/   niter, egrad_tol, shift, disp_tol, grad_scale, hess_disp, &
-      maxdisp, sadd_search, printlvl, molden
+      maxdisp, sadd_search, printlvl, molden, ant_output
 ! If not read in, here are the default values:
   niter=100                         ! Max iterations
   egrad_tol=1d-9                    ! Energy gradient tolerance for convergence
@@ -394,6 +394,7 @@ program findcp
   new_geomfl="new.geom"             ! New geometry file
   printlvl=0                        ! Print level
   molden=.false.                    ! Generate molden output
+  ant_output=.false.                ! Print final geometry in ANT format
 
   print *," ***************************************** "
   print *," *    findcp.x                           * "
@@ -483,6 +484,10 @@ program findcp
  
   ! Print final geometry
   call analysegeom2(natm,cgeom,aname,anum,masses,new_geomfl)
+
+  if (ant_output) then
+      call print_ant_output(natm, cgeom, aname, anum, masses)
+  end if
   
 ! deallocate arrays
   deallocate(masses)
@@ -495,6 +500,24 @@ program findcp
 
 end program findcp
 
+!*
+! print_ant_output: print geometry in ANT initial geometry format
+!*
+subroutine print_ant_output(na, g, aname, anum, masses)
+    implicit none
+    integer, intent(in) :: na
+    real*8, dimension(3, na),   intent(in) :: g
+    real*8, dimension(na),      intent(in) :: anum, masses
+    character(3), dimension(na),intent(in) :: aname
+    integer :: i
+    print *, ""
+    print *, "Final geometry (ANT format):"
+    do i = 1, na
+        print 100, trim(aname(i)), masses(i), g(1:3,i)
+    end do
+    return
+100 format(a2,4f14.8)
+end subroutine print_ant_output
 
 !------ write hessian file to disk, columbus format
 subroutine writeHess(hess,nvibs)
