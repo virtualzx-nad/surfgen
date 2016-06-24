@@ -131,13 +131,15 @@ SUBROUTINE readginput()
     INTEGER,DIMENSION(20,MAX_ALLOWED_SYM)        :: groupSym,groupPrty
 
     NAMELIST /GENERAL/      jobtype,natoms,order,nGrp,groupsym,groupprty,&
-                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder
+                            printlvl,inputfl,atmgrp,nSymLineUps,cntfl,CpOrder,&
+                            basisfl
 
     nSymLineUps = 1
     CpOrder=-1
     natoms     = 2
     printlvl   = 1
     inputfl    = ''
+    basisfl    = ''
     print *,"Entering readginput()."
     !----------- READ GENERAL INPUT ----------------!
     open(unit=INPUTFILE,file='surfgen.in',access='sequential',form='formatted',&

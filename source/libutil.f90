@@ -413,7 +413,7 @@ subroutine analysegeom(natoms,geom,aname,anum,masses,TLen,ShortList)
   logical,intent(in)           ::  ShortList
   double precision, parameter  ::  bohr2ang=0.529177249d0
   integer   ::  i,j,k,l
-  double precision  ::  distmat(natoms,natoms),  d,d1(3),d2(3),d3(3),cpd(3)
+  double precision  ::  distmat(natoms,natoms),  d,d1(3),d2(3),d3(3),cpd(3),p1(3),p3(3),ang
   double precision,external  ::   dnrm2
   logical :: hasOOP(natoms)
   print *,"Cartesian Geometries in Atomic Units"
@@ -447,20 +447,18 @@ subroutine analysegeom(natoms,geom,aname,anum,masses,TLen,ShortList)
     end do !j
   end do   !i    
 
-  hasOOP = .false.
-  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Torsion Angle (Degrees)"
+  print "(/,A)","   Atom1*  Atom2   Atom3   Atom4   OOP Angle (Degrees)"
   do i=1,natoms
-    do j=1,natoms
+    do j=1,natoms-2
      if(j==i)cycle
      d1 = geom(:,j)-geom(:,i)
      d1 = d1/dnrm2(3,d1,1)
-     do k=j+1,natoms
-       if(k==i .or. distmat(j,k)>TLen .or. (distmat(i,j)>TLen .and. distmat(i,k)>TLen) )cycle
-       d2 = geom(:,k)-geom(:,j)
+     do k=j+1,natoms-1
+       if(k==i .or. distmat(i,k)>TLen .or. distmat(i,j)>TLen  )cycle
+       d2 = geom(:,k)-geom(:,i)
        d2 = d2/dnrm2(3,d2,1)
-       do l=i+1,natoms
-         if(l==j .or. l==k  .or. (hasOOP(l).and.hasOOP(i)) .or. &
-             (distmat(j,l)>TLen .and. distmat(k,l)>TLen)  )cycle
+       do l=k+1,natoms
+         if(l==i .or. distmat(i,l)>TLen )cycle
          d3 = geom(:,l)-geom(:,j)
          d3 = d3/dnrm2(3,d3,1)
          cpd(1) = d1(3)*(d2(2)-d3(2))+d2(3)*d3(2)-d2(2)*d3(3)+d1(2)*(d3(3)-d2(3))
@@ -470,16 +468,36 @@ subroutine analysegeom(natoms,geom,aname,anum,masses,TLen,ShortList)
            asin((-d1(3)*d2(2)*d3(1)+d1(2)*d2(3)*d3(1)+d1(3)*d2(1)*d3(2)       &
                 -d1(1)*d2(3)*d3(2)-d1(2)*d2(1)*d3(3)+d1(1)*d2(2)*d3(3))/      &
                dnrm2(3,cpd,1))
-         if(ShortList)then
-            hasOOP(l)=.true.
-            hasOOP(i)=.true.
-            if(distmat(i,j)<TLen.and.distmat(l,j)<TLen)hasOOP(k)=.true.
-            if(distmat(i,k)<TLen.and.distmat(l,k)<TLen)hasOOP(j)=.true.
-         end if
        end do! l
      end do!k
     end do !j
   end do   !i    
+
+  print "(/,A)","   Atom1   Atom2   Atom3   Atom4   Torsion Angle (Degrees)"
+  do i=1,natoms-1
+    do j=1,natoms
+     if(j==i .or. distmat(i,j)>TLen)cycle
+     d1 = geom(:,i)-geom(:,j)
+     d1 = d1/dnrm2(3,d1,1)
+     do k=1,natoms
+       if(k==i .or. k==j .or. distmat(j,k)>TLen  )cycle
+       d2 = geom(:,k)-geom(:,j)
+       d2 = d2/dnrm2(3,d2,1)
+       p1=d1-dot_product(d2,d1)*d2
+       p1=p1/dnrm2(3,p1,1)
+       do l=i+1,natoms
+         if(l==j .or. l==k .or. distmat(k,l)>TLen )cycle
+         d3 = geom(:,l)-geom(:,k)
+         d3 = d3/dnrm2(3,d3,1)
+         p3=d3-dot_product(d2,d3)*d2
+         p3=p3/dnrm2(3,p3,1)
+         ang= 90/Acos(0d0)* acos(dot_product(p1,p3))
+         print "(2x,4(I5,3x),F12.4)",I,J,K,L, ang 
+       end do! l
+     end do!k
+    end do !j
+  end do   !i    
+
 end subroutine analysegeom
 
 !------------------------------------------------------------------------------
@@ -859,7 +877,7 @@ grploop:  do igrp=1,pt%ndeggrp  ! in case there are multiple groups of degenerac
       end do!i=ldeg,udeg      
       if(printlvl>2)print "(4x,A,I4,A,E15.7,A,I3,A,I3,A)","iteration ",iter,", max(g.h)=",max_gh,&
                         "(",mi,",",mj,")"
-      call conformSgn(pt%nvibs,nstates,gradnew,pt%grads,ckl)
+      call conformSgn(pt%nvibs,nstates,gradnew(:pt%nvibs,:,:),pt%grads(:pt%nvibs,:,:),ckl)
     end do!while(iter<maxiter.and.max_gh>toler)do
     if(iter==0.and.printlvl>2)then
         print *,"  Ab initio g vector:"

@@ -77,9 +77,12 @@ Used by potential evaluation libraries only. Requires namelist:
 Construct fit Hd from ab initio data. Required namelist: 
 .Em MAKESURF
 .It 2
-Find minima or conical intersections on the ab initio surface corresponding to a 
-fit Hd.   Requires namelist:
-.Em MINMEX
+Perform term selection procedure at all data points from the current expansion.  The selected basis 
+will effectively span the same space as the full expansion, removing linear dependencies. The new 
+expansion will be exported to file 
+.Ar basis.data .
+This can be used in a future fit to limit the expansion size.  If a fit is performed with a selected
+basis set, the basis set definition will needs to be supplie to the evaluation subroutine as well.
 .El
 .It natoms
 .Sy INTEGER [0]
@@ -150,6 +153,13 @@ Controls the level of infomation printed to standard output.
 Name of Hd expansion coefficient input file.  Hd will be initialized using
 these coefficients.  When empty or file not exist, uncoupled surface with 
 constant (but not identical) energies will be used to initialize Hd.
+.It basisfl
+.Sy CHARACTER(255) [\(aq\(aq]
+Name of basis expansion definition file, defined using 
+.Em jobtype=2
+mode.  The when generated, the basis file is named 
+.Ar basis.data ,
+and contains the index of all selected matrices for each block.
 .El
 .Ss MAKESURF
 This namelist contains parameters that control the surface fitting procedure.
@@ -218,6 +228,39 @@ Optional.
 The program will search all the pairs of states that both has an energy data in energy input file.
 .El
 .Pp
+.Sy Fitting and Saving Diabats
+When a diabatic representation is available for the system, the program can construct the initial 
+guess of Hd from the values and gradients of diabats, which should be saved in 
+.Ar diabats.data
+file.  This is a block by block fit which is much less expansive than one iteration of the actual
+fitting procedure.   One may choose to just generate the Hamiltonian without fitting by setting
+maxiter to 0 or -1. Alternatively, one can use this diabats as initial guess and refine it with
+fitting procedure, which is generally recommended. 
+When this functionality is used to reconstruct Hd from a different expansion scheme, the user would
+first use 
+.Va parseDiabats
+option to generate a
+.Ar diabats.data
+file, then copy it to the new input directory and include 
+.Va loadDiabats
+option in the new fit to perform the reconstruction.
+One can also use this if an approximate diabatrization scheme is available, in which case the approximate
+diabatic representation would be saved to 
+.Ar diabats.data
+with proper formatting to be used as initial guess.
+.Bl -tag -width VariableNames -compact
+.It loadDiabats
+.Sy LOGICAL [.false.]
+Construct initial Hd by fitting value and gradients of all data points in diabatic representation.  
+For each block, a least-squares fit will be performed, with diagonal shifts of 10^-1 to 
+avoid problems with singularity.  
+.It parseDiabats
+.Sy LOGICAL [.false.] 
+Save values and gradients of the current Hd at all data points to 
+.Ar diabats.data
+file.
+.El
+.Pp
 .Sy Data Selection and Weighing
 .Bl -tag -width VariableNm -compact
 .It npoints 
@@ -280,21 +323,16 @@ are properly minimized, and the cutoff term prevents problematic singular behavi
 This prevents the mathematical complexity of directly taking deratives of the couplings
 with respect to fitting coefficients, which will give rise to term that correspond
 to change in energy difference.
-.It ediffcutoff2
-.Sy DOUBLE PRECISION [1.]
-.It nrmediff2
-.Sy DOUBLE PRECISION [100.]
-Similar to the above case, the energy equations are weighed up by factor
-.Sy nrmediff2/(\(*DE+ediffcutoff2)
-if this value is greater than 1.   This is to ensure that energy differences
-are properly reproduced for points that are close to degeneracy.
 .El
 .Pp
 .Sy Fitting Algorithm and Acceleration
 .Bl -tag -width VariableNm -compact
 .It maxiter
 .Sy INTEGER [3]
-Maximum number of iterations for the fitting algorithm.
+Maximum number of iterations for the fitting algorithm.  When set to 0, the program will not
+perform the fit, but only evalaute the errors, calculate gradients of the Lagrangian, and 
+generate proper output files, if specified.  Same procedure will happen when set to -1, 
+except that the program will not calculate the Lagrangian gradients.
 .It toler
 .Sy DOUBLE PRECISION [1D-3]
 Convergence tolerance for change in expansion coefficient.
@@ -330,12 +368,6 @@ to the quality of fit.  As opposed to
 which only changes the convergence procedure but does not affect the converged results,
 .Ar flattening 
 changes the Lagrangian and thus will result in a different converged Hd.
-.It ndiis
-.Sy INTEGER [10]
-Maximum dimensionality of DIIS interpolation space
-.It ndstart
-.Sy INTEGER [10]
-The number of iterations to start DIIS interpolation.
 .It linSteps
 .Sy INTEGER [0]
 Number of linear steps to perform.  When greater than 0, the program will break the 
@@ -413,11 +445,6 @@ as `guide`.
 Whether the new eigenvectors will be ordered and phased to match the vectors 
 from the previous iteration.  This allows a more consistent and smoother convergence
 but may increase the tendency to match the states in a non-optimal way.
-.It maxRot
-.Sy DOUBLE PRECISION [.0]
-When set greater than 0, the eigenvectors rotation between rotations are monitored 
-and when the rotation is larger than this parameter the rotation is dumped to this value.
-.Sy HAVE NOT BEEN TESTED FOR MORE THAN 2 STATES.  DO NOT USE IT IF YOU HAVE >2 STATES!
 .El
 .Pp
 .Sy Local Coordinate Construction
@@ -443,24 +470,20 @@ will be weighed by factor
 where
 .Sy ev
 is the eigenvalue.
-.It gScaleMode
-.Sy INTEGER [2]
-Controls how the gradients and couplings will be weighed according to 
-.Em intGradS .
-Available scaling methods are :
-.Bl -tag -width xxxx -compact
-.It =0   
-Do not scale
-.It >0   
-Scale all coordinates
-.It <0   
-Scale couplings only
-.El
 .It deg_cap
 .Sy DOUBLE PRECISION [1D-5]
-Threshold for energy difference below which the states will be considered degenerate.
-Intersection adapted coordinate will be used for these electronic states.   
-.Em Degeneracy for more than 2 states is coded but never tested.
+Threshold for energy difference below which the states will be considered quasi-degenerate.
+Intersection adapted coordinate will be used for these electronic states, by rotating the 
+degenerate states to make all pairs of 
+.Em g
+and 
+.Em h
+vectors orthgonal.  Gradients and couplings for all states that are quasi-degenerate are needed
+to perform the rotations.   
+.It deggrdbinding
+.Sy LOGICAL [.true.]
+When this parameter is set to true, the program will remove all gradients and couplings from a
+quasi-degenerate group of states if any of the data required to perform rotation is missing.
 .El
 .Pp
 .Sy Removal of Null Space
@@ -511,6 +534,36 @@ No effect when
 .Sy LOGICAL [.false.]
 This option specifies if geometry and error information will be generated for error analysis procedure in `libsurfgen`.
 Geometries will be stored in file `refgeom` and error info will be stored in `error.log`.
+.El
+.Pp
+.Sy Automatic data point management
+The user can use the 
+.Em mn
+keyword in 
+.Ar points.in
+to specify ranges of data points to be added through automatic data point management module.  These data points will
+starts with a weight of 0 and be automatically adjusted to their full weight when they are considered qualitatively 
+correct by meeting the criteria specified by the following parameters.  The management module will check over all 
+managed data points and add data before every iteration.  Usually one can perform a fit for a core `skeletal`
+region, then use the data point management procedure to add the bulk of the data points.  This can usually speed up
+the growing of domain of definition and helps the user to identify problematic data points that are inconsistent with
+other points or too far from well-defined domain.
+.Bl -tag -width VariableNm -compact
+.It mng_ener
+.Sy DOUBLE PRECISION [2000.]
+Energy error threshold.  A point can only be added if all energy errors are below this threshold. The number is given
+in cm^-1.
+.It mng_grad
+.Sy DOUBLE PRECISION [3d-2]
+Gradient and coupling error threshold.  A point can only be added of errors of all energy gradient or coupling (times
+energy difference) components are below this value.  In atomic units.(bohr^-1)
+.It mng_scale_ener
+.Sy LOGICAL [.false.]
+This parameter specifies if the energy errors will be scaled by the high energy scaling schemes.  This should not be 
+set to true if the scaling weight is extremely small.
+.It mng_scale_grad
+.Sy LOGICAL [.true.]
+This parameter specifies if the gradient and coupling errors will be scaled by the high energy scaling schemes.  
 .El
 .Pp
 .Ss POTLIB

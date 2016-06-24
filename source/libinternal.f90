@@ -361,7 +361,7 @@ SUBROUTINE oop(natoms,atms,cgeom,qval,bval,scale)
 ! calculate value of scaled OOP angle and its derivatives
   denom=exp(log(product(dnorm2))/2*scale)
   if(abs(denom)<1d-30)stop "OOP angle cannot be defined when atoms coincide."
-  qval=det3(dvecs(:,1:3))/denom
+  qval=det3(dvecs)/denom
   do i=1,3
     do j=1,3
       ddvec(i,j)=sum(sgns(:,i)*dvecs(j,:)/dnorm2(:))
@@ -382,7 +382,7 @@ CONTAINS
   ! this function calculates the value of a 3x3 determinant
   FUNCTION det3(m)
     IMPLICIT NONE
-    double precision ::  det3, m(3,3)
+    double precision ::  det3, m(:,:)
     det3=(m(1,2)*m(2,3)-m(1,3)*m(2,2))*m(3,1)+&
          (m(1,3)*m(2,1)-m(1,1)*m(2,3))*m(3,2)+&
          (m(1,1)*m(2,2)-m(1,2)*m(2,1))*m(3,3)
@@ -688,7 +688,7 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   double precision,intent(IN)                     :: factor 
 
   INTEGER           :: i, j, sgns(6,4)
-  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),  pw,   &
+  DOUBLE PRECISION  :: dnorm2(6), dvecs(6,3), s(3),  pw, tdv(3,6),  &
                        geom(4,3), ddvec(3,3), ss,    dw(12),    &
                        coef(2), dwdR(3,12), w(3), dwdR2(3,12), w2(3)
 ! eprod = product of the scaling exponentials
@@ -742,15 +742,16 @@ SUBROUTINE oop3(natoms,atms,cgeom,qval,bval,scale,sctype,factor)
   end do
 
 ! calculate value of unscaled OOP coordinate and its derivatives
-  fval=det3(dvecs(1:3,:))
+  fval=det3(dvecs)
   do i=1,3
     do j=1,3
       ddvec(i,j)=sum(sgns(:,i)*dvecs(:,j)/dnorm2(:))
     end do
   end do
-  fbmat(1:3)=cross(dvecs(2,:),dvecs(3,:))
-  fbmat(4:6)=cross(dvecs(3,:),dvecs(1,:))
-  fbmat(7:9)=cross(dvecs(1,:),dvecs(2,:))
+  tdv=transpose(dvecs)
+  fbmat(1:3)=cross(tdv(:,2),tdv(:,3))
+  fbmat(4:6)=cross(tdv(:,3),tdv(:,1))
+  fbmat(7:9)=cross(tdv(:,1),tdv(:,2))
   fbmat(10:12)=-fbmat(1:3)-fbmat(4:6)-fbmat(7:9)
 
   pw = product(w)
@@ -788,7 +789,7 @@ CONTAINS
   ! this function calculates the value of a 3x3 determinant
   FUNCTION det3(m)
     IMPLICIT NONE
-    double precision ::  det3, m(3,3)
+    double precision ::  det3, m(:,:)
     det3=(m(1,2)*m(2,3)-m(1,3)*m(2,2))*m(3,1)+&
          (m(1,3)*m(2,1)-m(1,1)*m(2,3))*m(3,2)+&
          (m(1,1)*m(2,2)-m(1,2)*m(2,1))*m(3,3)

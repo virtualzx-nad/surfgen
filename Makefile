@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.7.5
+SGENVER :=2.8.8
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -106,16 +106,18 @@ ifdef DEBUGGING_SYMBOLS
     endif
    endif
   endif
-  ifdef NO_I8
-    CPOPT = 
-  else
-   ifneq ($(findstring gfortran,$(COMPILER)),)
-    CPOPT = -fdefault-integer-8 -m64
-   else
-    ifneq ($(findstring ifort,$(COMPILER)),)
-      CPOPT =  -i8
+  ifndef CPOPT 
+    ifdef NO_I8
+      CPOPT = 
+    else
+     ifneq ($(findstring gfortran,$(COMPILER)),)
+      CPOPT = -fdefault-integer-8 -m64
+     else
+      ifneq ($(findstring ifort,$(COMPILER)),)
+        CPOPT =  -i8
+      endif
+     endif
     endif
-   endif
   endif
   LKOPT = 
 else
@@ -129,17 +131,16 @@ else
     LKOPT    := -auto -lpthread -parallel
   else
    ifneq ($(findstring gfortran,$(COMPILER)),)
-    ifneq (,$(filter $(NO_I8),YES yes))
-      CPOPT    := -fopenmp -O3
-    else
-      CPOPT    := -fopenmp -O3 -m64
+    ifndef CPOPT
+      ifneq (,$(filter $(NO_I8),YES yes))
+        CPOPT    := -fopenmp -O3
+      else
+        CPOPT    := -fopenmp -O3 -m64
+      endif
+      ifdef DYNAMIC
+        CPOPT := $(CPOPT) -dynamic
+      endif
     endif
-    ifdef DYNAMIC
-      CPOPT := $(CPOPT) -dynamic
-    endif
-    LKOPT    :=
-   else
-    CPOPT    :=
     LKOPT    :=
    endif
   endif
@@ -205,6 +206,12 @@ ifndef LIBS
   endif #is on hopper.nersc.gov
  else
     LIBS := $(BLAS_LIB)
+    # test if openmpi libraries have been included in BLAS library path
+    ifneq ($(findstring mp,$(BLAS_LIB)),)
+	LDFLAGS :=
+    else
+    	LDFLAGS := -openmp
+    endif	
  endif #BLAS_LIB
 endif #ifndef $LIBS
 
@@ -234,10 +241,11 @@ surfgen  : $(OBJV)  $(OBJS) | $(BDIR)
 	@echo 'Debug Flag:          $(DEBUGFLAG)'
 	@echo 'Compiler options:    $(CPOPT)'
 	@echo 'Linking options:     $(LKOPT)'
+	@echo 'Linking flags:       $(LDFLAGS)'
 	@echo '-----------------------------------------'
 	@echo 'Building target:     $@'
 	@echo 'Invoking: Linker'
-	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(OBJV) $(LIBS) $(LKOPT) $(LDFLAGS)
+	$(CDS) $(COMPILER) -o $(EXEC) $(OBJS) $(OBJV) $(DEBUGFLAG) $(LIBS) $(LKOPT) $(LDFLAGS)
 	@echo 'Finished building target: $@'
 	@echo '-----------------------------------------'
 	@echo 'Creating symbolic link to the new binary'

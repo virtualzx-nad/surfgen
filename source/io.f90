@@ -453,6 +453,10 @@ SUBROUTINE initialize(jobtype)
   call getBlockSym()
   if(printlvl>0)print *,"  Generating Maptab"
   call genMaptab()
+  if(trim(adjustl(basisfl)).ne."")then
+    if(printlvl>0)print *,"  Selecting basis as saved in file ["//trim(adjustl(basisfl))//"]"
+    call filterHd(basisfl)
+  end if
 
   !allocate space for Hd  
   do i=1,nGroups
@@ -465,6 +469,50 @@ SUBROUTINE initialize(jobtype)
   call printTitle(jobtype)
   if(printlvl>0)print *,"Exiting Initialize()"
 end SUBROUTINE initialize
+ !***********************************************************************
+ ! Use term list stored in the input file to filter the expansion structure
+ ! of Hd
+ SUBROUTINE filterHd(basisfl)
+   use progdata, only: printlvl
+   use hddata, only: getFLUnit,nblks, filterBlock,lnBlock,nBasBlk
+   use cnpi,only: blockSymLs,blockSymId, NBlockSym
+   implicit none
+   CHARACTER(255),INTENT(IN)        :: basisfl
+   integer  :: fid, ios, i, l, k, intin, nf
+   integer,allocatable,dimension(:)  :: terms
+   fid=getFLUnit()
+   open(unit=fid,file=trim(adjustl(basisfl)),access='sequential',form='formatted',&
+       status='old',action='read',position='rewind',iostat=ios)
+   if(ios/=0)then
+     print *,"FAILED TO OPEN FILE "//trim(adjustl(basisfl))
+     return
+   end if
+   read(unit=fid,fmt="(I4)") intin
+   if(intin.ne.NBlockSym)stop "filterHd: File contains incorrect number of block symmetries."
+   do l=1,NBlockSym
+     if(printlvl>0) print "(A,I4)","     Filtering terms for block symmetry #",l
+     k = blockSymLs(l)
+     read(unit=fid,fmt=*) nf
+     allocate(terms(nf))
+     read(unit=fid,fmt=*) terms
+     call filterBlock(k,terms)
+     deallocate(terms)
+   end do!l=1,NBlockSym
+   close(fid)
+   if(printlvl>0) print *,"  Linking symmetry dependent blocks."
+   do i=1,nblks
+     k=blockSymLs(blockSymId(i))
+     if(i.eq.k) cycle
+     call lnBlock(k,i)
+   end do!i=1,nblks
+   print *,"  Number of basis functions for each block:"
+   nf=0
+   do i=1,nblks
+     print "(6x,A,I3,A,I8)","Block ",i," : ", nBasBlk(i)
+     nf=nf+nBasBlk(i)
+   end do
+   print "(A,I8)","    Total number of basis functions: ",nf
+ END SUBROUTINE filterHd
 
 
 

@@ -45,6 +45,8 @@ MODULE makesurfdata
   DOUBLE PRECISION                             :: toler     !criteria for convergence
   DOUBLE PRECISION                             :: gcutoff   !gradient cutoff
   DOUBLE PRECISION                             :: exactTol  !Exact equations rank cutoff
+  LOGICAL                                      :: autoshrink!automatically shrink the step size when error increases
+  DOUBLE PRECISION                             :: jshift    !Shift to Jacobian part in Marquardt step
   DOUBLE PRECISION                             :: LSETol    !LSE rank cutoff
   DOUBLE PRECISION                             :: flattening!flattening parameter for differential convergence
 !gorder: energy difference below which ckl will be ordered according to gradients rather than energies
@@ -84,6 +86,12 @@ MODULE makesurfdata
 ! different expansion structure from a previous fit.
   LOGICAL                                      :: parseDiabats
 
+! This option specifies if hd coefficients will be constructed from diabats instead from hd.data
+  LOGICAL                                      :: loadDiabats
+
+! Singular value threshold for diabat fitting scheme
+  DOUBLE PRECISION                             :: sval_diabat
+
   TYPE(abpoint),dimension(:),allocatable       :: dispgeoms
   type(TEqList)                                :: exclEner,exclGrad,exactEner,exactGrad,exactDiff,enfGO
   INTEGER                                      :: enfDiab ! index of point where diabatic and adiabatic matches
@@ -119,6 +127,7 @@ MODULE makesurfdata
 ! EnergyT      Threshold energy above which gradients/energies will be scaled down
 ! HighEScale   The scaling factor for these high energy data 
   DOUBLE PRECISION,dimension(10)               ::  energyT, highEScale
+  DOUBLE PRECISION,dimension(10)               ::  energyT_en, highEScale_en
 
 ! These variables store the coefficient matrix and right hand side of
 ! linear equality constrained least squares equations.
@@ -154,9 +163,11 @@ MODULE makesurfdata
   integer,dimension(:),allocatable           :: npb  ! number of primitive basis for each block
   integer,dimension(:),allocatable           :: nbas ! number of reconstructed basis for each block
   double precision                           :: TBas ! theshold for eigenvalue cutoff of the primitive basis overlap matrix (linear dependency)
+  logical                                    :: scalebycoef ! when true, the term selection will use size of coefficient as weight
   double precision                           :: ecutoff  ! energy threshold above which data will be excluded from basis construction
   double precision                           :: egcutoff ! energy threshold above which gradients will no longer be used in fit
   type(T2DDList),dimension(:),allocatable    :: ZBas ! transformation from primitive to the reconstructed basis for each block
+  logical                                    :: TransBasis
 
 ! scaling factor of dij term.  0 gives old result and 1 gives exact gradients
   double precision            :: DijScale
@@ -420,13 +431,14 @@ stloop: do k = s1,s2
         if(k>0) gWeight(i,s1,s1)= gWeight(i,s1,s1)*highEScale(k)
       ! Weights for derivative couplings
         do s2=1,s1-1
+          gWeight(i,s1,s2)=w_fij
           k = 0
           do while(dispgeoms(i)%energy(s1,s1)+dispgeoms(i)%energy(s2,s2)> 2*energyT(k+1))
             !  determine the bracket of ab initio energy
             k = k+1
             if(k==10)exit
           end do
-          if(k>0) gWeight(i,s1,s2)=w_fij*highEScale(k)
+          if(k>0) gWeight(i,s1,s2)=gWeight(i,s1,s2)*highEScale(k)
           if(nrmediff>0)then
             ediff=abs(dispgeoms(i)%energy(s1,s1)-dispgeoms(i)%energy(s2,s2))*AU2CM1
             ediff=(ediff+ediffcutoff)/nrmediff
@@ -439,11 +451,11 @@ stloop: do k = s1,s2
       ! calculate the weights of energy equations
       do s1=1,nstates
         k=0
-        do while(dispgeoms(i)%energy(s1,s1)>energyT(k+1))
+        do while(dispgeoms(i)%energy(s1,s1)>energyT_en(k+1))
           k=k+1
           if(k==10)exit
         end do
-        if(k>0)   eWeight(i,s1,s1) =  w_energy*highEScale(k)
+        if(k>0)   eWeight(i,s1,s1) =  w_energy*highEScale_en(k)
         do s2=s1+1,nstates
           eWeight(i,s1,s2)=eWeight(i,s1,s1)
           eWeight(i,s2,s1)=eWeight(i,s1,s1)
@@ -1114,7 +1126,7 @@ stloop: do k = s1,s2
              NEx_e = NEx_e+1
            end if!e_exact(j,k,l)
          end do!l
-         if(dispgeoms(j)%energy(k,k)<energyT(1))then
+         if(dispgeoms(j)%energy(k,k)<min(energyT_en(1),energyT(1)))then
            if(hasEner(j,k))then
              nrmener = nrmener +    (dispgeoms(j)%energy(k,k)-fitE(j,k,k))**2
              avgener = avgener + abs(dispgeoms(j)%energy(k,k)-fitE(j,k,k))
@@ -1399,7 +1411,8 @@ stloop: do k = s1,s2
     DOUBLE PRECISION,intent(OUT):: DIJ(nstates,nstates)
     integer :: nDij
     double precision :: EMat(nstates*(nstates-1)/2,nstates*(nstates-1)/2)
-    double precision,dimension(nstates*(nstates-1)/2) :: RVec, sv
+    double precision,dimension(nstates*(nstates-1)/2) :: RVec
+    integer,dimension(nstates*(nstates-1)/2) :: jpvt
     integer :: i,j,k,l,lb,ub
     integer :: grpind(nstates)  ! specifies which degeneracy group a state belongs to
     integer :: smap(nstates,nstates),dmap(nstates*(nstates-1)/2,2)  !mapping between dij and state indices 
@@ -1448,23 +1461,30 @@ stloop: do k = s1,s2
                   dot_product(VIJ(:,J,J)-VIJ(:,I,I),hvec)
 !        EMat(k,k)=dot_product(gvec,gvec)-4*dot_product(hvec,hvec)
         do l=1,nstates
-          !if(l==i.or.l==j)cycle
+          if(grpind(i).ne.grpind(l))cycle
           if(l/=i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+sgn(l,i)*(  &
                 -dot_product(fitG(pt,:,l,j),gvec)+2*dot_product(fitG(pt,:,l,i),hvec))
           if(l/=j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+sgn(l,j)*(  &
                 -dot_product(fitG(pt,:,l,i),gvec)-2*dot_product(fitG(pt,:,l,j),hvec))  
         end do!l
-      else!i and j are in same degeneracy group
+      else!i and j are not in same degeneracy group
         rvec(k) = - WIJ(i,j) 
         do l=1,nstates
-           if(l.ne.i)EMat(k,smap(l,i))=EMat(k,smap(l,i))+fitE(pt,l,j)*sgn(l,i)
-           if(l.ne.j)EMat(k,smap(l,j))=EMat(k,smap(l,j))+fitE(pt,l,i)*sgn(l,j)
+           if(grpind(l)==grpind(j))EMat(k,smap(l,i))=EMat(k,smap(l,i))+fitE(pt,l,j)*sgn(l,i)
+           if(grpind(l)==grpind(i))EMat(k,smap(l,j))=EMat(k,smap(l,j))+fitE(pt,l,i)*sgn(l,j)
         end do
       end if!i and j are in same degeneracy group
     end do!k
 
+!print *,"PT ",pt
+!PRINT *,"EMat  :"
+!do i=1,nstates*(nstates-1)/2
+!  print "(20F10.5)",EMat(:,i)
+!end do
+
     !solve the Dij values
-    CALL DGELSD(nDij,nDij,1,EMat,nDij,rvec,nDij,sv,1d-12,rank,WORK,LWORK,IWORK,INFO)
+    jpvt=0
+    CALL DGELSY(nDij,nDij,1,EMat,nDij,rvec,nDij,jpvt,1d-9 ,rank,WORK,LWORK,INFO)
     !if(rank<nDij)print "(A,I4,A,I5)","Reduced rank at point ",pt,", rank=",rank
     if(INFO/=0)then
        print *,"Failed to solve linear equations in getDegDij"
@@ -1473,11 +1493,25 @@ stloop: do k = s1,s2
        do i=1,nstates
          print "(10F10.5)",ckl(pt,:,i)
        end do
+       print *,"Block map: "
+       print "(10(2I4,4x))",(dmap(i,:),i=1,nDij)
        print *,"EMat  :"
        do i=1,nstates*(nstates-1)/2
          print "(20F10.5)",EMat(:,i)
        end do
        print *,"INFO=",info
+       print "(A,20I4)","Group indexing for states:  ",grpind
+       print *,"fitE at point"
+       do i=1,nstates
+         print "(20F10.5)",fitE(pt,i,:)
+       end do
+       print *,"fitG at point"
+       do i=1,nstates
+         do j=i,nstates
+           print "(A,2I4)","Block",i,j
+           print "(20F10.5)",fitG(pt,:,i,j)
+         end do
+       end do
        stop
     end if
     
@@ -1491,6 +1525,8 @@ stloop: do k = s1,s2
     end do!k 
     deallocate(WORK)
     deallocate(IWORK)
+
+
   END SUBROUTINE getDegDij
 
 !------------------------------------------------------------------
@@ -1660,7 +1696,7 @@ stloop: do k = s1,s2
 !---------------------------------------------
 ! Generate the basis for the fit using linear combinations of primitive basis functions
 !   * Values and gradients of primitive functions are evaluated at each data point and put into inter-
-!     mediate structures basisVal and basisGrad.  They will later be released.
+!     mediate structures pbas and pbasw, which are released after the process. 
 !   * Basis are generated separately for each symmetry unique block.  The constructed basis are linked
 !     to non-unique blocks with pointers.
 !   * Linear combinations that define fitting basis is chosen to be the eigenvectors of the dot-product
@@ -1678,7 +1714,7 @@ stloop: do k = s1,s2
   use cnpi,only: blockSymLs,blockSymId, NBlockSym
   IMPLICIT NONE
   integer  :: i,j,k,l,count1,count2,count_rate,pv1,n1,n2, broot
-  integer  :: ll,rr,p,nb
+  integer  :: ll,rr,p,nb,lr,stride
   double precision,allocatable,dimension(:)   :: WORK, eval
   double precision,allocatable,dimension(:,:) :: evec, pbas, dmat, pbasw 
   double precision, parameter :: gpw=7.4505806d-9  !  GB per word
@@ -1691,19 +1727,25 @@ stloop: do k = s1,s2
   call system_clock(COUNT_RATE=count_rate)
   gradNorm=dble(0)
   memsize=0d0
+  stride=npoints*(nvibs+1)
   ! allocate global info arrays
 
   if(allocated(npb))deallocate(npb)
   allocate(npb(nblks))
   if(allocated(nbas))deallocate(nbas)
   allocate(nbas(nblks))
-  if(allocated(ZBas))then
-    do i=1,ubound(ZBas,1)
-      if(associated(ZBas(i)%List))deallocate(ZBas(i)%List)
-    end do
-    deallocate(ZBas)
-  end if!allocated(ZBas
-  allocate(ZBas(nblks))
+  if(TBas>0)then
+    TransBasis=.true.
+    if(allocated(ZBas))then
+      do i=1,ubound(ZBas,1)
+        if(associated(ZBas(i)%List))deallocate(ZBas(i)%List)
+      end do
+      deallocate(ZBas)
+    end if!allocated(ZBas
+    allocate(ZBas(nblks))
+  else
+    TransBasis=.false.
+  end if
   if(allocated(WMat))then
     do i=1,ubound(WMat,1)
       if(associated(WMat(i)%List))deallocate(WMat(i)%List)
@@ -1748,10 +1790,11 @@ stloop: do k = s1,s2
     if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",npb(k)," matrices"
     ll = nl(k)
     rr = nr(k)
+    lr = ll*rr
     if(npb(k)==0)then
         print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
         nBas(k)=0
-        allocate(ZBas(k)%List(1,1))     ! just a place holder
+        if(TransBasis)allocate(ZBas(k)%List(1,1))     ! just a place holder
         allocate(WMat(k)%List(1,1))
         gradNorm(:,:,k) = 0d0
         cycle
@@ -1783,19 +1826,22 @@ stloop: do k = s1,s2
      wt = 1d0
      if(ptWeights(i)<1d-5) wt = 0d0
      if(j>0) wt = wt*highEScale(j)
-     if(all(.not.incener(i,:,:)).and.all(.not.e_exact(i,:,:)).or.abs(w_energy*wt)<1d-3)then
-       pbasw(n1,:) = 0d0
-     else
-       pbasw(n1,:) = pbas(n1,:)*wt!(w_energy*wt)
-     end if
-     if(all(.not.incgrad(i,:,:)).and.all(.not.g_exact(i,:,:)).or.abs(max(w_grad,w_fij)*wt)<1d-3)then
-       pbasw(n1+1:n1+nvibs,:) = 0d0
-     else
-       pbasw(n1+1:n1+dispgeoms(i)%nvibs,:) = pbas(n1+1:n1+dispgeoms(i)%nvibs,:)*wt!(max(w_grad,w_fij)*wt)
-       pbasw(n1+dispgeoms(i)%nvibs+1:n1+nvibs,:) =0d0
-     end if
-     n1 = n1 + (nvibs+1)*ll*rr
-    end do!i=1,npoints
+     do j=0,lr-1
+       n2=n1+j*stride
+       if(all(.not.incener(i,:,:)).and.all(.not.e_exact(i,:,:)).or.abs(w_energy*wt)<1d-3)then
+         pbasw(n2,:) = 0d0
+       else
+         pbasw(n2,:) = pbas(n2,:)*wt!(w_energy*wt)
+       end if
+       if(all(.not.incgrad(i,:,:)).and.all(.not.g_exact(i,:,:)).or.abs(max(w_grad,w_fij)*wt)<1d-3)then
+         pbasw(n2+1:n2+nvibs,:) = 0d0
+       else
+         pbasw(n2+1:n2+dispgeoms(i)%nvibs,:) = pbas(n2+1:n2+dispgeoms(i)%nvibs,:)*wt!(max(w_grad,w_fij)*wt)
+         pbasw(n2+dispgeoms(i)%nvibs+1:n2+nvibs,:) =0d0
+       end if
+     end do
+     n1 = n1 + (nvibs+1)
+    end do!i=1,npoints?
 
     call system_clock(COUNT=count1)
     if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
@@ -1875,12 +1921,6 @@ stloop: do k = s1,s2
     else  ! TBas<=0, use the raw basis itself
         if(printlvl>1)print *,"  TBas<=0, skipping null space removal. Using intermediate basis in fit."
         nBas(k) = npb(k)
-        allocate(ZBas(k)%List(npb(k),npb(k)))
-        memsize=memsize+npb(k)**2*gpw
-        Zbas(k)%List=0d0
-        do i=1,npb(k)
-            ZBas(k)%List(i,i) =  1D0
-        end do
         pv1 = npoints*(1+nvibs)*ll*rr
         ! generate new coefficient matrix in the basis.  WMat = pbas
         allocate(WMat(k)%List(pv1,npb(k)))
@@ -1919,7 +1959,7 @@ stloop: do k = s1,s2
   do l=1,nblks
     broot = blockSymLs(blockSymId(l))
     if(broot.eq.l)cycle ! it is a unique block.  skipping linking
-    ZBas(l)%List =>  ZBas(broot)%List
+    if(TransBasis)ZBas(l)%List =>  ZBas(broot)%List
     WMat(l)%List =>  WMat(broot)%List
     npb(l)       =   npb(broot)
     nbas(l)      =   nbas(broot)
@@ -1927,6 +1967,160 @@ stloop: do k = s1,s2
   end do!l
   1001 format(a,f7.2,a)
   END SUBROUTINE genBasis!
+
+!---------------------------------------------
+! Analyze the basis set and pick a subset of coefficients that for the given set of equations are 
+! equivalent to the original set 
+! *  Similar to genBasis, this is done block by block, and a pbas matrix is first formed which 
+!    contains the value and gradients of all basis matrices.
+! *  A QR decomposition procedure with column-pivoting is used to determine the list of leading 
+!    independent terms 
+  SUBROUTINE selectBasis()
+  use hddata, only: nl,nr,nBasBlk,EvalRawTerms,EvaluateBasis2,EvaluateVal,getFLUnit,nblks,getHdBlock
+  use progdata, only: printlvl
+  use cnpi,only: blockSymLs,blockSymId, NBlockSym
+  IMPLICIT NONE
+  integer  :: i,j,k,l,count1,count2,count_rate,ll,rr, ndata,nb,rk,fid,ios,nterms
+  double precision,allocatable,dimension(:)   :: WORK,TAU,hvec,wvec
+  double precision,allocatable,dimension(:,:) :: pbas,dmat
+  double precision, parameter :: gpw=7.4505806d-9  !  GB per word
+  double precision   ::  memsize
+  integer,allocatable,dimension(:)  :: JPVT
+  integer  :: INFO,LWORK
+  double precision :: owork(1),wt
+
+  call system_clock(COUNT_RATE=count_rate)
+  if(printlvl>0) print "(/,A,/,A,E15.7)"," Selecting basis set free of d-independent linear dependencies.",&
+                     "     QR diagonal cutoff=",TBas
+! construct new basis and store them for each block 
+!**************************************************
+!*   First construct symmetry unique blocks       *
+!**************************************************
+  if(printlvl>0) print *,"Selecting basis for symmetry unique blocks."
+  fid=getFLUnit()
+  open(unit=fid,file='basis.data',access='sequential',form='formatted',&
+     status='replace',action='write',position='rewind',iostat=ios)
+  if(ios/=0)then
+     print *,"FAILED TO CREATE FILE basis.data"
+     return
+  end if
+  write(unit=fid,fmt="(I4)") NBlockSym
+  nterms=0
+  do l=1,NBlockSym
+    k = blockSymLs(l)
+    nb=nBasBlk(k)
+    if(scalebycoef)then
+       allocate(hvec(nb))
+       allocate(wvec(nb))
+       wvec=0d0
+       do j=1,nblks
+         if( blockSymId(j).eq.l )then
+           call getHdBlock(j,hvec)
+           wvec=wvec+hvec**2
+         end if
+       end do
+       wvec=sqrt(wvec)
+    end if
+    if(printlvl>0) print "(/,A,I2,A,I5,A)"," Constructing intermediate basis for block ",K," with ",nb," matrices"
+    ll = nl(k)
+    rr = nr(k)
+    if(nb==0)then
+        print *,"WARNING: No basis function is present for block ",K,".  Skipping basis construction."
+        cycle
+    end if
+    call system_clock(COUNT=count2)
+! pbas contains the values and gradients of all primitive basis matrices.
+!   row number is the index for surface quantities, looping through blocks>point>energy,each gradient component
+! pbasw are equations weighed by 
+    ndata = (nvibs+1)*ll*rr
+    memsize=(ndata*nb+nb*nb+2*nb)*gpw
+    allocate(pbas(ndata,nb),stat=INFO)
+    if(info.ne.0)then
+      print "(A,I3)","selectBasis: Memory allocation failed for pbas matrix,INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    allocate(dmat(nb,nb),stat=INFO)
+    if(info.ne.0)then
+      print "(A,I3)","selectBasis: Memory allocation failed for dmat matrix,INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    allocate(JPVT(nb))
+    JPVT=0
+    allocate(TAU(nb))
+    if(printlvl>2) print 1001,"    Memory needed to store matrix structures: ",memsize," G" 
+    if(printlvl>1) write(*,"(A)",advance='no')"    Evaluating full basis... "
+! evaluate and tabulate value and gradients of basis at all data points
+    pbas = 0D0
+    do i=1,npoints
+     call EvalRawTerms(dispgeoms(i)%igeom)
+     CALL EvaluateVal(pbas,k,nvibs,1,1,dispgeoms(i)%bmat)
+     if(scalebycoef)then
+       do j=1,nb
+         call dscal(ndata,wvec(j),pbas(1,j),1)
+       end do
+     end if
+     j=0
+     do while(dispgeoms(i)%energy(1,1)>energyT(j+1))
+       j=j+1
+       if(j==10)exit
+     end do
+     wt = 1d0
+     if(j>0) wt = wt*highEScale(j)
+     CALL DSYRK("U","T",nb,ndata,wt**2,pbas,ndata,1d0,dmat,nb)
+    end do!i=1,npoints
+    ! fill out lower half
+    do i=2,nb
+      do j=1,i-1
+        dmat(i,j)=dmat(j,i)
+      end do
+    end do
+
+    call system_clock(COUNT=count1)
+    if(printlvl>1)print 1001,"finished in ",dble(count1-count2)/count_rate," s"
+
+    call DGEQP3(nb,nb,dmat,nb,JPVT,TAU,owork,-1,INFO)
+    if(INFO.ne.0)then
+      print *,"QR work space query failed in selectBasis. INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    LWORK=int(owork(1))
+    if(printlvl>2) print 1001,"    Work memory required for QR decomposition: ",LWORK*gpw*1024," MB"
+    if(printlvl>1) write(*,"(A)",advance='no')"    Selecting term using QR decomposition with column pivoting... "
+    allocate(WORK(LWORK))
+    call DGEQP3(nb,nb,dmat,nb,JPVT,TAU,WORK,LWORK,INFO)
+    if(INFO.ne.0)then
+      print *,"QR decomposition failed in selectBasis. INFO=",INFO
+      stop "Basis selection failed.  Aborting execution."
+    end if
+    deallocate(WORK)
+    rk=nb
+    do i=1,rk
+      if(abs(dmat(i,i))<TBas)then
+        rk=i-1
+        exit
+      end if
+    end do
+    call system_clock(COUNT=count2)
+    if(printlvl>1) print 1001, " Completed in ",dble(count2-count1)/count_rate," s"
+    if(printlvl>1) print "(A,I8,A)","    Saving " , rk, " terms to file."
+    write(unit=fid,fmt="(I7)") rk
+    write(unit=fid,fmt="(20I7)") JPVT(1:rk)
+    deallocate(pbas)
+    deallocate(dmat)
+    deallocate(JPVT)
+    deallocate(TAU)
+    do i=1,nblks
+      if( blockSymId(i).eq.l ) nterms=nterms+rk
+    end do
+    if(scalebycoef)then
+       deallocate(hvec)
+       deallocate(wvec)
+    end if
+  end do! l=1,NBlockSym
+  if(printlvl>1) print "(A,I9,A)","    Total expansion has " , nterms, " terms."
+  close(fid)
+  1001 format(a,f7.2,a)
+  END SUBROUTINE selectBasis!
 !---------------------------------------------
 ! initialize variables for makesurf
 ! Allocate memory for shared structures and construct coefficient and
@@ -2213,7 +2407,7 @@ END MODULE
 ! hvec_new  [in] DOUBLE PRECISION(*)
 !           New Hd vector after transformation
 SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
-    use makesurfdata, only: ncons,nex,ncon_total,ZBas,nBas,coefMap
+    use makesurfdata, only: ncons,nex,ncon_total,ZBas,nBas,coefMap,TransBasis
     use hddata,only: nblks
     IMPLICIT NONE
     CHARACTER,INTENT(IN)        :: TRANS
@@ -2231,7 +2425,11 @@ SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
             do i=1,ncon_total
               if(coefMap(i,2)==k)then
                 count2 = count2+1
-                hvec_new(count1+1:count1+nBas(k))=hvec_new(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec_old(i)
+                if(TransBasis)then
+                  hvec_new(count1+1:count1+nBas(k))=hvec_new(count1+1:count1+nBas(k))+ZBas(k)%List(count2,:)*hvec_old(i)
+                else
+                  hvec_new(count1+count2)=hvec_old(i)
+                end if
               end if
             end do
             count1=count1+nBas(k)
@@ -2244,7 +2442,11 @@ SUBROUTINE tranHd(TRANS,hvec_old,hvec_new)
             do i=1,ncon_total
               if(coefMap(i,2)==k)then
                 count2 = count2+1
-                hvec_new(i) = dot_product(ZBas(k)%List(count2,:),hvec_old(count1+1:count1+nBas(k)))
+                if(TransBasis)then
+                  hvec_new(i) = dot_product(ZBas(k)%List(count2,:),hvec_old(count1+1:count1+nBas(k)))
+                else
+                  hvec_new(i) = hvec_old(count1+count2)
+                end if
               end if
             end do
             count1=count1+nBas(k)
@@ -2280,7 +2482,7 @@ SUBROUTINE makesurf()
   double precision,dimension(ncoord)             :: errgrd
   double precision,dimension(ncoord,3*natoms)    :: binv
   CHARACTER(255)                                 :: fmt, fn
-  double precision            ::  dener(nstates,nstates)
+  double precision            ::  dener(nstates,nstates),enew,eold
   integer                     ::  ios, status, ndep
   double precision, external  ::  dnrm2
   logical                     ::  diff  !whether differential convergence will be used
@@ -2297,6 +2499,9 @@ SUBROUTINE makesurf()
   if(printlvl>0)print *,"Entering makesurf"
   NaN  = 0
   NaN  = NaN/NaN
+  ! hd coefficients will be constructed from a previously saved diabat.data file
+  if(loadDiabats)  call readDiabats()
+
   call initMakesurf()
   call printSurfHeader(ncon_total,ncons,neqs,nex)
   print 1001,"    Memory required to store coefficient matrix:",(nvibs+1)*nstates*(nstates+1)*ncons*7.62939453125D-6/2," MB"
@@ -2358,14 +2563,9 @@ SUBROUTINE makesurf()
   call AddManagedPoints
   call updateWeights
   asol = asol1
-  if(maxiter>=0)then
-    CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-    CALL optLag(jaco,nex,dCi,asol,jaco2)
-    print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
-              ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
-  end if
   !CALL initDIISg(ndiis,ndstart,ncons,asol,dCi)
   call evaluateError(asol,weight,LSErr,ExErr)
+  eold=LSErr+ExErr
   CALL getError(nrmener,avgener,nrmgrad,avggrad)
   adif = dnrm2(ncons,asol,int(1))
   write(OUTFILE,1005)iter,adif,nrmgrad*100,avggrad*100,nrmener*AU2CM1,avgener*AU2CM1
@@ -2404,16 +2604,21 @@ SUBROUTINE makesurf()
      write(OUTFILE,*)"  Starting differential convergence..."
    end if
 
-   ! get errors 
-   if(printlvl>0)then
-     printlvl=printlvl-10
-     call makebvec(bvec,.true.)
-     print "(5x,A)","RMS Errors of Fitting Equations"
-     print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
-                             ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
-                             ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
-     printlvl=printlvl+10
+   if(diff)then
+     CALL getCGrad(asol,dCi,dLambda,lag,jaco)
+     CALL optLag(jaco,nex,dCi,asol,jaco2)
+     print "(3(A,E15.7))",&
+         "Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
+            ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    end if
+   ! get errors 
+   printlvl=printlvl-10
+   call makebvec(bvec,.true.)
+   print "(5x,A)","RMS Errors of Fitting Equations"
+   print "(5x,3(A,E12.5))","Exact equations: ",dnrm2(nex,bvec,1)/sqrt(dble(nex)),&
+                           ", LSE (unweighted):",dnrm2(neqs,bvec(nex+1),1)/sqrt(dble(neqs)), &
+                           ", LSE (weighted): ",dnrm2(neqs,bvec(nex+1:)*weight,1)/dnrm2(neqs,weight,1)
+   printlvl=printlvl+10
    if(diagHess>0)then
      call solve_diagHess(dCi,dLambda,jaco2,dsol,diagHess)
    else !diagHess>0
@@ -2431,11 +2636,11 @@ SUBROUTINE makesurf()
        rhs(1:nex)=-dLambda*scaleEx
        rhs(nex+1:)=-dCi
        ! solve normal equations for change in coefficients
-       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,dsol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,jshift,lsetol,dsol,printlvl)
      else
        dsol = asol(1:ncons)
        ! solve normal equations
-       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,lsetol,asol,printlvl)
+       CALL solve(ncons,neqs,nex,ndep,NEL,rhs,exacttol,jshift,lsetol,asol,printlvl)
        dsol = asol(1:ncons)-dsol
      end if
      CALL cleanArrays()
@@ -2457,9 +2662,19 @@ SUBROUTINE makesurf()
    if(linSteps<=0)then
       asol(1:ncons)=asol1(1:ncons)+dsol
       call evaluateError(asol,weight,LSErr,ExErr)
+      enew=LSErr+ExErr
       CALL getError(nrmener,avgener,nrmgrad,avggrad)
-      CALL getCGrad(asol,dCi,dLambda,lag,jaco)
-      CALL optLag(jaco,nex,dCi,asol,jaco2)
+      if(printlvl>1)print "(A,E13.4)","   Error change after step: ",enew-eold
+      do while(enew>eold.and.nrmD>toler.and.autoshrink)
+        if(printlvl>0) print "(A,E13.4)","  Error increased.  Shrinking step size to ",nrmD 
+        dsol=dsol/2
+        nrmD=nrmD/2
+        asol(1:ncons)=asol1(1:ncons)+dsol
+        call evaluateError(asol,weight,LSErr,ExErr)
+        enew=LSErr+ExErr
+        if(printlvl>1)print "(A,E13.4)","   Error change after step: ",enew-eold
+      end do
+      eold=enew
    else !linsteps<=0
      asol(1:ncons)=asol1(1:ncons)
      call takeLinStep(asol,dsol,linSteps,dCi,dLambda,jaco2,dconv)
@@ -2467,8 +2682,6 @@ SUBROUTINE makesurf()
    end if
    ! Print out error analysis
    !-------------------------------------------------------------
-   print "(3(A,E15.7))","Gradients for coef block: ",dnrm2(ncons,dCi,int(1)),",lag block:",dnrm2(nex,dLambda,int(1)),&
-            ", total:",sqrt(dot_product(dCi,dCi)+dot_product(dLambda,dLambda))
    adif=DNRM2(ncons,asol-asol1,int(1))
    asol1=asol
    ! write iteration information to output file
@@ -2726,9 +2939,7 @@ SUBROUTINE makesurf()
   end if  !printError
 
   !Write down the value and gradients of every data point to external file
-  if(parseDiabats)then
-    call writeDiabats()
-  end if 
+  if(parseDiabats)    call writeDiabats()
  
   if(printlvl>0)print *,"    deallocating arrays"
   !------------------------------------------------------------------
@@ -2792,6 +3003,92 @@ SUBROUTINE printSurfHeader(totcons,cons,eqs,nexact)
 end SUBROUTINE printSurfHeader
 
 !-----------------------------------------------------------------------------------
+! Reconstruct Hd coefficients from previously saved diabats 
+SUBROUTINE readDiabats()
+  use hddata, only:   nstates,nblks,EvalRawTerms,EvaluateVal,getFLUnit,nl,nr,nBasBlk, getHdBlock,putHdBlock
+  use progdata, only: printlvl, natoms
+  use makesurfdata, only: npoints,dispgeoms,sval_diabat
+  IMPLICIT NONE
+  double precision, allocatable, dimension(:,:) :: basval, NE
+  double precision, allocatable, dimension(:)   :: diabat, rhs,work,ipiv
+  integer  ::  ios, iblk, ipt,  fid, iread,i,LWORK,INFO
+  integer  ::  nnum, nbas, m, count1, count2, count_rate
+  double precision :: osize(1)
+  double precision,external :: dnrm2
+  character(500) :: buffer
+  fid=getFLUnit()
+  if(printlvl>0)print *," Loading diabats from file <diabat.data>"
+  open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
+       status='old',action='read',position='rewind',iostat=ios)
+  if(ios/=0)then
+     print *,"FAILED TO CREATE FILE diabat.data"
+     return
+  end if
+
+  read(unit=fid,fmt="(A)") buffer 
+  read(unit=fid,fmt=*)  iread
+  if(printlvl>1) print "(A,I4)","Number of blocks in file:",iread
+  if(iread.ne.nblks)then
+    print *,"ERROR READING DIABATS: INCORRECT NUMBER OF BLOCKS.  ABORTING"
+    return
+  end if 
+  call system_clock(COUNT=count2,COUNT_RATE=count_rate)
+  do iblk=1,nblks
+    nbas = nBasBlk(iblk)
+    nnum=npoints*nl(iblk)*nr(iblk)*(1+3*natoms)
+    allocate(basval(nnum,nbas))
+    allocate(diabat(nnum))
+    allocate(ne(nbas,nbas))
+    allocate(rhs(nbas))
+    allocate(ipiv(nbas))
+    read(unit=fid,fmt="(17x,I3)") iread
+    if(iread.ne.iblk)then
+      print *,"ERROR READING DIABATS: INCORRECT BLOCK INDEX.  ABORTING"
+      exit
+    end if 
+    read(unit=fid,fmt=*) iread
+    if(printlvl>2) print "(A,I4,A,I8,A)","   Block ",iblk, " contains ", iread, " numbers."
+    if(iread.ne.nnum)then
+      print *,"ERROR READING DIABATS: INCORRECT BLOCK SIZE.  ABORTING"
+      exit
+    end if 
+    read(unit=fid,fmt=*) diabat
+    call system_clock(COUNT=count1)
+    if(printlvl>3)print 1001, " finished reading in",dble(count1-count2)/count_rate," s"
+    if(printlvl>2) print *,"     Evaluate basis for the current block..."
+    do ipt=1,npoints
+     call EvalRawTerms(dispgeoms(ipt)%igeom)
+     CALL EvaluateVal(basval,iblk,3*natoms,npoints,ipt,dispgeoms(ipt)%cbmat)
+    end do    !ipt
+    call system_clock(COUNT=count2)
+    if(printlvl>3)print 1001, "      finished evaluation in",dble(count2-count1)/count_rate," s"
+    !construct normal equations
+    call dsyrk('U','T',nbas,nnum,1d0,basval,nnum,0d0,NE,nbas)
+    do i=1,nbas
+      NE(i,i)=NE(i,i)+sval_diabat
+    end do
+    !construct RHS
+    call DGEMV('T',nnum,nbas,1d0,basval,nnum,diabat,1,0d0,rhs,1)
+    call DSYSV('U',nbas,1,NE,nbas,IPIV,rhs,nbas,osize,-1,INFO)
+!    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,osize,-1,INFO)
+    LWORK=int(osize(1))
+    allocate(WORK(LWORK))
+    call DSYSV('U',nbas,1,NE,nbas,IPIV,rhs,nbas,WORK,LWORK,INFO)
+!    call DGELS('N',nnum,nbas,1,basval,nnum,diabat,nnum,WORK,LWORK,INFO)
+    deallocate(WORK)
+    !call getHdBlock(iblk,hdvec)
+    !call DGEMV('N',nnum,nbas,1d0,basval,nnum,hdvec,1,-1d0,diabat,1)
+    call putHdBlock(iblk,rhs)
+    deallocate(ne)
+    deallocate(basval)
+    deallocate(diabat)
+    deallocate(rhs)
+    deallocate(ipiv)
+  end do !iblk
+  close(fid)
+1001 format(A,F10.2,A)
+END SUBROUTINE readDiabats
+!-----------------------------------------------------------------------------------
 ! Export values and derivatives of the diabats (in cartesian coordinates) to an output
 ! file diabat.data.  This can be used by a future fit to reconstruct the current Hd with
 ! a different expansion
@@ -2803,16 +3100,26 @@ SUBROUTINE writeDiabats()
 
     implicit none
     integer  ::  fid,ios,i,iblk,l1,r1,l2,r2,l,r
-    double precision,dimension(nstates,nstates)              ::  hmat
-    double precision,dimension(ncoord,nstates,nstates)       ::  dhmat
-    double precision,dimension(3*natoms)                     ::  gvec
+    double precision,dimension(:,:,:),allocatable           ::  hmat
+    double precision,dimension(:,:,:,:),allocatable         ::  dhmat
+    double precision,dimension(3*natoms)                    ::  gvec
 
+    allocate(hmat(nstates,nstates,npoints))
+    allocate(dhmat(ncoord,nstates,nstates,npoints))
     if(printlvl>0)print *,"Tabulating values and gradients of blocks of Hd at data points"
     call LinearizeHd()
     fid=getFLUnit()
     open(unit=fid,file='diabat.data',access='sequential',form='formatted',&
        status='replace',action='write',position='rewind',iostat=ios)
-    if(ios/=0)print *,"FAILED TO CREATE FILE diabat.data"
+    if(ios/=0)then
+       print *,"FAILED TO CREATE FILE diabat.data"
+       return
+    end if
+! first get the values and gradients of Hd at all data points
+    do i=1,npoints
+        call EvalRawTermsL(dispgeoms(i)%igeom)
+        call EvalHdDirect(hmat(:,:,i),dhmat(:,:,:,i))
+    end do
     write(unit=fid,fmt="(A)") "Number of Blocks"
     write(unit=fid,fmt="(I5)")nblks 
     do iblk=1,nblks
@@ -2822,20 +3129,21 @@ SUBROUTINE writeDiabats()
       r2=offs(ColGrp(iblk))+nr(iblk)
       write(unit=fid,fmt="(A,I3)") "Numbers in block ",iblk
       write(unit=fid,fmt="(I8)") npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)
-      if(printlvl>1)print "(A,I6)","Block ",iblk," contains ",npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)," numbers."
-      do i=1,npoints
-        call EvalRawTermsL(dispgeoms(i)%igeom)
-        call EvalHdDirect(hmat,dhmat)
-        do l=l1,l2
-          do r=r1,r2
-           CALL DGEMV('T',ncoord,3*natoms,1d0,dispgeoms(i)%cbmat,ncoord,dhmat(:,l,r),1,0d0,gvec,1)
-           write(unit=fid,fmt="(E33.17)") hmat(l,r)
+      if(printlvl>1)print "(A,I3,A,I8,A)","Block ",iblk," contains ",   &
+                               npoints*(l2-l1+1)*(r2-r1+1)*(1+3*natoms)," numbers."
+      do l=l1,l2
+        do r=r1,r2
+          do i=1,npoints
+           CALL DGEMV('T',ncoord,3*natoms,1d0,dispgeoms(i)%cbmat,ncoord,dhmat(:,l,r,i),1,0d0,gvec,1)
+           write(unit=fid,fmt="(E33.17)") hmat(l,r,i)
            write(unit=fid,fmt="(10E33.17)") gvec 
           end do
         end do
       end do
     end do!iblk
     close(fid)
+    deallocate(hmat)
+    deallocate(dhmat)
 END SUBROUTINE writeDiabats
 !-----------------------------------------------------------------------------------
 ! determined the phases of Wavefunctions that best reproduce ab initio couplings
@@ -3050,15 +3358,18 @@ SUBROUTINE readMakesurf(INPUTFL)
   IMPLICIT NONE
   INTEGER,INTENT(IN) :: INPUTFL
   integer :: i
-  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
-                      flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, &
-                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, &
-                      energyT,highEScale,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv, printError, &
+  NAMELIST /MAKESURF/ npoints,maxiter,toler,gcutoff,gorder,exactTol,jshift,LSETol,outputfl,TBas,ecutoff,egcutoff, guide,&
+                      flheader,ndiis,ndstart,enfDiab,followPrev,w_energy,w_grad,w_fij,usefij, deg_cap, eshift, printError, &
+                      ediffcutoff,nrmediff,rmsexcl,useIntGrad,intGradT,intGradS, deggrdbinding, autoshrink,scalebycoef,&
+                      energyT,highEScale,energyT_en,highEScale_en,maxd,scaleEx, ckl_output,ckl_input,dijscale,  diagHess, dconv,& 
                       dfstart,linSteps,flattening,searchPath,notefptn,gmfptn,enfptn,grdfptn,cpfptn,restartdir,orderall,&
-                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats
+                      gradcutoff,cpcutoff,mng_ener,mng_grad,mng_scale_ener,mng_scale_grad,GeomSymT,parseDiabats,loadDiabats,&
+                      sval_diabat
   ! set default for the parameters                    
   npoints   = 0
+  sval_diabat=1d-10
   parseDiabats=.false.
+  loadDiabats=.false.
   gradcutoff= 100000.
   cpcutoff  = -1.
   deggrdbinding=.true.
@@ -3071,6 +3382,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   mng_grad  = 3d-2
   orderall  = .true.
   diagHess  = -1d0
+  autoshrink= .false.
   dconv     = 1d-4
   followprev= .false.
   usefij    = .true.
@@ -3078,6 +3390,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   ecutoff   = 1d0
   egcutoff  = 6d-1
   TBas      = 1D-6
+  scalebycoef =.false.
   eshift    = 0d0
   ckl_input = ''
   ckl_output= 'ckl.out'
@@ -3091,6 +3404,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   scaleEx   = 1D0
   intGradS  = 1D-1
   maxd      = 1D0
+  energyT_en = -1d0 
   energyT   = 1D30
   highEScale = 1D0
   toler     = 1D-3
@@ -3098,6 +3412,7 @@ SUBROUTINE readMakesurf(INPUTFL)
   gcutoff   = 1D-14
   exactTol      = 1D-12
   LSETol        = 1D-7
+  jshift        = 1d-1
   flattening    = 1D-8
   outputfl      = ''
   flheader      = '----'
@@ -3120,7 +3435,8 @@ SUBROUTINE readMakesurf(INPUTFL)
 
   ! Read the values from surfgen.in
   read(unit=INPUTFL,NML=MAKESURF)
-
+  jshift=max(0d0,jshift)
+  LSETol=max(0d0,LSETol)
   ! Process the settings
   mng_ener=mng_ener/au2cm1
   if(useIntGrad)then
@@ -3143,6 +3459,12 @@ SUBROUTINE readMakesurf(INPUTFL)
   ! round up inappropriate option values and do unit changes
   if(linSteps<0)  linSteps=0
   energyT = energyT / AU2CM1
+  if(energyT_en(1)<0)then
+    energyT_en=energyT
+    highEScale_en=highEScale 
+  else
+    energyT_en=energyT_en/ AU2CM1
+  end if
   gradcutoff = gradcutoff/ AU2CM1
   cpcutoff   = cpcutoff  / AU2CM1
   If(cpcutoff<=0)cpcutoff=gradcutoff

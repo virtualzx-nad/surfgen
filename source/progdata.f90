@@ -142,6 +142,7 @@ module progdata
   INTEGER                                      :: printlvl
   INTEGER                                      :: natoms
   CHARACTER(255)                               :: inputfl
+  CHARACTER(255)                               :: basisfl
   CHARACTER(255)                               :: inputdir
 
 ! * MOLECULE PROPERTIES *
