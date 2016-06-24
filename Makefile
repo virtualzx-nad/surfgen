@@ -296,9 +296,13 @@ libs  :  $(OBJV) $(OBJSL) | $(LDIR)
 	@echo "setenv SGENDIR '$(BDIR)'" >> $(BDIR)/setsgenvars.csh
 	@echo 'set found=`echo '\"'$$PATH'\"' | tr '\"':'\"' '\"'\n'\"' | grep -x '\"'$$SGENDIR'\"'`'>> $(BDIR)/setsgenvars.csh 
 	@echo 'if ( $${?found} == 0 ) then'>> $(BDIR)/setsgenvars.csh 
-	@echo '   setenv PATH '\"'$${PATH}:$${SGENDIR}'\" >> $(BDIR)/setsgenvars.csh
+	@echo '  setenv PATH '\"'$${PATH}:$${SGENDIR}'\" >> $(BDIR)/setsgenvars.csh
 	@echo 'else ' >> $(BDIR)/setsgenvars.csh
-	@echo '   echo surfgen found in PATH ' >> $(BDIR)/setsgenvars.csh
+	@echo '  if ( '\"'$$found'\"' == '\"\"' ) then'>> $(BDIR)/setsgenvars.csh 
+	@echo '    setenv PATH '\"'$${PATH}:$${SGENDIR}'\" >> $(BDIR)/setsgenvars.csh
+	@echo '  else ' >> $(BDIR)/setsgenvars.csh
+	@echo '    echo surfgen found in PATH ' >> $(BDIR)/setsgenvars.csh
+	@echo '  endif' >> $(BDIR)/setsgenvars.csh
 	@echo 'endif' >> $(BDIR)/setsgenvars.csh
 
 #
