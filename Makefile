@@ -13,7 +13,7 @@ OBJSf   = hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
 
 # Objects needed for runtime interface library
 OBJSLf  = hddata.o combinatorial.o progdata.o libutil.o libsym.o libinternal.o\
-            io.o potlib.o
+            io.o potlib.o surfgen_c_interface.o surfgen_cpp_interface.o
 
 # Objects needed for test programs 
 OBJTf   =  hddata.o diis.o rdleclse.o combinatorial.o progdata.o libutil.o \
@@ -30,7 +30,7 @@ PDFfl   =  surfgen.pdf surfgen.in.pdf points.in.pdf coord.in.pdf
 
 
 # Set surfgen vesion
-SGENVER :=2.8.8
+SGENVER :=2.9.0
 
 # Get the OS name and version
 UNAME := $(shell uname -a)
@@ -46,6 +46,7 @@ bindir:= bin
 libdir:= lib
 tstdir:= test
 srcdir:= source
+incdir:= include
 docdir:= pdf
 JDIR  := $(shell pwd)
 BDIR  := $(JDIR)/$(bindir)
@@ -54,6 +55,7 @@ TDIR  := $(JDIR)/$(tstdir)
 SDIR  := $(JDIR)/$(srcdir)
 DDIR  := $(JDIR)/$(docdir)
 MANDIR:= $(JDIR)/man
+IDIR  := $(JDIR)/$(incdir)
 CDS   := cd $(SDIR);
 
 OBJS  := $(addprefix $(SDIR)/,$(OBJSf))
@@ -85,6 +87,20 @@ else       #find default compilers
   else
     $(error Compiler NOT defined! Please set it with variable FC)
   endif
+endif
+
+ifdef CC
+  $(info Using supplied C compiler : $(CC))
+else
+  CC = icc
+  $(info Using default C compiler : $(CC))
+endif
+
+ifdef CXX
+  $(info Using supplied C++ compiler : $(CXX))
+else
+  CXX = icpc
+  $(info Using default C++ compiler : $(CXX))
 endif
 
 # set up product name
@@ -367,6 +383,22 @@ $(SDIR)/%.o : $(SDIR)/%.f90
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
 	$(CDS) $(COMPILER) -c -o $@  $(CPOPT) $(DEBUGFLAG) $(FFLAGS) $<
+	@echo 'Finished building: $<'
+	@echo ' '
+
+# Compile C souce code
+$(SDIR)/%.o : $(SDIR)/%.c
+	@echo 'Building file: $<'
+	@echo 'Invoking: C Compiler'
+	$(CDS) $(CC) -c -o $@ $< -I$(IDIR)
+	@echo 'Finished building: $<'
+	@echo ' '
+
+# Compile C++ souce code
+$(SDIR)/%.o : $(SDIR)/%.cpp
+	@echo 'Building file: $<'
+	@echo 'Invoking: C++ Compiler'
+	$(CDS) $(CXX) -c -o $@ $< -I$(IDIR)
 	@echo 'Finished building: $<'
 	@echo ' '
 
