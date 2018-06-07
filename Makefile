@@ -116,7 +116,7 @@ ifdef DEBUGGING_SYMBOLS
     DEBUGFLAG = -g -fbounds-check -fbacktrace -Wall -Wextra
    else
     ifneq ($(findstring ifort,$(COMPILER)),)
-        DEBUGFLAG = -g -check uninit -check bound -check pointers -traceback -debug
+        DEBUGFLAG = -g -check uninit -check bound -check pointers -traceback -debug -openmp
     else
         DEBUGFLAG = -g
     endif
@@ -130,12 +130,12 @@ ifdef DEBUGGING_SYMBOLS
       CPOPT = -fdefault-integer-8 -m64
      else
       ifneq ($(findstring ifort,$(COMPILER)),)
-        CPOPT =  -i8
+        CPOPT =  -i8 -auto -assume byterecl -parallel -O0 -lpthread -openmp -no-opt-matmul
+        LKOPT =  -auto -lpthread -parallel 
       endif
      endif
     endif
   endif
-  LKOPT = 
 else
   # set default compiler flags
   ifneq ($(findstring ifort,$(COMPILER)),)
