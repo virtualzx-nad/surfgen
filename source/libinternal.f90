@@ -457,7 +457,7 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
 !            coordinates of the four reference atoms.
 
   DOUBLE PRECISION     ::  fval, bval(12), g
-
+  DOUBLE PRECISION     ::  x, thx   ! intermediate variable
 !---Plain or scaled Rij coordinates--->>>
 
   call stre(natoms,a1,a2,cgeom,fval,bval)
@@ -503,8 +503,10 @@ SUBROUTINE calcwij(scaling,a1,a2,coef,cgeom,w,dwdR)
 
     ! segmentation function tanh
     case(7)
-      w    = tanh((fval-coef(2))/coef(1))/2
-      dwdR = bval/(cosh((fval-coef(2))/coef(1))**2*coef(1))/2
+      x = (fval - coef(2))/coef(1)
+      thx = tanh(x)
+      w    = thx/2
+      dwdR = bval*(1-thx**2)/(coef(1)*2)
 
     case default
       print *,"scaling = ",scaling
